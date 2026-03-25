@@ -97,3 +97,4 @@ export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET || "fallback_secret_for_development_xyz789",
 };
 // NextAuth config - github provider wired up
+// fix: callbackUrl normalisation
