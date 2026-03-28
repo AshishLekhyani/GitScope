@@ -309,3 +309,4 @@ export function AppSidebar({
   );
 }
 // AppSidebar v1
+// Performance Hub section added
