@@ -753,3 +753,4 @@ export function TopNav({
 }
 // TopNav v1 with debounced search
 // debounce 400ms
+// Notifications dropdown integrated
