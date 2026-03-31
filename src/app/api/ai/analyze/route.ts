@@ -1,0 +1,135 @@
+import { NextResponse } from "next/server";
+import Anthropic from "@anthropic-ai/sdk";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { getGitHubToken } from "@/lib/github-auth";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+interface RepoSummary {
+  name: string;
+  description: string | null;
+  language: string | null;
+  stars: number;
+  forks: number;
+  openIssues: number;
+  topics: string[];
+  recentCommitMessages: string[];
+}
+
+async function fetchRepoSummary(fullName: string, token: string): Promise<RepoSummary | null> {
+  const headers: Record<string, string> = {
+    Accept: "application/vnd.github.v3+json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const [repoRes, commitsRes] = await Promise.all([
+    fetch(`https://api.github.com/repos/${fullName}`, { headers, next: { revalidate: 300 } }),
+    fetch(`https://api.github.com/repos/${fullName}/commits?per_page=10`, { headers, next: { revalidate: 300 } }),
+  ]);
+
+  if (!repoRes.ok) return null;
+
+  const repo = await repoRes.json();
+  const commits = commitsRes.ok ? await commitsRes.json() : [];
+  const recentCommitMessages: string[] = Array.isArray(commits)
+    ? commits.slice(0, 5).map((c: { commit: { message: string } }) => c.commit.message.split("\n")[0])
+    : [];
+
+  return {
+    name: repo.full_name,
+    description: repo.description,
+    language: repo.language,
+    stars: repo.stargazers_count,
+    forks: repo.forks_count,
+    openIssues: repo.open_issues_count,
+    topics: repo.topics ?? [],
+    recentCommitMessages,
+  };
+}
+
+export async function POST(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user) {
+    return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: "AI analysis not configured (missing ANTHROPIC_API_KEY)" }, { status: 503 });
+  }
+
+  let body: { repo?: string; question?: string };
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+  }
+
+  const { repo, question } = body;
+  if (!repo || typeof repo !== "string") {
+    return NextResponse.json({ error: "repo field required (e.g. 'owner/repo')" }, { status: 400 });
+  }
+  if (!/^[\w.-]+\/[\w.-]+$/.test(repo)) {
+    return NextResponse.json({ error: "Invalid repo format" }, { status: 400 });
+  }
+
+  const token = await getGitHubToken();
+  const repoData = await fetchRepoSummary(repo, token ?? "");
+  if (!repoData) {
+    return NextResponse.json({ error: "Repository not found or inaccessible" }, { status: 404 });
+  }
+
+  const systemPrompt = `You are GitScope's AI analyst. You provide concise, technical, and insightful analysis of GitHub repositories. Focus on engineering health, code quality signals, maintenance patterns, and actionable recommendations. Be direct and specific — no fluff.`;
+
+  const userPrompt = question
+    ? `Analyze the GitHub repository "${repoData.name}" and answer: ${question}
+
+Repository context:
+- Description: ${repoData.description ?? "None"}
+- Primary language: ${repoData.language ?? "Unknown"}
+- Stars: ${repoData.stars.toLocaleString()}, Forks: ${repoData.forks.toLocaleString()}, Open issues: ${repoData.openIssues}
+- Topics: ${repoData.topics.join(", ") || "None"}
+- Recent commit messages: ${repoData.recentCommitMessages.map((m, i) => `${i + 1}. "${m}"`).join("; ") || "None available"}
+
+Answer the specific question with technical depth. Keep it under 200 words.`
+    : `Provide a comprehensive engineering health analysis for the GitHub repository "${repoData.name}".
+
+Repository data:
+- Description: ${repoData.description ?? "None"}
+- Primary language: ${repoData.language ?? "Unknown"}
+- Stars: ${repoData.stars.toLocaleString()}, Forks: ${repoData.forks.toLocaleString()}, Open issues: ${repoData.openIssues}
+- Topics: ${repoData.topics.join(", ") || "None"}
+- Recent commit messages: ${repoData.recentCommitMessages.map((m, i) => `${i + 1}. "${m}"`).join("; ") || "None available"}
+
+Provide:
+1. **Health Score** (0-100) with one-line justification
+2. **Strengths** (2-3 bullet points)
+3. **Risk Signals** (2-3 bullet points)
+4. **Top Recommendation** (1-2 sentences)
+
+Keep the total response under 300 words. Be specific and technical.`;
+
+  try {
+    const message = await client.messages.create({
+      model: "claude-haiku-4-5-20251001",
+      max_tokens: 512,
+      messages: [{ role: "user", content: userPrompt }],
+      system: systemPrompt,
+    });
+
+    const content = message.content[0];
+    const text = content.type === "text" ? content.text : "";
+
+    return NextResponse.json({
+      analysis: text,
+      repo: repoData.name,
+      inputTokens: message.usage.input_tokens,
+      outputTokens: message.usage.output_tokens,
+    });
+  } catch (err) {
+    console.error("[AI analyze]", err);
+    return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
+  }
+}
