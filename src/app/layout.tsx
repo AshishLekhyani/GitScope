@@ -54,3 +54,4 @@ export default async function RootLayout({
   );
 }
 // Root layout - Space Grotesk + Inter loaded
+// favicon metadata: icon.png + apple-icon.png
