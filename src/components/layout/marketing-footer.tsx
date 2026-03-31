@@ -73,3 +73,4 @@ export function MarketingFooter() {
   );
 }
 // MarketingFooter v1
+// use client restored
