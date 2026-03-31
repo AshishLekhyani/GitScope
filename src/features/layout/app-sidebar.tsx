@@ -4,6 +4,7 @@ import { MaterialIcon } from "@/components/material-icon";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
@@ -138,9 +139,13 @@ export function AppSidebar({
     <div className="flex min-h-0 flex-1 flex-col pt-2">
       <div className={cn("mb-6 flex items-center px-5", isCollapsed ? "justify-center px-0" : "justify-between")}>
         <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-3")}>
-          <div className="flex size-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 dark:bg-indigo-500/20">
-            <MaterialIcon name="rocket_launch" size={22} className="text-indigo-500 dark:text-indigo-400" />
-          </div>
+          <NextImage 
+            src="/logo.png" 
+            width={32} 
+            height={32} 
+            alt="GitScope Logo" 
+            className="size-8 rounded-lg shadow-lg shadow-primary/10 ring-1 ring-white/10"
+          />
           {!isCollapsed && (
             <div>
               <h3 className="font-heading text-lg leading-none font-black tracking-tight text-indigo-600 dark:text-indigo-400">

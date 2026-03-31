@@ -11,6 +11,7 @@ import { ROUTES } from "@/constants/routes";
 import { motion } from "framer-motion";
 import { Search, LogIn } from "lucide-react";
 import Link from "next/link";
+import NextImage from "next/image";
 
 /* ---------- tiny reusable pieces ---------- */
 function VersionBadge() {
@@ -157,6 +158,16 @@ export function LandingPage() {
           >
             <div className="max-w-xl space-y-6 lg:max-w-lg">
               <VersionBadge />
+              <div className="flex items-center gap-4 mb-2">
+                <NextImage 
+                  src="/logo.png" 
+                  width={48} 
+                  height={48} 
+                  alt="GitScope Logo" 
+                  className="size-12 rounded-xl shadow-2xl shadow-primary/20 ring-1 ring-white/10"
+                />
+                <span className="font-heading text-2xl font-bold tracking-tighter text-foreground uppercase">GitScope</span>
+              </div>
               <h1 className="font-heading text-4xl leading-[1.08] font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
                 The Engineer&apos;s
                 <br />

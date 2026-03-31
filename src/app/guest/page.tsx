@@ -9,7 +9,7 @@ import {
   CheckCircle2, Sparkles, TrendingUp, Shield
 } from "lucide-react";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image";
 import { motion, AnimatePresence } from "framer-motion";
 
 interface QuickRepo {
@@ -133,8 +133,15 @@ export default function GuestPage() {
       {/* Top bar */}
       <div className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <span className="font-mono text-xs font-black uppercase tracking-widest text-primary">GitScope</span>
+          <Link href="/" className="flex items-center gap-2.5">
+            <NextImage 
+              src="/logo.png" 
+              width={32} 
+              height={32} 
+              alt="GitScope Logo" 
+              className="size-8 rounded-lg shadow-xl shadow-primary/20 ring-1 ring-white/10"
+            />
+            <span className="font-heading text-lg font-bold tracking-tight text-foreground uppercase">GitScope</span>
             <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-black text-amber-500 uppercase tracking-widest">Guest Preview</span>
           </Link>
           <div className="flex items-center gap-3">
@@ -200,7 +207,7 @@ export default function GuestPage() {
                     onClick={() => loadRepo(r.full_name)}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted/60 transition-colors text-left border-b border-border/50 last:border-0"
                   >
-                    <Image src={r.owner.avatar_url} width={32} height={32} alt="" className="size-8 rounded-lg" />
+                    <NextImage src={r.owner.avatar_url} width={32} height={32} alt="" className="size-8 rounded-lg" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate">{r.full_name}</p>
                       <p className="text-xs text-muted-foreground truncate">{r.description}</p>
@@ -375,7 +382,7 @@ export default function GuestPage() {
             <div className="rounded-2xl border border-border bg-card p-6">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-start gap-4">
-                  <Image
+                  <NextImage
                     src={selectedRepo.owner.avatar_url}
                     width={56}
                     height={56}

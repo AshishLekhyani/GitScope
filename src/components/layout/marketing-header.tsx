@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react";
 import { performLogout } from "@/lib/client-auth";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
-import Image from "next/image";
+import NextImage from "next/image";
 
 import { ThemeToggle } from "./theme-toggle";
 import {
@@ -41,9 +41,13 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
     <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/5 bg-background/80 backdrop-blur-md">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4">
         <Link href="/" className="flex items-center gap-2.5">
-          <div className="from-primary/25 to-primary-container/40 flex size-9 items-center justify-center rounded-lg border border-white/10 bg-gradient-to-br">
-            <span className="font-heading text-base font-black text-indigo-300">G</span>
-          </div>
+          <NextImage 
+            src="/logo.png" 
+            width={36} 
+            height={36} 
+            alt="GitScope Logo" 
+            className="size-9 rounded-lg shadow-xl shadow-primary/20 ring-1 ring-white/10"
+          />
           <span className="font-heading text-lg font-bold tracking-tight text-foreground">GitScope</span>
         </Link>
 
@@ -78,7 +82,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                 <DropdownMenuTrigger render={
                   <button className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-[11px] font-black text-primary border border-primary/20 hover:bg-primary/20 transition-all uppercase tracking-tighter outline-none">
                     {session?.user?.image ? (
-                      <Image src={session.user.image} width={32} height={32} alt="Avatar" className="size-full rounded-full object-cover" />
+                      <NextImage src={session.user.image} width={32} height={32} alt="Avatar" className="size-full rounded-full object-cover" />
                     ) : userInitials}
                   </button>
                 } />

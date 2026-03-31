@@ -31,6 +31,10 @@ export const metadata: Metadata = {
   },
   description:
     "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+  icons: {
+    icon: "/icon.png",
+    apple: "/apple-icon.png",
+  },
 };
 
 export default async function RootLayout({
@@ -38,7 +42,12 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const session = await getServerSession(authOptions);
+  let session = null;
+  try {
+    session = await getServerSession(authOptions);
+  } catch (error) {
+    console.warn("Auth session check skipped during build or db connection issue:", error);
+  }
 
   return (
     <html lang="en" suppressHydrationWarning>
