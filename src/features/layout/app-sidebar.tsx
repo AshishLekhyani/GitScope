@@ -311,3 +311,4 @@ export function AppSidebar({
 // AppSidebar v1
 // Performance Hub section added
 // parseRepo helper extracted
+// collapsed icon alignment fix
