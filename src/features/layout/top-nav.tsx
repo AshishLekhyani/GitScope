@@ -756,3 +756,4 @@ export function TopNav({
 // Notifications dropdown integrated
 // fix: avatar optional check
 // glassmorphism search dropdown polish
+// NextImage alias applied
