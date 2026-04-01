@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";
@@ -16,6 +18,7 @@ import {
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+import { ConnectGitHubButton } from "@/components/connect-github-button";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
@@ -159,7 +162,7 @@ export default async function ActivityPage({
   const hasNext = events.length === 30; // if we got a full page, there might be more
 
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
@@ -183,7 +186,7 @@ export default async function ActivityPage({
               : "Connect GitHub to see your live activity feed."}
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-card border border-border">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border">
           <Globe className="size-4 text-muted-foreground" />
           <span className="text-xs font-bold text-muted-foreground">GitHub Events API</span>
         </div>
@@ -197,16 +200,11 @@ export default async function ActivityPage({
             <p className="text-sm text-muted-foreground max-w-sm mb-4">
               Sign in with GitHub OAuth to see your real-time activity feed — commits, pull requests, reviews, and more.
             </p>
-            <a
-              href="/api/auth/signin/github"
-              className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold"
-            >
-              Connect GitHub Account
-            </a>
+            <ConnectGitHubButton callbackUrl="/activity" />
           </div>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
           <div className="md:col-span-2 space-y-4">
             <div className="glass-panel rounded-2xl p-1 overflow-hidden">
               {events.length === 0 ? (
@@ -226,19 +224,19 @@ export default async function ActivityPage({
                       <div
                         key={ev.id}
                         className={cn(
-                          "group flex items-start gap-4 p-5 transition-all hover:bg-muted/50",
+                          "group flex items-start gap-3 p-3 sm:gap-4 sm:p-5 transition-all hover:bg-muted/50",
                           idx !== events.length - 1 && "border-b border-border/50"
                         )}
                       >
                         <Image
                           src={ev.actor.avatar_url}
                           alt={ev.actor.login}
-                          width={36}
-                          height={36}
-                          className="size-9 rounded-lg border border-border/50 shrink-0 mt-0.5"
+                          width={32}
+                          height={32}
+                          className="size-8 sm:size-9 rounded-lg border border-border/50 shrink-0 mt-0.5"
                         />
-                        <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-110", mapped.bg)}>
-                          <Icon className={cn("size-5", mapped.color)} />
+                        <div className={cn("flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-110", mapped.bg)}>
+                          <Icon className={cn("size-4 sm:size-5", mapped.color)} />
                         </div>
                         <div className="flex-1 space-y-1 min-w-0">
                           <div className="flex items-center justify-between gap-2 flex-wrap">

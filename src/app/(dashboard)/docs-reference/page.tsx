@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { DocsPageClient } from "@/features/docs/docs-page-client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

@@ -22,6 +22,13 @@ export const ROUTES = {
   changelog: "/changelog",
   login: "/login",
   signup: "/login?mode=signup",
+  // New dashboard pages
+  notifications: "/notifications",
+  bookmarks: "/bookmarks",
+  releases: "/releases",
+  leaderboard: "/leaderboard",
+  languages: "/languages",
+  topics: "/topics",
   // Feature Detail Pages
   feature: (slug: string) => `/features/${slug}`,
   // Legal & Resources

@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfile, setAvatarUrl } from "@/store/slices/userSlice";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signOut, signIn } from "next-auth/react";
 
 type SettingsTab = "profile" | "account" | "appearance" | "workspace";
 type ThemeOption = "light" | "dark" | "system";
@@ -39,6 +39,9 @@ export function SettingsPanel() {
   // Profile state
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [avatarUrlInput, setAvatarUrlInput] = useState(avatarUrl ?? "");
+  // Track if user explicitly cleared the avatar (so we don't fall back to OAuth photo in preview)
+  const [avatarCleared, setAvatarCleared] = useState(false);
 
   // Workspace state
   const [notifications, setNotifications] = useState(true);
@@ -91,14 +94,11 @@ export function SettingsPanel() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      dispatch(setAvatarUrl(url));
-      setDirty(true);
-    }
-  };
+  // Sync local avatar input when Redux value changes (e.g. "Use OAuth photo" button or default avatar click)
+  useEffect(() => {
+    setAvatarUrlInput(avatarUrl ?? "");
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avatarUrl]);
 
   const handleDiscard = () => {
     fetch("/api/user/profile")
@@ -117,7 +117,7 @@ export function SettingsPanel() {
       await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, bio, gitHandle }),
+        body: JSON.stringify({ displayName, bio, gitHandle, avatarUrl: avatarUrl || undefined }),
       });
       setDirty(false);
     } catch (e) {
@@ -166,7 +166,9 @@ export function SettingsPanel() {
   const ratePctClass =
     ratePct > 50 ? "from-tertiary to-emerald-400" : ratePct > 20 ? "from-amber-400 to-yellow-400" : "from-destructive to-red-400";
 
-  const provider = (session as { provider?: string })?.provider;
+  const rawProvider = session?.provider;
+  // If provider isn't set but accessToken exists, this is a GitHub session (pre-provider-tracking JWT)
+  const provider = rawProvider ?? (session?.accessToken && !rawProvider ? "github" : undefined);
 
   const themeOptions: { value: ThemeOption; label: string; bgClass: string }[] = [
     { value: "light", label: "Light", bgClass: "bg-slate-200" },
@@ -211,26 +213,112 @@ export function SettingsPanel() {
         <div className="space-y-6">
           <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-5">Public Profile</h3>
-            <div className="flex flex-col gap-6 sm:flex-row">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               {/* avatar */}
-              <div className="relative shrink-0">
-                <div className="flex size-28 items-center justify-center overflow-hidden rounded-xl bg-linear-to-br from-primary/30 to-primary-container/30 text-4xl font-bold text-primary">
-                  {avatarUrl ? (
-                    <Image src={avatarUrl} width={112} height={112} alt="Avatar" className="size-full object-cover" />
-                  ) : session?.user?.image ? (
-                    <Image src={session.user.image} width={112} height={112} alt="Avatar" className="size-full object-cover" />
-                  ) : (
-                    displayName.charAt(0) || "?"
-                  )}
+              <div className="shrink-0 space-y-4 w-full sm:w-auto">
+                {/* Preview */}
+                <div className="flex items-center gap-4">
+                  <div className="flex size-20 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-primary/30 to-primary-container/30 text-3xl font-bold text-primary border border-outline-variant/15 shrink-0">
+                    {(avatarUrl || (!avatarCleared && session?.user?.image)) ? (
+                      <Image
+                        src={avatarUrl || session!.user!.image!}
+                        width={80}
+                        height={80}
+                        alt="Avatar"
+                        className="size-full object-cover"
+                        unoptimized
+                      />
+                    ) : (
+                      displayName.charAt(0) || "?"
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <p className="font-mono text-[9px] font-bold tracking-widest text-muted-foreground uppercase">Current Avatar</p>
+                    {session?.user?.image && (
+                      <button
+                        type="button"
+                        className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        onClick={() => { dispatch(setAvatarUrl(session.user!.image!)); setAvatarCleared(false); setDirty(true); }}
+                      >
+                        <MaterialIcon name="sync" size={12} />
+                        Use {session.provider === "github" ? "GitHub" : "OAuth"} photo
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="flex items-center gap-1.5 text-[10px] font-bold text-muted-foreground hover:text-foreground transition-colors"
+                      onClick={() => { dispatch(setAvatarUrl("")); setAvatarUrlInput(""); setAvatarCleared(true); setDirty(true); }}
+                    >
+                      <MaterialIcon name="delete" size={12} />
+                      Remove
+                    </button>
+                  </div>
                 </div>
-                <label
-                  htmlFor="avatar-upload"
-                  className="absolute -right-1 -bottom-1 flex size-7 cursor-pointer items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg hover:bg-primary/90 transition-colors"
-                  aria-label="Upload avatar"
-                >
-                  <MaterialIcon name="edit" size={14} />
-                  <input id="avatar-upload" type="file" className="sr-only" accept="image/*" onChange={handleAvatarChange} />
-                </label>
+
+                {/* Default avatars grid */}
+                <div>
+                  <p className="mb-2 font-mono text-[9px] font-bold tracking-widest text-muted-foreground uppercase">Choose Default</p>
+                  <div className="grid grid-cols-6 gap-1.5">
+                    {[
+                      "https://api.dicebear.com/7.x/bottts/svg?seed=alpha&backgroundColor=6366f1",
+                      "https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=8b5cf6",
+                      "https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=06b6d4",
+                      "https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=10b981",
+                      "https://api.dicebear.com/7.x/shapes/svg?seed=omega&backgroundColor=f59e0b",
+                      "https://api.dicebear.com/7.x/shapes/svg?seed=sigma&backgroundColor=ef4444",
+                      "https://api.dicebear.com/7.x/identicon/svg?seed=theta&backgroundColor=6366f1",
+                      "https://api.dicebear.com/7.x/identicon/svg?seed=lambda&backgroundColor=8b5cf6",
+                      "https://api.dicebear.com/7.x/thumbs/svg?seed=kappa&backgroundColor=06b6d4",
+                      "https://api.dicebear.com/7.x/thumbs/svg?seed=zeta&backgroundColor=10b981",
+                      "https://api.dicebear.com/7.x/pixel-art/svg?seed=gitscope&backgroundColor=f59e0b",
+                      "https://api.dicebear.com/7.x/pixel-art/svg?seed=engineer&backgroundColor=ef4444",
+                    ].map((src) => (
+                      <button
+                        key={src}
+                        type="button"
+                        onClick={() => { dispatch(setAvatarUrl(src)); setAvatarUrlInput(src); setAvatarCleared(false); setDirty(true); }}
+                        className={cn(
+                          "size-9 rounded-lg overflow-hidden border-2 transition-all hover:scale-110",
+                          (avatarUrl === src) ? "border-indigo-500 shadow-lg shadow-indigo-500/20" : "border-transparent hover:border-outline-variant/40"
+                        )}
+                        title="Select this avatar"
+                      >
+                        <Image src={src} width={36} height={36} alt="Avatar option" className="size-full" unoptimized />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Custom URL input */}
+                <div>
+                  <label htmlFor="avatar-url" className="mb-1.5 block font-mono text-[9px] font-bold tracking-widest text-muted-foreground uppercase">
+                    Custom URL
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      id="avatar-url"
+                      type="url"
+                      placeholder="https://example.com/avatar.png"
+                      value={avatarUrlInput}
+                      onChange={(e) => setAvatarUrlInput(e.target.value)}
+                      className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-1.5 text-xs text-foreground focus:border-primary/50 focus:outline-none"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const val = avatarUrlInput.trim();
+                        if (val && (val.startsWith("https://") || val.startsWith("http://"))) {
+                          dispatch(setAvatarUrl(val));
+                          setAvatarCleared(false);
+                          setDirty(true);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold hover:bg-indigo-500/20 transition-colors"
+                    >
+                      Apply
+                    </button>
+                  </div>
+                </div>
               </div>
 
               {/* fields */}
@@ -306,20 +394,21 @@ export function SettingsPanel() {
                 <label className="mb-2 block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
                   Connected Sign-In Methods
                 </label>
-                <div className="flex flex-wrap gap-2">
-                  {provider === "github" && (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600">
-                      <MaterialIcon name="check_circle" size={14} /> GitHub OAuth
-                    </span>
-                  )}
-                  {provider === "google" && (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-blue-500/20 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-600">
-                      <MaterialIcon name="check_circle" size={14} /> Google OAuth
-                    </span>
-                  )}
+                {/* Active connections */}
+                <div className="flex flex-wrap gap-2 mb-5">
                   {(provider === "credentials" || hasPassword) && (
                     <span className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest px-3 py-1.5 text-xs font-bold text-foreground">
                       <MaterialIcon name="lock" size={14} /> Email & Password
+                    </span>
+                  )}
+                  {provider === "github" && (
+                    <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                      <MaterialIcon name="check_circle" size={14} /> GitHub Connected
+                    </span>
+                  )}
+                  {provider === "google" && (
+                    <span className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                      <MaterialIcon name="check_circle" size={14} /> Google Connected
                     </span>
                   )}
                   {!hasPassword && provider !== "credentials" && (
@@ -328,14 +417,59 @@ export function SettingsPanel() {
                     </span>
                   )}
                 </div>
+
+                {/* GitHub connect card */}
                 {provider !== "github" && (
-                  <div className="mt-3 rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3">
-                    <p className="text-xs text-muted-foreground">
-                      <span className="font-bold text-indigo-500">Upgrade to GitHub OAuth</span> to unlock Organization Pulse, Recursive Intelligence, real-time activity feeds, and DORA metrics.{" "}
-                      <a href="/api/auth/signin/github" className="underline text-indigo-500 hover:text-indigo-400 font-bold">
-                        Connect GitHub →
-                      </a>
-                    </p>
+                  <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-4 mb-3">
+                    <div className="flex items-start gap-3">
+                      <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <MaterialIcon name="hub" size={20} className="text-indigo-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground mb-0.5">Connect GitHub</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                          Unlock Intelligence Hub, Activity Feed, Organization Pulse, DORA metrics, and a personal 5,000 req/hr API rate limit.
+                        </p>
+                        <div className="flex flex-wrap gap-1.5 mb-3">
+                          {["Intelligence Hub", "Activity Feed", "Org Pulse", "DORA Metrics"].map(f => (
+                            <span key={f} className="text-[10px] font-bold bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20">{f}</span>
+                          ))}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => signIn("github", { callbackUrl: "/settings?tab=account&connected=github" })}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 active:scale-[0.98] transition-all"
+                        >
+                          <MaterialIcon name="hub" size={14} />
+                          Connect GitHub Account
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Google connect card */}
+                {provider !== "google" && (
+                  <div className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 p-4">
+                    <div className="flex items-start gap-3">
+                      <div className="size-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <MaterialIcon name="person" size={20} className="text-blue-500" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-foreground mb-0.5">Connect Google</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed mb-3">
+                          Add Google sign-in to your account. Use your Google profile photo and sign in faster across devices.
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => signIn("google", { callbackUrl: "/settings?tab=account&connected=google" })}
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 active:scale-[0.98] transition-all"
+                        >
+                          <MaterialIcon name="person" size={14} />
+                          Connect Google Account
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

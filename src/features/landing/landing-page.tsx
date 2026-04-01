@@ -12,6 +12,7 @@ import { motion } from "framer-motion";
 import { Search, LogIn } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
+import { MaterialIcon } from "@/components/material-icon";
 
 /* ---------- tiny reusable pieces ---------- */
 function VersionBadge() {
@@ -388,11 +389,58 @@ export function LandingPage() {
             </div>
           </motion.section>
 
+          {/* ── HOW IT WORKS ── */}
+          <motion.section
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.1 }}
+            transition={{ duration: 0.5 }}
+            className="pb-24"
+          >
+            <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+              How It Works
+            </h2>
+            <div className="mt-1 h-1 w-10 rounded-full bg-primary" />
+            <div className="mt-10 grid gap-8 sm:grid-cols-3">
+              {[
+                {
+                  step: "01",
+                  icon: "login",
+                  title: "Create an Account",
+                  body: "Sign up with email, Google, or GitHub. Connecting GitHub unlocks the full Intelligence Hub — AI metrics, PR risk, dependency radar.",
+                },
+                {
+                  step: "02",
+                  icon: "travel_explore",
+                  title: "Search Any Repo",
+                  body: "Type owner/repo in the search bar. GitScope fetches live data from the GitHub API — no setup, no cloning needed.",
+                },
+                {
+                  step: "03",
+                  icon: "psychology",
+                  title: "Get Deep Insights",
+                  body: "Analyze commit velocity, contributor clusters, language distribution, PR risk scores, and DORA metrics in seconds.",
+                },
+              ].map((item) => (
+                <div key={item.step} className="relative space-y-4">
+                  <div className="flex items-center gap-4">
+                    <span className="font-mono text-[10px] font-black text-primary/40 tracking-widest">{item.step}</span>
+                    <div className="h-px flex-1 bg-outline-variant/20" />
+                  </div>
+                  <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/10">
+                    <MaterialIcon name={item.icon} size={24} className="text-primary" />
+                  </div>
+                  <h3 className="font-heading text-lg font-bold text-foreground">{item.title}</h3>
+                  <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+                </div>
+              ))}
+            </div>
+          </motion.section>
+
           <motion.section
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-20 overflow-hidden rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10 px-8 py-16 text-center shadow-royal dark:from-indigo-900/80 dark:via-primary-container/60 dark:to-indigo-950/80"
+            className="mb-20 overflow-hidden rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10 px-6 py-16 text-center shadow-royal sm:px-8 dark:from-indigo-900/80 dark:via-primary-container/60 dark:to-indigo-950/80"
           >
             <h2 className="font-heading text-3xl font-bold tracking-tighter text-foreground md:text-5xl dark:text-white">
               Architect Your Engineering

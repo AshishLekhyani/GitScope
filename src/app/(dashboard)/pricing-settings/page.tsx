@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { PricingPageClient } from "@/features/pricing/pricing-page-client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

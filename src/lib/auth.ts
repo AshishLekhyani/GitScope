@@ -5,6 +5,7 @@ import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -19,11 +20,15 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_ID as string,
       clientSecret: process.env.GITHUB_SECRET as string,
+      allowDangerousEmailAccountLinking: true,
     }),
-    GoogleProvider({
-      clientId: process.env.GOOGLE_ID as string,
-      clientSecret: process.env.GOOGLE_SECRET as string,
-    }),
+    ...(process.env.GOOGLE_ID && process.env.GOOGLE_SECRET
+      ? [GoogleProvider({
+          clientId: process.env.GOOGLE_ID,
+          clientSecret: process.env.GOOGLE_SECRET,
+          allowDangerousEmailAccountLinking: true,
+        })]
+      : []),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -33,6 +38,13 @@ export const authOptions: NextAuthOptions = {
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) {
           throw new Error("Missing credentials");
+        }
+
+        // Brute-force protection: 10 attempts per email per 15 minutes
+        const key = `login:${credentials.email.toLowerCase()}`;
+        const { allowed } = checkRateLimit(key, { limit: 10, windowMs: 15 * 60 * 1000 });
+        if (!allowed) {
+          throw new Error("Too many login attempts. Please wait 15 minutes.");
         }
 
         const user = await prisma.user.findUnique({
@@ -69,6 +81,23 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.picture;
         session.accessToken = token.accessToken;
         session.provider = token.provider;
+
+        // [STRICT SECURITY] Instant User Sync
+        // Verify user still exists in the database on every session check.
+        // This ensures that deleted users are kicked out immediately.
+        try {
+          const userExists = await prisma.user.findUnique({
+            where: { id: token.id },
+            select: { id: true }
+          });
+          
+          if (!userExists) {
+            console.warn(`▲ [Security] Active session for deleted user ${token.id} invalidated.`);
+            return null as any; // Trigger session invalidation
+          }
+        } catch (error) {
+          console.error("▲ [Security] Failed to verify user existence during session:", error);
+        }
       }
       return session;
     },
@@ -94,7 +123,7 @@ export const authOptions: NextAuthOptions = {
       return token;
     },
   },
-  secret: process.env.NEXTAUTH_SECRET || "fallback_secret_for_development_xyz789",
+  secret: process.env.NEXTAUTH_SECRET,
 };
 // NextAuth config - github provider wired up
 // fix: callbackUrl normalisation

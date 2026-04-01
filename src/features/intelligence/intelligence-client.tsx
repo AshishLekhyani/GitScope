@@ -31,7 +31,7 @@ export function IntelligenceClient() {
             <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/80">GitHub Pro Hub</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black bg-gradient-to-br from-foreground via-foreground/90 to-foreground/40 bg-clip-text text-transparent tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black bg-gradient-to-br from-foreground via-foreground/90 to-foreground/40 bg-clip-text text-transparent tracking-tight">
             Recursive <span className="text-primary italic">Intelligence</span>
           </h1>
           <p className="text-sm text-muted-foreground/60 max-w-xl leading-relaxed">
@@ -39,7 +39,7 @@ export function IntelligenceClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm">
+        <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm overflow-x-auto">
           {[
             { id: "radar", icon: "scatter_plot", label: "Radar" },
             { id: "velocity", icon: "speed", label: "Velocity" },

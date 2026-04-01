@@ -1,15 +1,24 @@
 import { getGitHubToken } from "@/lib/github-auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { isValidRepo } from "@/lib/validate-repo";
 import { NextResponse } from "next/server";
 
 export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const token = await getGitHubToken();
   if (!token) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    return NextResponse.json({ error: "GitHub token required" }, { status: 401 });
   }
 
   const { searchParams } = new URL(req.url);
   const repo = searchParams.get("repo");
   if (!repo) return NextResponse.json({ error: "No repository specified" }, { status: 400 });
+  if (!isValidRepo(repo)) return NextResponse.json({ error: "Invalid repository format" }, { status: 400 });
 
   try {
     // 1. Fetch Open Pull Requests
@@ -28,6 +37,12 @@ export async function GET(req: Request) {
     // 2. Score each PR based on heuristics (AI Prediction)
     const scoredPulls = await Promise.all(
       (pulls as GitHubPR[]).map(async (p) => {
+        // Only follow URLs that are GitHub API endpoints
+        const GITHUB_API = "https://api.github.com/";
+        if (!p.url.startsWith(GITHUB_API) || !p.user.url.startsWith(GITHUB_API)) {
+          return null;
+        }
+
         // Fetch PR specific details (files changed)
         const detailRes = await fetch(p.url, {
           headers: {
@@ -44,7 +59,6 @@ export async function GET(req: Request) {
         const fileRisk = Math.min(30, details.changed_files * 2);
 
         // Heuristic 3: Contributor Risk (Junior or New)
-        // (Simulated for MVP: Higher if user has few followers or public repos)
         const userRes = await fetch(p.user.url, {
           headers: { Authorization: `Bearer ${token}` },
         });
@@ -77,7 +91,7 @@ export async function GET(req: Request) {
       })
     );
 
-    return NextResponse.json(scoredPulls);
+    return NextResponse.json(scoredPulls.filter(Boolean));
   } catch (error) {
     console.error("PR Risk API Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

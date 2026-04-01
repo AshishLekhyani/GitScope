@@ -9,6 +9,17 @@ const PROTECTED_PREFIXES = [
   "/settings",
   "/pricing-settings",
   "/dashboard",
+  "/intelligence",
+  "/compare",
+  "/trending",
+  "/search",
+  "/docs-reference",
+  "/notifications",
+  "/bookmarks",
+  "/releases",
+  "/leaderboard",
+  "/languages",
+  "/topics",
 ];
 
 function isProtectedPath(pathname: string): boolean {

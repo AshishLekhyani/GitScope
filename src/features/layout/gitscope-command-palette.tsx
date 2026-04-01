@@ -11,6 +11,7 @@ import {
   Terminal, Moon, Sun, LogOut, LayoutDashboard, BookOpen, Zap,
   Command as CommandIcon, TrendingUp, History, Search, GitMerge,
   Settings, Activity, Building2, Brain, CreditCard, User, RefreshCw, Github,
+  Bell, Bookmark, Tag, Trophy, Code2, Package,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -62,18 +63,29 @@ export function GitScopeCommandPalette() {
   const isDark = resolvedTheme === "dark";
 
   const actions: ActionItem[] = [
+    // Navigate
     { icon: LayoutDashboard, label: "Overview", sublabel: "Dashboard home", href: ROUTES.overview, category: "Navigate", keywords: ["home"] },
     { icon: Search, label: "Search Repositories", sublabel: "Find any GitHub repo", href: ROUTES.search, category: "Navigate", keywords: ["find", "explore"] },
-    { icon: TrendingUp, label: "Trending Repos", sublabel: "What's popular right now", href: ROUTES.trending, category: "Navigate" },
-    { icon: GitMerge, label: "Compare Repos", sublabel: "Side-by-side benchmarks", href: ROUTES.compare, category: "Navigate" },
+    { icon: Brain, label: "Intelligence Hub", sublabel: "DORA metrics & AI risk", href: "/intelligence", category: "Navigate", keywords: ["ai", "dora", "velocity"] },
     { icon: Activity, label: "Activity Feed", sublabel: "Your live GitHub events", href: ROUTES.activity, category: "Navigate" },
-    { icon: Building2, label: "Organization Pulse", sublabel: "GitHub OAuth required", href: ROUTES.organizations, category: "Navigate" },
-    { icon: Brain, label: "Intelligence Hub", sublabel: "DORA metrics & AI risk", href: "/intelligence", category: "Navigate", keywords: ["ai", "dora"] },
-    { icon: BookOpen, label: "Engineering Reference", sublabel: "Docs & shortcuts", href: "/docs-reference", category: "Navigate", keywords: ["docs", "help"] },
+    { icon: Bell, label: "Notifications", sublabel: "GitHub notification center", href: ROUTES.notifications, category: "Navigate", keywords: ["inbox", "alerts"] },
+    // Discover
+    { icon: TrendingUp, label: "Trending Repos", sublabel: "What's popular right now", href: ROUTES.trending, category: "Discover" },
+    { icon: GitMerge, label: "Compare Repos", sublabel: "Side-by-side benchmarks", href: ROUTES.compare, category: "Discover" },
+    { icon: Building2, label: "Organizations", sublabel: "GitHub org analytics", href: ROUTES.organizations, category: "Discover" },
+    { icon: Tag, label: "Topic Explorer", sublabel: "Browse repos by topic", href: ROUTES.topics, category: "Discover" },
+    // Analytics
+    { icon: Trophy, label: "Leaderboard", sublabel: "Top contributors ranking", href: ROUTES.leaderboard, category: "Analytics", keywords: ["top", "contributors"] },
+    { icon: Code2, label: "Language Analytics", sublabel: "Language distribution", href: ROUTES.languages, category: "Analytics", keywords: ["stats"] },
+    { icon: Package, label: "Releases", sublabel: "Recent releases timeline", href: ROUTES.releases, category: "Analytics" },
+    { icon: Bookmark, label: "Bookmarks", sublabel: "Saved repositories", href: ROUTES.bookmarks, category: "Analytics", keywords: ["saved", "favorites"] },
+    // Settings
     { icon: User, label: "Profile Settings", sublabel: "Name, bio, avatar", href: `${ROUTES.settings}?tab=profile`, category: "Settings" },
     { icon: Settings, label: "Security & Password", sublabel: "Manage login methods", href: `${ROUTES.settings}?tab=account`, category: "Settings" },
     { icon: Zap, label: "Workspace Settings", sublabel: "Notifications, sync, API", href: `${ROUTES.settings}?tab=workspace`, category: "Settings" },
     { icon: CreditCard, label: "Billing & Plans", sublabel: "Upgrade your plan", href: "/pricing-settings", category: "Settings" },
+    { icon: BookOpen, label: "Documentation", sublabel: "Guides & API reference", href: ROUTES.docs, category: "Settings", keywords: ["help", "reference"] },
+    // System
     { icon: isDark ? Sun : Moon, label: `Switch to ${isDark ? "Light" : "Dark"} Mode`, action: () => { setTheme(isDark ? "light" : "dark"); dispatch(setCommandPaletteOpen(false)); }, category: "System", keywords: ["theme"] },
     { icon: RefreshCw, label: "Reload Page", action: () => { window.location.reload(); }, category: "System" },
     { icon: Github, label: "Open GitHub", sublabel: "github.com in new tab", action: () => { window.open("https://github.com", "_blank", "noopener"); dispatch(setCommandPaletteOpen(false)); }, category: "System" },

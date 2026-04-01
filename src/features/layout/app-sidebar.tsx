@@ -8,6 +8,7 @@ import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
+import { useSession, signIn } from "next-auth/react";
 
 function parseRepo(pathname: string): { owner?: string; repo?: string } {
   const m = pathname.match(/^\/dashboard\/([^/]+)\/([^/]+)/);
@@ -36,34 +37,27 @@ export function AppSidebar({
   const pathname = usePathname();
   const { owner, repo } = parseRepo(pathname);
   const { setTheme, resolvedTheme } = useTheme();
+  const { data: session } = useSession();
+  // Mirror the same fallback logic as server-side auth-tier.ts:
+  // provider === "github" covers normal flow; accessToken without provider covers JWTs
+  // created before provider tracking was added (sign out + back in fixes it permanently).
+  const isGitHub = session?.provider === "github" || (!session?.provider && Boolean(session?.accessToken));
 
   // Sidebar content is static — never needs session-based loading
   const isLoading = false;
 
-  const globalNav: NavDef[] = [
+  const mainNav: NavDef[] = [
+    {
+      href: ROUTES.overview,
+      label: "Overview",
+      mat: "home",
+      match: (p) => p === "/overview",
+    },
     {
       href: ROUTES.activity,
       label: "Activity Log",
       mat: "bubble_chart",
       match: (p) => p.startsWith("/activity"),
-    },
-    {
-      href: ROUTES.organizations,
-      label: "Organization Pulse",
-      mat: "corporate_fare",
-      match: (p) => p.startsWith("/organizations"),
-    },
-    {
-      href: ROUTES.trending,
-      label: "Trending Repos",
-      mat: "trending_up",
-      match: (p) => p.startsWith("/trending"),
-    },
-    {
-      href: ROUTES.compare,
-      label: "Repo Comparison",
-      mat: "compare_arrows",
-      match: (p) => p.startsWith("/compare"),
     },
     {
       href: "/intelligence",
@@ -72,10 +66,70 @@ export function AppSidebar({
       match: (p) => p.startsWith("/intelligence"),
     },
     {
-      href: ROUTES.settings,
-      label: "Settings",
-      mat: "settings",
-      match: (p) => p.startsWith("/settings"),
+      href: ROUTES.notifications,
+      label: "Notifications",
+      mat: "notifications_active",
+      match: (p) => p.startsWith("/notifications"),
+    },
+  ];
+
+  const discoverNav: NavDef[] = [
+    {
+      href: ROUTES.search,
+      label: "Search Repos",
+      mat: "travel_explore",
+      match: (p) => p.startsWith("/search"),
+    },
+    {
+      href: ROUTES.trending,
+      label: "Trending",
+      mat: "trending_up",
+      match: (p) => p.startsWith("/trending"),
+    },
+    {
+      href: ROUTES.compare,
+      label: "Compare Repos",
+      mat: "compare_arrows",
+      match: (p) => p.startsWith("/compare"),
+    },
+    {
+      href: ROUTES.organizations,
+      label: "Organizations",
+      mat: "corporate_fare",
+      match: (p) => p.startsWith("/organizations"),
+    },
+    {
+      href: ROUTES.topics,
+      label: "Topic Explorer",
+      mat: "tag",
+      match: (p) => p.startsWith("/topics"),
+    },
+  ];
+
+  const analyticsNav: NavDef[] = [
+    {
+      href: ROUTES.leaderboard,
+      label: "Leaderboard",
+      mat: "leaderboard",
+      match: (p) => p.startsWith("/leaderboard"),
+    },
+    {
+      href: ROUTES.languages,
+      label: "Languages",
+      mat: "code_blocks",
+      match: (p) => p.startsWith("/languages"),
+    },
+    {
+      href: ROUTES.releases,
+      label: "Releases",
+      mat: "new_releases",
+      match: (p) => p.startsWith("/releases"),
+    },
+    {
+      href: ROUTES.bookmarks,
+      label: "Bookmarks",
+      mat: "bookmark",
+      match: (p) => p.startsWith("/bookmarks"),
     },
   ];
 
@@ -195,96 +249,151 @@ export function AppSidebar({
       )}
 
       <div className="flex-1 overflow-y-auto px-2 custom-scrollbar">
-        <nav className="space-y-1 pb-4">
-          {globalNav.map((item) => (
-            <Link
-              key={item.href}
-              href={item.href}
-              title={isCollapsed ? item.label : undefined}
-              onClick={onNavigate}
-              className={linkCls(item.match(pathname))}
-            >
-              <MaterialIcon name={item.mat} size={20} className="text-[inherit]" />
-              {!isCollapsed && <span className="truncate">{item.label}</span>}
-            </Link>
-          ))}
+        <nav className="pb-4">
+          {/* Main */}
+          {!isCollapsed && (
+            <p className="text-muted-foreground px-3 pb-1 pt-2 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Main</p>
+          )}
+          <div className="space-y-0.5 mb-2">
+            {mainNav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={isCollapsed ? item.label : undefined}
+                onClick={onNavigate}
+                className={linkCls(item.match(pathname))}
+              >
+                <MaterialIcon name={item.mat} size={20} className="text-inherit" />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            ))}
+          </div>
 
+          {/* Discover */}
+          {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
+          {!isCollapsed && (
+            <p className="text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Discover</p>
+          )}
+          <div className="space-y-0.5 mb-2">
+            {discoverNav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={isCollapsed ? item.label : undefined}
+                onClick={onNavigate}
+                className={linkCls(item.match(pathname))}
+              >
+                <MaterialIcon name={item.mat} size={20} className="text-inherit" />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            ))}
+          </div>
+
+          {/* Analytics */}
+          {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
+          {!isCollapsed && (
+            <p className="text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Analytics</p>
+          )}
+          <div className="space-y-0.5 mb-2">
+            {analyticsNav.map((item) => (
+              <Link
+                key={item.href}
+                href={item.href}
+                title={isCollapsed ? item.label : undefined}
+                onClick={onNavigate}
+                className={linkCls(item.match(pathname))}
+              >
+                <MaterialIcon name={item.mat} size={20} className="text-inherit" />
+                {!isCollapsed && <span className="truncate">{item.label}</span>}
+              </Link>
+            ))}
+          </div>
+
+          {/* Repository section */}
           {repoNav.length > 0 && (
             <>
+              {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
               {!isCollapsed && (
-                <p className="text-muted-foreground px-4 pb-1 pt-4 text-[10px] font-semibold tracking-wider uppercase">
-                  Repository
-                </p>
+                <p className="text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Repository</p>
               )}
-              {isCollapsed && <div className="mx-4 my-4 h-px bg-border dark:bg-white/10" />}
-              {repoNav.map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  title={isCollapsed ? item.label : undefined}
-                  onClick={onNavigate}
-                  className={linkCls(isRepoActive(item.href))}
-                >
-                  <MaterialIcon name={item.mat} size={20} className="text-[inherit]" />
-                  {!isCollapsed && <span className="truncate">{item.label}</span>}
-                </Link>
-              ))}
+              <div className="space-y-0.5 mb-2">
+                {repoNav.map((item) => (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    title={isCollapsed ? item.label : undefined}
+                    onClick={onNavigate}
+                    className={linkCls(isRepoActive(item.href))}
+                  >
+                    <MaterialIcon name={item.mat} size={20} className="text-inherit" />
+                    {!isCollapsed && <span className="truncate">{item.label}</span>}
+                  </Link>
+                ))}
+              </div>
             </>
           )}
 
-          {!owner && !isCollapsed && (
-            <div className="px-4 py-2 mt-4 rounded-lg bg-surface-container/50 border border-outline-variant/10">
-              <p className="text-muted-foreground text-xs leading-relaxed text-center">
-                Open a repository from Global Search to unlock repo-level analytics.
-              </p>
-            </div>
-          )}
+          {/* Settings at bottom of nav */}
+          {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
+          <div className="space-y-0.5 mt-2">
+            <Link
+              href={ROUTES.settings}
+              title={isCollapsed ? "Settings" : undefined}
+              onClick={onNavigate}
+              className={linkCls(pathname.startsWith("/settings"))}
+            >
+              <MaterialIcon name="settings" size={20} className="text-inherit" />
+              {!isCollapsed && <span className="truncate">Settings</span>}
+            </Link>
+            <Link
+              href="/docs-reference"
+              title={isCollapsed ? "Documentation" : undefined}
+              onClick={onNavigate}
+              className={linkCls(pathname.startsWith("/docs-reference"))}
+            >
+              <MaterialIcon name="menu_book" size={20} className="text-inherit" />
+              {!isCollapsed && <span className="truncate">Documentation</span>}
+            </Link>
+          </div>
         </nav>
       </div>
 
-      <div className="border-border mt-auto space-y-1 border-t px-2 py-4 dark:border-white/5 bg-surface-container/30">
-        {!isCollapsed && (
-          <div className="px-3 mb-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <MaterialIcon name="speed" size={16} className="text-indigo-400" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Performance Hub</span>
+      <div className="border-border mt-auto border-t px-2 py-3 dark:border-white/5 bg-surface-container/30">
+        {/* API Rate Limit — only show for GitHub users (their own rate limit) */}
+        {!isCollapsed && isGitHub && (
+          <div className="px-3 mb-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-1.5">
+                <MaterialIcon name="speed" size={14} className="text-indigo-400" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">API Rate</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-emerald-500/10 px-1.5 py-0.5 rounded text-[8px] font-bold text-emerald-400 border border-emerald-500/20">
-                <div className="size-1 bg-emerald-400 rounded-full animate-pulse" />
-                Live
-              </div>
+              <span className={cn("text-[9px] font-mono font-bold", (rateLimit?.remaining || 0) < 500 ? "text-amber-500" : "text-indigo-400")}>
+                {rateLimitLoading ? "…" : `${(rateLimit?.remaining ?? 0).toLocaleString()} / ${(rateLimit?.limit ?? 5000).toLocaleString()}`}
+              </span>
             </div>
-
-            <div className="space-y-4">
-              {/* Rate Limit */}
-              <div>
-                <div className="flex justify-between text-[9px] mb-2 font-mono">
-                  <span className="text-slate-500">API RATE LIMIT</span>
-                  <span className={cn("font-bold", (rateLimit?.remaining || 0) < 500 ? "text-amber-500" : "text-indigo-400")}>
-                    {rateLimitLoading ? "..." : `${rateLimit?.remaining.toLocaleString()} / ${rateLimit?.limit.toLocaleString()}`}
-                  </span>
-                </div>
-                <div className="h-1 w-full bg-outline-variant/10 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)] transition-all duration-1000"
-                    style={{ width: rateLimit ? `${(rateLimit.remaining / rateLimit.limit) * 100}%` : "100%" }}
-                  />
-                </div>
-              </div>
-
-              {/* Latency */}
-              <div className="flex justify-between items-center bg-surface-container-highest/60 p-2 rounded-lg border border-outline-variant/5 shadow-sm">
-                <div className="flex flex-col">
-                  <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter">Latency</span>
-                  <span className="text-[11px] font-mono font-bold text-foreground opacity-80">
-                    {latency}ms <span className="text-[9px] text-muted-foreground font-normal">to gateway-node</span>
-                  </span>
-                </div>
-                <MaterialIcon name="cable" size={14} className="text-indigo-400/50" />
-              </div>
+            <div className="h-1 w-full bg-outline-variant/10 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-indigo-500 transition-all duration-1000 rounded-full"
+                /* dynamic percentage — cannot be a static Tailwind class */
+                style={{ width: rateLimit ? `${(rateLimit.remaining / rateLimit.limit) * 100}%` : "100%" }}
+              />
             </div>
           </div>
+        )}
+
+        {/* Connect GitHub CTA — shown to non-GitHub users */}
+        {!isCollapsed && !isGitHub && session && (
+          <button
+            type="button"
+            onClick={() => signIn("github")}
+            className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-colors text-left"
+          >
+            <MaterialIcon name="hub" size={16} className="text-indigo-400 shrink-0" />
+            <div className="min-w-0">
+              <div className="text-[10px] font-bold text-indigo-400">Connect GitHub</div>
+              <div className="text-[9px] text-muted-foreground truncate">Unlock full features</div>
+            </div>
+          </button>
         )}
 
         {/* Workspace Quick-Actions */}

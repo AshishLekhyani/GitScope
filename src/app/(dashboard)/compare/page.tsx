@@ -27,7 +27,7 @@ export default function ComparePage() {
             <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
             <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/80">Pro Dashboard</span>
           </div>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black tracking-tight">
             Repository <span className="bg-gradient-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent italic">Battle Mode</span>
           </h1>
           <p className="text-sm text-muted-foreground/60 max-w-xl leading-relaxed">

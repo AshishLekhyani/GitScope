@@ -2,6 +2,7 @@
 
 import { ROUTES } from "@/constants/routes";
 import Link from "next/link";
+import NextImage from "next/image";
 import { useSession } from "next-auth/react";
 
 export function MarketingFooter() {
@@ -14,8 +15,13 @@ export function MarketingFooter() {
         <div className="grid gap-12 sm:grid-cols-2 lg:grid-cols-4">
           <div className="space-y-4">
             <Link href="/" className="flex items-center gap-2">
-              <div className="from-primary/25 to-primary-container/40 flex size-8 items-center justify-center rounded-lg border border-white/10 bg-gradient-to-br">
-                <span className="font-heading text-sm font-black text-indigo-300">G</span>
+              <div className="relative size-8 overflow-hidden rounded-lg border border-white/10">
+                <NextImage 
+                  src="/logo.png" 
+                  alt="GitScope" 
+                  fill 
+                  className="object-cover"
+                />
               </div>
               <span className="font-heading font-bold text-foreground">GitScope</span>
             </Link>

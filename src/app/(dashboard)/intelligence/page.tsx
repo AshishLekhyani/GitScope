@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { requireTier } from "@/lib/auth-tier";
 import { IntelligenceClient } from "@/features/intelligence/intelligence-client";
 

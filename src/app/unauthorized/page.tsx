@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import Link from "next/link";
 import { Github, Lock, ArrowRight, Zap, BarChart3, Building2, Brain } from "lucide-react";
 import { getServerSession } from "next-auth";

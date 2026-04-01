@@ -1,10 +1,20 @@
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limit";
 
 export async function POST(
   request: Request
 ) {
+  // Brute-force protection: 5 registration attempts per IP per 15 minutes
+  const { allowed } = checkRateLimit(getRateLimitKey(request, "register"), {
+    limit: 5,
+    windowMs: 15 * 60 * 1000,
+  });
+  if (!allowed) {
+    return new NextResponse("Too many registration attempts. Try again later.", { status: 429 });
+  }
+
   try {
     const body = await request.json();
     const { email, name, password } = body;

@@ -182,18 +182,10 @@ function AuthForm() {
     }
   };
 
-  const handleOAuth = async (provider: string) => {
+  const handleOAuth = (provider: string) => {
     setLoading(true);
     setAuthStatus("idle");
-    
-    // 1. Initial "Authenticating..." state (1.5s total)
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // 2. Show "Access Granted" or "Redirecing..." state briefly (800ms)
-    setAuthStatus("success");
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // 3. Final redirect to external provider
+    // Redirect to provider immediately — success is determined by NextAuth callback
     signIn(provider, { callbackUrl: `${ROUTES.overview}?welcome=true` });
   };
 

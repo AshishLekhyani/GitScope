@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { DashboardShell } from "@/features/layout/dashboard-shell";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

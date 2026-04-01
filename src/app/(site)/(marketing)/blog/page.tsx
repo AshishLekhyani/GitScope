@@ -1,9 +1,10 @@
-import { BlogPageClient } from "../../../../features/blog/blog-page-client";
 import type { Metadata } from "next";
+import { BlogPageClient } from "@/features/blog/blog-page-client";
 
 export const metadata: Metadata = {
-  title: "Engineer's Log — GitScope",
-  description: "Architectural insights, telemetry methodologies, and platform engineering updates.",
+  title: "Blog — GitScope",
+  description:
+    "Deep-dives on engineering analytics, developer productivity, open-source health, and DORA metrics from the GitScope team.",
 };
 
 export default function BlogPage() {

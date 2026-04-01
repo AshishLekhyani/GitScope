@@ -12,11 +12,12 @@ import {
   getRepoDetails,
 } from "@/services/githubClient";
 import { useAppDispatch } from "@/store/hooks";
+import { BOOKMARKS_KEY, BookmarkedRepo } from "@/lib/bookmarks";
 import { addRecentSearch } from "@/store/slices/dashboardSlice";
 import { useRecentHistory } from "@/hooks/use-recent-history";
 import type { CommitActivityWeek } from "@/types/github";
 import { useQuery } from "@tanstack/react-query";
-import { Star } from "lucide-react";
+import { Star, Bookmark } from "lucide-react";
 import { motion } from "framer-motion";
 import { MetricCards } from "./metric-cards";
 import {
@@ -350,9 +351,39 @@ function IntelligentInsights({
 }
 
 /* ─── Main: RepoOverview ─── */
+
 export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
   const dispatch = useAppDispatch();
   const { addToHistory } = useRecentHistory();
+  const [isBookmarked, setIsBookmarked] = useState(false);
+
+  useEffect(() => {
+    try {
+      const stored: BookmarkedRepo[] = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) ?? "[]");
+      setIsBookmarked(stored.some((b) => b.owner === owner && b.repo === repo));
+    } catch { /* ignore */ }
+  }, [owner, repo]);
+
+  const toggleBookmark = () => {
+    try {
+      const stored: BookmarkedRepo[] = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) ?? "[]");
+      let next: BookmarkedRepo[];
+      if (isBookmarked) {
+        next = stored.filter((b) => !(b.owner === owner && b.repo === repo));
+      } else {
+        const data = repoQ.data;
+        next = [...stored, {
+          owner, repo,
+          avatar: data?.owner?.avatar_url ?? `https://github.com/${owner}.png`,
+          stars: data?.stargazers_count ?? 0,
+          description: data?.description ?? "",
+          bookmarkedAt: new Date().toISOString(),
+        }];
+      }
+      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(next));
+      setIsBookmarked(!isBookmarked);
+    } catch { /* ignore */ }
+  };
 
   const repoQ = useQuery({
     queryKey: ["repo", owner, repo],
@@ -438,9 +469,19 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
           </h1>
         </div>
         <div className="flex flex-shrink-0 flex-wrap items-center gap-3">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={toggleBookmark}
+            className={cn(isBookmarked && "border-indigo-500/50 text-indigo-500 bg-indigo-500/5")}
+            title={isBookmarked ? "Remove bookmark" : "Bookmark this repo"}
+          >
+            <Bookmark className={cn("mr-1 size-4", isBookmarked && "fill-current")} />
+            {isBookmarked ? "Bookmarked" : "Bookmark"}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
             <MaterialIcon name="download" className="!text-base mr-1" />
-            Export Report
+            Export
           </Button>
           {data?.html_url && (
             <a

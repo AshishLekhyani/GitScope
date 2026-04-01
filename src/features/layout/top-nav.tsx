@@ -87,6 +87,7 @@ export function TopNav({
   const [isFocused, setIsFocused] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
+  const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [liveResults, setLiveResults] = useState<{ repos: SearchRepoResult[]; users: SearchUserResult[] }>({ repos: [], users: [] });
   const { history: recentHistory, addToHistory, loading: historyLoading } = useRecentHistory();
   const { notifications, unreadCount, markAsRead } = useNotifications();
@@ -221,7 +222,49 @@ export function TopNav({
     <motion.header
       className="bg-background border-border supports-backdrop-filter:bg-background/95 sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between gap-2 border-b px-3 backdrop-blur-md sm:px-6 dark:border-indigo-900/20"
     >
-      <div className="flex min-w-0 flex-1 items-center gap-4 md:gap-8">
+      {/* Mobile search overlay */}
+      <AnimatePresence>
+        {mobileSearchOpen && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center gap-2 bg-background px-3 sm:hidden"
+          >
+            <div ref={searchRef} className="relative flex min-w-0 flex-1 items-center">
+              <div className={cn(
+                "border-border flex min-w-0 flex-1 items-center rounded-xl border border-white/5 bg-slate-100/80 px-3 py-1.5 dark:bg-slate-900/50 ring-2 ring-indigo-500/20"
+              )}>
+                <MaterialIcon name="search" size={18} className="text-indigo-500 shrink-0" />
+                <Input
+                  autoFocus
+                  value={q}
+                  onFocus={() => setIsFocused(true)}
+                  onBlur={() => setIsFocused(false)}
+                  onChange={(e) => setQ(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") { submit(); setMobileSearchOpen(false); }
+                    if (e.key === "Escape") setMobileSearchOpen(false);
+                  }}
+                  placeholder="owner/repo or @user"
+                  className="font-mono border-0 bg-transparent py-0 text-sm focus-visible:ring-0"
+                  aria-label="Mobile repository search"
+                />
+              </div>
+            </div>
+            <button
+              type="button"
+              aria-label="Close search"
+              onClick={() => { setMobileSearchOpen(false); setQ(""); }}
+              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent"
+            >
+              <MaterialIcon name="close" size={20} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-8">
         <Link
           href="/"
           className="font-heading shrink-0 text-lg font-bold tracking-tight text-foreground sm:text-xl"
@@ -241,7 +284,7 @@ export function TopNav({
         </Button>
 
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 md:gap-6">
-          <div ref={searchRef} className="relative z-50 flex min-w-0 max-w-md flex-1 items-center">
+          <div ref={searchRef} className="relative z-50 hidden min-w-0 max-w-md flex-1 items-center sm:flex">
             <div className={cn(
               "border-border focus-within:ring-indigo-500/40 flex min-w-0 flex-1 items-center rounded-xl border border-white/5 bg-slate-100/80 px-2 py-1.5 focus-within:ring-2 sm:px-3 dark:bg-slate-900/50 transition-all duration-200",
               isFocused && "bg-white dark:bg-slate-900 shadow-2xl ring-2 ring-indigo-500/20"
@@ -494,6 +537,16 @@ export function TopNav({
       )}
 
       <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+        {/* Mobile search toggle */}
+        <button
+          type="button"
+          aria-label="Search"
+          className="text-muted-foreground hover:bg-accent flex items-center justify-center rounded-full size-9 sm:hidden"
+          onClick={() => setMobileSearchOpen(true)}
+        >
+          <MaterialIcon name="search" size={20} />
+        </button>
+
         <button
           type="button"
           className="border-border text-muted-foreground hover:bg-accent hidden items-center gap-1.5 rounded border px-2 py-1.5 text-[10px] font-mono sm:flex"
@@ -509,7 +562,7 @@ export function TopNav({
               type="button"
               disabled={isLoading}
               className={cn(
-                "text-muted-foreground hover:bg-accent hidden rounded-full sm:inline-flex relative size-9 items-center justify-center transition-colors outline-none",
+                "text-muted-foreground hover:bg-accent inline-flex rounded-full relative size-9 items-center justify-center transition-colors outline-none",
                 isLoading && "animate-pulse bg-slate-200 dark:bg-slate-800/50"
               )}
               aria-label="Notifications"
@@ -669,8 +722,8 @@ export function TopNav({
             onClick={() => setTheme(isDark ? "light" : "dark")}
             aria-label="Toggle theme"
           >
-            <Sun className="hidden size-5 dark:inline" />
-            <Moon className="inline size-5 dark:hidden" />
+            <Sun className="inline size-5 dark:hidden" />
+            <Moon className="hidden size-5 dark:inline" />
           </Button>
         )}
         {/* User Account Dropdown */}

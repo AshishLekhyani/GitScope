@@ -170,11 +170,26 @@ export function RepoSearchPanel() {
                   </div>
                 )}
 
-                {searchQ.isError && (
-                  <p className="text-destructive text-sm">
-                    {(searchQ.error as Error).message}
-                  </p>
-                )}
+                {searchQ.isError && (() => {
+                  const err = searchQ.error as Error & { status?: number };
+                  const is401 = err.status === 401 || err.message?.includes("401");
+                  return (
+                    <div className="flex flex-col items-center gap-3 py-8 text-center">
+                      <MaterialIcon name={is401 ? "link_off" : "error_outline"} size={28} className="text-amber-500" />
+                      <p className="text-sm font-bold text-foreground">
+                        {is401 ? "GitHub Not Connected" : "Search unavailable"}
+                      </p>
+                      <p className="text-xs text-muted-foreground max-w-xs">
+                        {is401 ? "Connect your GitHub account to enable search." : err.message}
+                      </p>
+                      {is401 && (
+                        <a href="/api/auth/signin/github" className="text-xs font-bold text-indigo-500 hover:underline">
+                          Connect GitHub →
+                        </a>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {!searchQ.isLoading &&
                   !searchQ.isError &&
@@ -236,8 +251,10 @@ export function RepoSearchPanel() {
                     </div>
                   )}
                   {trendingQ.isError && (
-                    <p className="text-destructive text-sm">
-                      {(trendingQ.error as Error).message}
+                    <p className="text-xs text-muted-foreground px-3 py-2">
+                      {(trendingQ.error as Error & { status?: number }).status === 401
+                        ? "Connect GitHub to see trending repos."
+                        : "Could not load trending repos."}
                     </p>
                   )}
                   <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">

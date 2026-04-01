@@ -19,6 +19,15 @@ import type {
   SearchRepositoriesResponse,
 } from "@/types/github";
 
+class GitHubApiError extends Error {
+  status: number;
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "GitHubApiError";
+    this.status = status;
+  }
+}
+
 async function parseJson<T>(res: Response): Promise<T> {
   const text = await res.text();
   if (!res.ok) {
@@ -29,7 +38,7 @@ async function parseJson<T>(res: Response): Promise<T> {
     } catch {
       /* ignore */
     }
-    throw new Error(message);
+    throw new GitHubApiError(message, res.status);
   }
   return JSON.parse(text) as T;
 }

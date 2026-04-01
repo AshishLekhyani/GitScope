@@ -31,10 +31,6 @@ export const metadata: Metadata = {
   },
   description:
     "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
-  icons: {
-    icon: "/icon.png",
-    apple: "/apple-icon.png",
-  },
 };
 
 export default async function RootLayout({

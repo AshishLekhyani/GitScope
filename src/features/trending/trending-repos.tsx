@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MaterialIcon } from "@/components/material-icon";
+import { ConnectGitHubButton } from "@/components/connect-github-button";
 import { ROUTES } from "@/constants/routes";
 import { getTrendingRepos } from "@/services/githubClient";
 import { formatNumber } from "@/utils/formatDate";
@@ -57,8 +58,47 @@ export function TrendingReposPanel() {
   }
 
   if (q.isError) {
+    const err = q.error as Error & { status?: number };
+    const is401 = err.status === 401 || err.message?.includes("401");
+    const isRate = err.status === 403 || err.message?.toLowerCase().includes("rate limit");
+
     return (
-      <p className="text-destructive text-sm">{(q.error as Error).message}</p>
+      <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl border-2 border-dashed border-border/50 gap-5 px-6">
+        <div className="size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+          <MaterialIcon name={is401 ? "link_off" : isRate ? "speed" : "error_outline"} size={28} className="text-amber-500" />
+        </div>
+        <div className="space-y-1.5">
+          <h3 className="text-lg font-black">
+            {is401 ? "GitHub Not Connected" : isRate ? "Rate Limit Reached" : "Failed to Load Trending"}
+          </h3>
+          <p className="text-sm text-muted-foreground max-w-sm leading-relaxed">
+            {is401
+              ? "Trending data requires GitHub API access. Connect your GitHub account to unlock this page."
+              : isRate
+              ? "You've hit the GitHub API rate limit. Sign in with GitHub OAuth for a personal 5,000 req/hr limit."
+              : err.message}
+          </p>
+        </div>
+        {(is401 || isRate) && (
+          <a
+            href="/api/auth/signin/github"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold"
+          >
+            <MaterialIcon name="hub" size={18} />
+            Connect GitHub Account
+          </a>
+        )}
+        {!is401 && !isRate && (
+          <button
+            type="button"
+            onClick={() => q.refetch()}
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-sm font-bold hover:bg-accent transition-colors"
+          >
+            <MaterialIcon name="refresh" size={18} />
+            Try Again
+          </button>
+        )}
+      </div>
     );
   }
 
@@ -90,6 +130,7 @@ export function TrendingReposPanel() {
             {(["today", "week", "month"] as const).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => setTimeRange(t)}
                 className={cn(
                   "rounded-md px-4 py-1.5 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
@@ -143,15 +184,13 @@ export function TrendingReposPanel() {
                 </div>
               </div>
 
-              {/* mini bar chart */}
-              <div className="mt-6 flex items-end gap-1.5">
-                {Array.from({ length: 14 }).map((_, i) => (
+              {/* mini bar chart — fixed heights to avoid inline styles */}
+              <div className="mt-6 flex items-end gap-1.5 h-20">
+                {[35, 55, 45, 70, 60, 40, 80, 65, 50, 75, 45, 60, 70, 55].map((h, i) => (
                   <div
                     key={i}
-                    className="flex-1 rounded-sm bg-primary/20"
-                    style={{
-                      height: `${20 + Math.random() * 60}px`,
-                    }}
+                    className="flex-1 rounded-sm bg-primary/20 chart-bar"
+                    style={{ "--h": `${h}%` } as React.CSSProperties}
                   />
                 ))}
               </div>
@@ -160,10 +199,8 @@ export function TrendingReposPanel() {
                 <div className="flex items-center gap-4 text-sm text-muted-foreground">
                   <span className="flex items-center gap-1.5">
                     <span
-                      className="size-3 rounded-full"
-                      style={{
-                        backgroundColor: getLangColor(featured.language),
-                      }}
+                      className="size-3 rounded-full lang-dot"
+                      style={{ "--lang-color": getLangColor(featured.language) } as React.CSSProperties}
                     />
                     {featured.language ?? "Unknown"}
                   </span>
@@ -223,10 +260,8 @@ export function TrendingReposPanel() {
                             {r.language ?? "—"}
                           </span>
                           <span
-                            className="size-3 rounded-full"
-                            style={{
-                              backgroundColor: getLangColor(r.language),
-                            }}
+                            className="size-3 rounded-full lang-dot"
+                            style={{ "--lang-color": getLangColor(r.language) } as React.CSSProperties}
                           />
                         </div>
                         <h3 className="font-heading text-base font-bold text-foreground group-hover:text-primary transition-colors">
@@ -294,10 +329,8 @@ export function TrendingReposPanel() {
                     </div>
                     <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-surface-container-highest">
                       <div
-                        className="h-full rounded-full bg-tertiary"
-                        style={{
-                          width: `${Math.min(100, (r.stargazers_count / (fastestGrowing[0]?.stargazers_count || 1)) * 100)}%`,
-                        }}
+                        className="h-full rounded-full bg-tertiary lang-bar"
+                        style={{ "--w": `${Math.min(100, (r.stargazers_count / (fastestGrowing[0]?.stargazers_count || 1)) * 100)}%` } as React.CSSProperties}
                       />
                     </div>
                     <p className="mt-1 font-mono text-[9px] text-muted-foreground">

@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { requireTier } from "@/lib/auth-tier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -70,7 +72,7 @@ export default async function OrganizationsPage() {
   const username = session?.user?.name ?? session?.user?.email?.split("@")[0] ?? "you";
 
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 pt-6 sm:space-y-8 sm:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
@@ -91,7 +93,7 @@ export default async function OrganizationsPage() {
       </div>
 
       {/* Search Header */}
-      <div className="glass-panel rounded-2xl p-8 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 relative overflow-hidden">
+      <div className="glass-panel rounded-2xl p-4 sm:p-8 bg-gradient-to-br from-indigo-500/5 via-transparent to-purple-500/5 relative overflow-hidden">
         <div className="absolute top-0 right-0 p-8 opacity-5">
           <Globe className="size-48" />
         </div>
@@ -108,11 +110,11 @@ export default async function OrganizationsPage() {
             <Zap className="size-4 text-amber-500" />
             <h3 className="text-sm font-black uppercase tracking-widest">Your Organizations</h3>
           </div>
-          <div className="grid gap-6 md:grid-cols-3">
+          <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
             {orgDetails.map((org) => (
               <Card key={org.login} className="glass-panel group relative overflow-hidden flex flex-col h-full hover:border-indigo-500/50 transition-all duration-300">
                 <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 to-purple-500 opacity-60" />
-                <div className="p-6 flex-1">
+                <div className="p-4 sm:p-6 flex-1">
                   <div className="flex items-start justify-between mb-4">
                     <div className="size-12 rounded-xl overflow-hidden bg-foreground/5 border border-border/50">
                       <Image src={org.avatar_url} width={48} height={48} alt={org.login} className="size-full object-cover" />
@@ -168,14 +170,14 @@ export default async function OrganizationsPage() {
       )}
 
       {/* Global Stats */}
-      <div className="grid gap-6 md:grid-cols-4">
+      <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 md:grid-cols-4">
         {[
           { label: "Your Orgs", value: orgDetails.length.toString(), icon: Building2, color: "text-indigo-500" },
           { label: "Total Repos", value: orgDetails.reduce((s, o) => s + (o.public_repos ?? 0), 0).toLocaleString(), icon: BarChart3, color: "text-emerald-500" },
           { label: "Total Members", value: orgDetails.reduce((s, o) => s + (o.public_members ?? 0), 0).toLocaleString(), icon: Users, color: "text-blue-500" },
           { label: "Active Feed", value: "Live", icon: Activity, color: "text-amber-500" },
         ].map((stat, i) => (
-          <Card key={i} className="glass-panel p-6 flex flex-col items-center text-center gap-3">
+          <Card key={i} className="glass-panel p-4 sm:p-6 flex flex-col items-center text-center gap-3">
             <div className="p-3 rounded-full bg-muted/50">
               <stat.icon className={`size-6 ${stat.color}`} />
             </div>

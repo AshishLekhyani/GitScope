@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -16,6 +18,7 @@ import {
 import Link from "next/link";
 import { Card } from "@/components/ui/card";
 import Image from "next/image";
+import { OnboardingTour } from "@/features/onboarding/onboarding-tour";
 
 export default async function OverviewPage() {
   const session = await getServerSession(authOptions);
@@ -87,34 +90,38 @@ export default async function OverviewPage() {
     return `${Math.floor(secs / 86400)}d ago`;
   }
 
+  const isFirstTime = recentHistory.length === 0;
+
   return (
-    <div className="flex-1 space-y-8 p-8 pt-6">
+    <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
+      {/* Onboarding tour — only shown to first-time users (client-side localStorage check) */}
+      {isFirstTime && <OnboardingTour />}
       {/* Header section with radial glow */}
-      <div className="relative rounded-2xl border border-border bg-card p-8 shadow-sm overflow-hidden">
+      <div className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden sm:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(67,97,238,0.1),transparent_50%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(192,193,255,0.05),transparent_50%)]" />
-        <div className="relative z-10 flex items-center gap-4">
+        <div className="relative z-10 flex items-center gap-3 sm:gap-4">
           {image && (
             <Image
               src={image}
               alt={displayName}
               width={56}
               height={56}
-              className="rounded-full border-2 border-primary/20"
+              className="size-12 rounded-full border-2 border-primary/20 sm:size-14 shrink-0"
             />
           )}
-          <div>
-            <h2 className="text-3xl font-bold tracking-tight">
-              Welcome back,{" "}
+          <div className="min-w-0">
+            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
+              {isFirstTime ? "Welcome, " : "Welcome back, "}
               <span className="text-primary">{displayName}</span>
             </h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              {recentHistory.length > 0
-                ? `You have ${recentHistory.length} repositories in your history.`
-                : "Your GitScope engineering dashboard is fully operational."}
+            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
+              {isFirstTime
+                ? "GitScope is ready. Start by analyzing any public GitHub repository."
+                : `You have ${recentHistory.length} repositor${recentHistory.length === 1 ? "y" : "ies"} in your history.`}
             </p>
           </div>
         </div>
-        <div className="mt-6 flex items-center space-x-4">
+        <div className="mt-5 flex flex-wrap items-center gap-3 sm:mt-6">
           <Link
             href={ROUTES.search}
             className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
@@ -132,10 +139,10 @@ export default async function OverviewPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-2 sm:gap-6 lg:grid-cols-4">
         {quickActions.map((action) => (
           <Link key={action.title} href={action.href}>
-            <Card className="group relative overflow-hidden flex h-full flex-col justify-between p-6 transition-all hover:shadow-md hover:border-primary/50">
+            <Card className="group relative overflow-hidden flex h-full flex-col justify-between p-4 transition-all hover:shadow-md hover:border-primary/50 sm:p-6">
               <div className="space-y-4">
                 <div className={`inline-flex rounded-lg p-3 ${action.bg}`}>
                   <action.icon className={`h-6 w-6 ${action.color}`} />
@@ -155,7 +162,7 @@ export default async function OverviewPage() {
         ))}
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
+      <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Recent Organizations */}
         <Card className="p-6">
           <div className="flex items-center gap-2 mb-4">

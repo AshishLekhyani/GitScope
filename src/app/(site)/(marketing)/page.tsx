@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import { LandingPage } from "@/features/landing/landing-page";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";

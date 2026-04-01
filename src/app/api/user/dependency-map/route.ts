@@ -1,5 +1,6 @@
 import { getGitHubToken } from "@/lib/github-auth";
 import { getGithubHeaders } from "@/lib/github";
+import { sanitizeRepoList } from "@/lib/validate-repo";
 import { NextResponse } from "next/server";
 
 /** Manifest files to check per language ecosystem. */
@@ -89,7 +90,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "No repositories specified" }, { status: 400 });
   }
 
-  const repoList = reposParam.split(",").map((r) => r.trim()).filter(Boolean).slice(0, 10);
+  const repoList = sanitizeRepoList(reposParam);
+  if (!repoList) return NextResponse.json({ error: "Invalid repository format" }, { status: 400 });
+
   const userToken = await getGitHubToken();
   const headers = getGithubHeaders(userToken);
 

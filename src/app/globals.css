@@ -251,4 +251,71 @@ html.dark .spotlight-glow {
   width: var(--w, 0%);
 }
 
+/* Dynamic height for chart bars */
+.chart-bar {
+  height: var(--h, 0%);
+}
+
+/* Dynamic language dot color */
+.lang-dot {
+  background-color: var(--lang-color, #94a3b8);
+}
+
+/* ── Light mode refinements ────────────────────────────────────────────── */
+
+/* Demo / preview panels on the homepage that use dark-only hardcoded backgrounds */
+html:not(.dark) .demo-panel {
+  background: rgba(248, 251, 255, 0.95);
+  border-color: rgba(67, 97, 238, 0.12);
+  color: #020817;
+}
+
+/* Hero gradient text — ensure contrast in light mode */
+html:not(.dark) .hero-gradient-text {
+  background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 60%, #7c3aed 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Code block / terminal previews used in feature demos */
+html:not(.dark) .terminal-preview {
+  background: #f1f5f9;
+  border-color: rgba(67, 97, 238, 0.15);
+  color: #1e293b;
+}
+html:not(.dark) .terminal-preview code,
+html:not(.dark) .terminal-preview pre {
+  color: #334155;
+}
+
+/* Stat badges with hardcoded dark colors */
+html:not(.dark) .stat-badge {
+  background: rgba(67, 97, 238, 0.08);
+  color: #3730a3;
+  border-color: rgba(67, 97, 238, 0.2);
+}
+
+/* Feature card glow — reduce in light mode so cards don't look washed out */
+html:not(.dark) .feature-card-glow {
+  box-shadow: 0 4px 24px -4px rgba(67, 97, 238, 0.12);
+}
+
+/* Chart tooltips */
+html:not(.dark) .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #ffffff !important;
+  border: 1px solid rgba(67, 97, 238, 0.15) !important;
+  color: #020817 !important;
+}
+
+/* Sidebar in light mode needs stronger border */
+html:not(.dark) [data-slot="sidebar"] {
+  border-right: 1px solid rgba(67, 97, 238, 0.1);
+}
+
+/* Theme toggle button — make it visible on both modes */
+.theme-toggle {
+  @apply rounded-lg p-2 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors;
+}
+
 /* design tokens v1 */
