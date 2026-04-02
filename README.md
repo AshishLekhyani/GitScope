@@ -106,15 +106,6 @@ The application follows a **hybrid rendering** strategy:
 
 ---
 
-## 📸 Screenshots
-
-> *(Add screenshots here after deployment)*
-
-| Dashboard Overview | Repository Analytics | Global Search |
-|---|---|---|
-| ![Overview](docs/screenshots/overview.png) | ![Analytics](docs/screenshots/analytics.png) | ![Search](docs/screenshots/search.png) |
-
----
 
 ## 🚀 Getting Started
 
@@ -267,19 +258,8 @@ Contributions are welcome and appreciated! Here's how to get started:
 4. **Push** to your branch: `git push origin feat/my-new-feature`
 5. **Open a Pull Request** against `master`
 
-Please read [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines on code style, testing requirements, and the PR review process.
-
-Looking for something to work on? Check the [open issues](https://github.com/AshishLekhyani/GitScope/issues) — issues tagged `good first issue` are a great starting point.
-
 ---
 
-## 📄 License
-
-Distributed under the **MIT License**. See [LICENSE](LICENSE) for full terms.
-
-You are free to use, modify, and distribute this project for personal or commercial purposes with attribution.
-
----
 
 ## 🙏 Acknowledgements
 
