@@ -93,27 +93,24 @@ GitScope is a full-stack GitHub analytics platform that turns raw GitHub data in
 
 ```mermaid
 graph TD
-    %% Styling
     classDef client fill:#0ea5e9,color:#fff,stroke:#0284c7
     classDef server fill:#10b981,color:#fff,stroke:#059669
     classDef external fill:#f59e0b,color:#fff,stroke:#d97706
     classDef data fill:#8b5cf6,color:#fff,stroke:#7c3aed
 
-    %% Nodes
-    CLIENT[Browser / Client UI]:::client
-    RTK[Redux Toolkit]:::client
-    RQ[React Query]:::client
+    CLIENT["Browser / Client UI"]:::client
+    RTK["Redux Toolkit"]:::client
+    RQ["React Query"]:::client
     
-    APP[Next.js App Router]:::server
-    API[Proxy & AI Routes]:::server
-    AUTH(NextAuth.js):::server
+    APP["Next.js App Router"]:::server
+    API["Proxy & AI Routes"]:::server
+    AUTH["NextAuth.js"]:::server
     
-    GH[GitHub REST API]:::external
-    AI[Anthropic API]:::external
+    GH["GitHub REST API"]:::external
+    AI["Anthropic API"]:::external
     
     DB[(PostgreSQL Database)]:::data
 
-    %% Edges
     CLIENT <-->|Global State| RTK
     CLIENT <-->|Server Cache| RQ
     
