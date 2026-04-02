@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
@@ -8,14 +8,26 @@ import Link from "next/link";
 
 const STORAGE_KEY = "gitscope_tour_completed";
 
-const STEPS = [
+type TourStep = {
+  id: string;
+  icon: string;
+  color: string;
+  bg: string;
+  title: string;
+  body: string | ReactNode;
+  cta: string;
+  skip: boolean;
+  action?: { label: string; href: string };
+};
+
+const STEPS: TourStep[] = [
   {
     id: "welcome",
     icon: "rocket_launch",
     color: "text-indigo-400",
     bg: "bg-indigo-500/10 border-indigo-500/20",
     title: "Welcome to GitScope!",
-    body: "GitScope is your engineering intelligence dashboard. Analyze any public GitHub repository, compare projects, track activity, and get AI-powered insights. This quick tour shows you the essentials.",
+    body: "GitScope is your engineering intelligence dashboard. Analyze public GitHub repositories, compare projects, track activity, and get AI-powered insights.",
     cta: "Start Tour",
     skip: true,
   },
@@ -24,22 +36,52 @@ const STEPS = [
     icon: "travel_explore",
     color: "text-blue-400",
     bg: "bg-blue-500/10 border-blue-500/20",
-    title: "Search & Analyze Repos",
-    body: "Use the search bar at the top (or press /) to analyze any public GitHub repo. Type owner/repo — like vercel/next.js — and press Enter. You'll get stars, contributors, commit history, code structure, and more.",
+    title: "Search and Analyze Repos",
+    body: "Use the top search bar (or press /), type owner/repo like vercel/next.js, and press Enter. You get stars, commit history, contributors, code structure, and more.",
     cta: "Got it",
     skip: false,
-    action: { label: "Try a Search", href: "/search" },
+    action: { label: "Try Search", href: "/search" },
   },
   {
     id: "intelligence",
     icon: "psychology",
     color: "text-purple-400",
     bg: "bg-purple-500/10 border-purple-500/20",
-    title: "Intelligence Hub",
-    body: "The Intelligence Hub gives you AI-powered analytics across your analyzed repos: commit velocity tracking, PR risk prediction, dependency mapping, and code health scoring. Connect your GitHub account to unlock full access.",
+    title: "Use Intelligence Hub",
+    body: "Intelligence Hub gives AI-driven analysis for code health, PR risk, dependency mapping, and repository momentum.",
     cta: "Got it",
     skip: false,
-    action: { label: "Open Intelligence Hub", href: "/intelligence" },
+    action: { label: "Open Hub", href: "/intelligence" },
+  },
+  {
+    id: "github-token",
+    icon: "vpn_key",
+    color: "text-amber-400",
+    bg: "bg-amber-500/10 border-amber-500/20",
+    title: "Add Your GitHub Token",
+    body: (
+      <div className="space-y-2">
+        <p className="text-sm text-muted-foreground">If you use email/password login, add your own GitHub token to increase API limits.</p>
+        <ol className="list-decimal pl-4 space-y-1 text-xs text-muted-foreground">
+          <li>Open Settings - Account.</li>
+          <li>Create a Personal Access Token in GitHub settings.</li>
+          <li>Paste it into Personal GitHub Token and click Save.</li>
+          <li>Confirm status shows Token active - 5,000 req/hr.</li>
+        </ol>
+        <a
+          href="https://github.com/settings/tokens"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+        >
+          Open GitHub Token Settings
+          <MaterialIcon name="open_in_new" size={12} />
+        </a>
+      </div>
+    ),
+    cta: "Got it",
+    skip: false,
+    action: { label: "Open Account Settings", href: "/settings?tab=account" },
   },
   {
     id: "shortcuts",
@@ -49,15 +91,15 @@ const STEPS = [
     title: "Power User Shortcuts",
     body: (
       <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Navigate GitScope entirely from your keyboard:</p>
+        <p className="text-sm text-muted-foreground">Navigate quickly with keyboard:</p>
         <div className="grid grid-cols-2 gap-2 mt-3">
           {[
-            ["⌘K / Ctrl+K", "Command palette"],
+            ["Cmd+K / Ctrl+K", "Command palette"],
             ["/", "Focus search"],
             ["T", "Toggle theme"],
             ["F", "Fullscreen"],
-            ["G → O", "Go to Overview"],
-            ["G → E", "Go to Explore"],
+            ["G -> O", "Go to Overview"],
+            ["G -> E", "Go to Explore"],
           ].map(([key, desc]) => (
             <div key={key} className="flex items-center gap-2">
               <kbd className="px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/20 font-mono text-[10px] text-foreground shrink-0">
@@ -74,21 +116,31 @@ const STEPS = [
   },
 ];
 
-export function OnboardingTour() {
+interface OnboardingTourProps {
+  userKey: string;
+}
+
+export function OnboardingTour({ userKey }: OnboardingTourProps) {
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState(0);
 
   useEffect(() => {
+    if (!userKey) return;
+
     try {
-      const done = localStorage.getItem(STORAGE_KEY);
+      const done = localStorage.getItem(`${STORAGE_KEY}:${userKey}`);
       if (!done) setVisible(true);
     } catch {
       // localStorage may be blocked
     }
-  }, []);
+  }, [userKey]);
 
   const complete = () => {
-    try { localStorage.setItem(STORAGE_KEY, "1"); } catch { /* ignore */ }
+    try {
+      localStorage.setItem(`${STORAGE_KEY}:${userKey}`, "1");
+    } catch {
+      // ignore storage failures
+    }
     setVisible(false);
   };
 
@@ -103,7 +155,6 @@ export function OnboardingTour() {
     <AnimatePresence>
       {visible && (
         <>
-          {/* Backdrop */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
@@ -113,7 +164,6 @@ export function OnboardingTour() {
             onClick={complete}
           />
 
-          {/* Card */}
           <motion.div
             key="card"
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -123,7 +173,6 @@ export function OnboardingTour() {
             className="fixed bottom-6 left-1/2 z-[201] w-full max-w-md -translate-x-1/2 px-4 sm:px-0"
           >
             <div className="overflow-hidden rounded-3xl border border-outline-variant/20 bg-surface-container/95 shadow-2xl backdrop-blur-xl">
-              {/* Progress bar */}
               <div className="h-0.5 w-full bg-outline-variant/10">
                 <motion.div
                   className="h-full bg-indigo-500"
@@ -133,7 +182,6 @@ export function OnboardingTour() {
               </div>
 
               <div className="p-6">
-                {/* Step indicator */}
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-1.5">
                     {STEPS.map((_, i) => (
@@ -151,12 +199,10 @@ export function OnboardingTour() {
                   </span>
                 </div>
 
-                {/* Icon */}
                 <div className={cn("inline-flex size-12 items-center justify-center rounded-2xl border mb-4", current.bg)}>
                   <MaterialIcon name={current.icon} size={24} className={current.color} />
                 </div>
 
-                {/* Content */}
                 <h3 className="text-lg font-bold tracking-tight mb-2">{current.title}</h3>
                 {typeof current.body === "string" ? (
                   <p className="text-sm text-muted-foreground leading-relaxed">{current.body}</p>
@@ -164,7 +210,6 @@ export function OnboardingTour() {
                   current.body
                 )}
 
-                {/* Actions */}
                 <div className="flex items-center gap-3 mt-6">
                   <button
                     type="button"
@@ -173,7 +218,7 @@ export function OnboardingTour() {
                   >
                     {current.cta}
                   </button>
-                  {"action" in current && current.action && (
+                  {current.action && (
                     <Link
                       href={current.action.href}
                       onClick={next}

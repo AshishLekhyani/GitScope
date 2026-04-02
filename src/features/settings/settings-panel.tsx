@@ -90,6 +90,7 @@ export function SettingsPanel() {
     resolvedPlan: AiPlan;
     storedPlan: AiPlan;
     aiTierUpdatedAt: string | null;
+    canManage: boolean;
   } | null>(null);
   const [usageSnapshot, setUsageSnapshot] = useState<AiUsageSnapshot | null>(null);
   const [jobHistory, setJobHistory] = useState<AiJobSummary[]>([]);
@@ -160,6 +161,7 @@ export function SettingsPanel() {
             resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
             storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
             aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
+            canManage: Boolean(tierData.canManage),
           });
         }
 
@@ -311,11 +313,12 @@ export function SettingsPanel() {
       ]);
       if (tierRes.ok) {
         const tierData = await tierRes.json();
-        setTierInfo({
-          resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
-          storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
-          aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
-        });
+                          setTierInfo({
+                            resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
+                            storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
+                            aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
+                            canManage: Boolean(tierData.canManage),
+                          });
       }
       if (capsRes.ok) {
         const capsData = await capsRes.json();
@@ -990,11 +993,12 @@ export function SettingsPanel() {
 	                      .then(async ([tierRes, capsRes, jobsRes]) => {
 	                        if (tierRes.ok) {
 	                          const tierData = await tierRes.json();
-	                          setTierInfo({
-	                            resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
-	                            storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
-	                            aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
-	                          });
+        setTierInfo({
+          resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
+          storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
+          aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
+          canManage: Boolean(tierData.canManage),
+        });
 	                        }
 	                        if (capsRes.ok) {
 	                          const capsData = await capsRes.json();
@@ -1086,43 +1090,45 @@ export function SettingsPanel() {
 	              )}
 	            </div>
 
-	            <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-3">
-	              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-indigo-500">
-	                Tier Override (Admin / Local)
-	              </p>
-	              <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
-	                <input
-	                  type="text"
-	                  value={tierTargetUserId}
-	                  onChange={(e) => setTierTargetUserId(e.target.value)}
-	                  placeholder="Target user id (optional, blank = me)"
-	                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
-	                />
-	                <select
-	                  value={tierTargetPlan}
-	                  onChange={(e) => setTierTargetPlan(e.target.value as AiPlan)}
-	                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
-	                >
-	                  <option value="free">Free</option>
-	                  <option value="professional">Professional</option>
-	                  <option value="team">Team</option>
-	                  <option value="enterprise">Enterprise</option>
-	                </select>
-	                <Button
-	                  type="button"
-	                  onClick={handleTierUpdate}
-	                  disabled={tierSaving}
-	                  className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest"
-	                >
-	                  {tierSaving ? "Updating..." : "Update Tier"}
-	                </Button>
-	              </div>
-	              {tierMsg && (
-	                <p className={cn("text-xs", tierMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>
-	                  {tierMsg.text}
-	                </p>
-	              )}
-	            </div>
+              {tierInfo?.canManage && (
+                <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-3">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-indigo-500">
+                    Tier Override (Admin)
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
+                    <input
+                      type="text"
+                      value={tierTargetUserId}
+                      onChange={(e) => setTierTargetUserId(e.target.value)}
+                      placeholder="Target user id (optional, blank = me)"
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
+                    />
+                    <select
+                      value={tierTargetPlan}
+                      onChange={(e) => setTierTargetPlan(e.target.value as AiPlan)}
+                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
+                    >
+                      <option value="free">Free</option>
+                      <option value="professional">Professional</option>
+                      <option value="team">Team</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                    <Button
+                      type="button"
+                      onClick={handleTierUpdate}
+                      disabled={tierSaving}
+                      className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest"
+                    >
+                      {tierSaving ? "Updating..." : "Update Tier"}
+                    </Button>
+                  </div>
+                  {tierMsg && (
+                    <p className={cn("text-xs", tierMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>
+                      {tierMsg.text}
+                    </p>
+                  )}
+                </div>
+              )}
 	          </div>
 
 	          {/* Personal GitHub API Key */}

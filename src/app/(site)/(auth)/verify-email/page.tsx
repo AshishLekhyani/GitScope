@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useState, useRef, Suspense } from "react";
-import { useSearchParams, useRouter } from "next/navigation";
+import { useEffect, useRef, useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { MaterialIcon } from "@/components/material-icon";
 import { signIn } from "next-auth/react";
+import { MaterialIcon } from "@/components/material-icon";
 
 type State = "pending" | "signing-in" | "success" | "error" | "resending" | "resent";
 
@@ -32,66 +32,87 @@ function VerifyEmailContent() {
     }
   };
 
+  const signInWithOneTimeToken = async (token: string): Promise<boolean> => {
+    if (!token) return false;
+    setState("signing-in");
+    const res = await signIn("token", { token, redirect: false });
+    return Boolean(res?.ok);
+  };
+
+  const fetchWaitToken = async (targetEmail: string): Promise<string | null> => {
+    if (!targetEmail) return null;
+    try {
+      const res = await fetch(`/api/auth/check-verification?email=${encodeURIComponent(targetEmail)}`, {
+        cache: "no-store",
+      });
+      const data = await res.json();
+      if (!data?.verified || !data?.at) return null;
+      return data.at as string;
+    } catch {
+      return null;
+    }
+  };
+
+  const tryWaitTokenAutologin = async (targetEmail: string): Promise<boolean> => {
+    const waitToken = await fetchWaitToken(targetEmail);
+    if (!waitToken) return false;
+    return signInWithOneTimeToken(waitToken);
+  };
+
   useEffect(() => {
     const success = params.get("success");
     const error = params.get("error");
-    const at = params.get("at");       // autologin token (clicking tab)
+    const clickTabToken = params.get("at");
     const emailParam = params.get("email") ?? "";
 
     setEmail(emailParam);
 
-    if (success === "1" && at) {
-      // Clicking tab: sign in automatically using the one-time token
-      setState("signing-in");
-      signIn("token", { token: at, redirect: false }).then((res) => {
-        if (res?.ok) {
+    if (success === "1" && clickTabToken) {
+      // Link-click tab: use click-tab token, then fallback to waiting token.
+      signInWithOneTimeToken(clickTabToken).then(async (ok) => {
+        if (ok) {
           router.replace("/overview?welcome=true");
-        } else {
-          // Token used/expired — fall back to manual sign-in
-          setState("success");
+          return;
         }
+
+        const recovered = await tryWaitTokenAutologin(emailParam);
+        if (recovered) router.replace("/overview?welcome=true");
+        else setState("success");
       });
     } else if (success === "1") {
-      // Fallback if no autologin token
-      setState("success");
+      // Success state without click-tab token: try waiting token first.
+      if (!emailParam) {
+        setState("success");
+      } else {
+        setState("signing-in");
+        tryWaitTokenAutologin(emailParam).then((ok) => {
+          if (ok) router.replace("/overview?welcome=true");
+          else setState("success");
+        });
+      }
     } else if (error) {
       setState("error");
       setErrorMsg(ERROR_MESSAGES[error] ?? "Something went wrong.");
     } else if (emailParam) {
-      // Waiting tab: poll until verification detected
+      // Waiting tab: poll until email is verified, then auto sign-in.
       setState("pending");
       pollingRef.current = setInterval(async () => {
         try {
-          const res = await fetch(
-            `/api/auth/check-verification?email=${encodeURIComponent(emailParam)}`,
-            { cache: "no-store" }
-          );
-          const data = await res.json();
-          if (data.verified) {
-            stopPolling();
-            if (data.at) {
-              // Got a one-time token — sign in automatically
-              setState("signing-in");
-              const result = await signIn("token", { token: data.at, redirect: false });
-              if (result?.ok) {
-                router.replace("/overview?welcome=true");
-              } else {
-                // Token already used by another tab — fall back to login
-                router.replace(`/login?verified=1&email=${encodeURIComponent(emailParam)}`);
-              }
-            } else {
-              // Token already claimed by another polling tab
-              router.replace(`/login?verified=1&email=${encodeURIComponent(emailParam)}`);
-            }
-          }
+          const waitToken = await fetchWaitToken(emailParam);
+          if (!waitToken) return;
+
+          stopPolling();
+          const ok = await signInWithOneTimeToken(waitToken);
+          if (ok) router.replace("/overview?welcome=true");
+          else setState("success");
         } catch {
-          // ignore transient errors
+          // Ignore transient polling issues.
         }
       }, 2000);
     }
 
     return stopPolling;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleResend = async () => {
@@ -119,25 +140,18 @@ function VerifyEmailContent() {
 
   return (
     <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center py-12">
-      <motion.div
-        initial={{ opacity: 0, y: 12 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="w-full max-w-md"
-      >
+      <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
         <div className="glass-panel rounded-2xl p-10 shadow-2xl text-center space-y-6">
-
-          {/* ── Signing in automatically ── */}
           {state === "signing-in" && (
             <>
               <div className="size-16 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent" />
               <div>
-                <h2 className="text-xl font-bold text-foreground">Signing you in…</h2>
+                <h2 className="text-xl font-bold text-foreground">Signing you in...</h2>
                 <p className="text-muted-foreground text-sm mt-2">Your email is verified. One moment.</p>
               </div>
             </>
           )}
 
-          {/* ── Verified (fallback — no autologin token) ── */}
           {state === "success" && (
             <>
               <motion.div
@@ -149,9 +163,7 @@ function VerifyEmailContent() {
               </motion.div>
               <div>
                 <h2 className="text-xl font-bold text-foreground">Email Verified</h2>
-                <p className="text-muted-foreground text-sm mt-2">
-                  Your account is active. Click below to sign in.
-                </p>
+                <p className="text-muted-foreground text-sm mt-2">Your account is active. Click below to sign in.</p>
               </div>
               <Link
                 href={`/login?verified=1${email ? `&email=${encodeURIComponent(email)}` : ""}`}
@@ -163,7 +175,6 @@ function VerifyEmailContent() {
             </>
           )}
 
-          {/* ── Resent confirmation ── */}
           {state === "resent" && (
             <>
               <motion.div
@@ -176,17 +187,11 @@ function VerifyEmailContent() {
               <div>
                 <h2 className="text-xl font-bold text-foreground">Email Sent</h2>
                 <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
-                  A new link has been sent to{" "}
-                  <span className="text-foreground font-medium">{email}</span>.{" "}
-                  It expires in 30 minutes.
+                  A new link has been sent to <span className="text-foreground font-medium">{email}</span>. It expires in 30 minutes.
                 </p>
               </div>
-              <button
-                type="button"
-                onClick={() => setState("pending")}
-                className="text-xs text-primary hover:underline"
-              >
-                Didn&apos;t receive it? Try again
+              <button type="button" onClick={() => setState("pending")} className="text-xs text-primary hover:underline">
+                Did not receive it? Try again
               </button>
               <Link href="/login" className="block text-xs text-muted-foreground hover:text-primary transition-colors">
                 Back to sign in
@@ -194,12 +199,13 @@ function VerifyEmailContent() {
             </>
           )}
 
-          {/* ── Pending (just signed up) or link error ── */}
           {(state === "pending" || state === "resending" || state === "error") && (
             <>
-              <div className={`size-16 mx-auto rounded-full flex items-center justify-center ${
-                state === "error" ? "bg-amber-500/20 text-amber-500" : "bg-primary/10 text-primary"
-              }`}>
+              <div
+                className={`size-16 mx-auto rounded-full flex items-center justify-center ${
+                  state === "error" ? "bg-amber-500/20 text-amber-500" : "bg-primary/10 text-primary"
+                }`}
+              >
                 <MaterialIcon name="forward_to_inbox" size={36} />
               </div>
 
@@ -209,23 +215,21 @@ function VerifyEmailContent() {
                   {state === "error"
                     ? errorMsg
                     : email
-                      ? <>We sent a link to <span className="text-foreground font-medium">{email}</span>. It expires in 30 minutes. This page will redirect automatically once verified.</>
+                      ? <><span>We sent a link to </span><span className="text-foreground font-medium">{email}</span><span>. It expires in 30 minutes. This page will redirect automatically once verified.</span></>
                       : "We sent a verification link to your email. It expires in 30 minutes."}
                 </p>
               </div>
 
-              {/* Waiting indicator for the polling tab */}
               {state === "pending" && email && (
                 <div className="flex items-center justify-center gap-2 text-muted-foreground">
                   <span className="relative flex size-2">
                     <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
                     <span className="relative inline-flex size-2 rounded-full bg-primary" />
                   </span>
-                  <span className="font-mono text-[10px] tracking-widest uppercase">Waiting for verification…</span>
+                  <span className="font-mono text-[10px] tracking-widest uppercase">Waiting for verification...</span>
                 </div>
               )}
 
-              {/* Resend form */}
               <div className="space-y-3 text-left">
                 <label className="block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
                   {email ? "Resend to" : "Enter your email to resend"}
@@ -244,7 +248,7 @@ function VerifyEmailContent() {
                   onClick={handleResend}
                   className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
-                  {state === "resending" ? "Sending…" : "Resend Verification Email"}
+                  {state === "resending" ? "Sending..." : "Resend Verification Email"}
                 </button>
               </div>
 
@@ -253,7 +257,6 @@ function VerifyEmailContent() {
               </Link>
             </>
           )}
-
         </div>
       </motion.div>
     </div>
@@ -262,11 +265,13 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+        </div>
+      }
+    >
       <VerifyEmailContent />
     </Suspense>
   );

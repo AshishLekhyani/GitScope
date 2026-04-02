@@ -31,6 +31,7 @@ export async function GET() {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const canManage = canManageTiers(session.user.email);
 
   const [resolvedPlan, user] = await Promise.all([
     resolveAiPlanFromSessionDb(session),
@@ -44,6 +45,7 @@ export async function GET() {
     resolvedPlan,
     storedPlan: user?.aiTier ?? "free",
     aiTierUpdatedAt: user?.aiTierUpdatedAt ?? null,
+    canManage,
   });
 }
 

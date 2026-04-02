@@ -94,8 +94,8 @@ export default async function OverviewPage() {
 
   return (
     <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
-      {/* Onboarding tour — only shown to first-time users (client-side localStorage check) */}
-      {isFirstTime && <OnboardingTour />}
+      {/* Onboarding tour: first-time users only, tracked per account in localStorage */}
+      {isFirstTime && <OnboardingTour userKey={session.user.id ?? session.user.email ?? "unknown-user"} />}
       {/* Header section with radial glow */}
       <div className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden sm:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(67,97,238,0.1),transparent_50%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(192,193,255,0.05),transparent_50%)]" />
