@@ -1,13 +1,15 @@
-import { getGitHubToken } from "@/lib/github-auth";
+import { getGitHubTokenWithSource } from "@/lib/github-auth";
 import { getGithubHeaders } from "@/lib/github";
 import { NextResponse } from "next/server";
 
 export async function GET() {
-  const userToken = await getGitHubToken();
+  const { token: userToken, source } = await getGitHubTokenWithSource({
+    allowEnvFallback: false,
+  });
 
   try {
     const res = await fetch("https://api.github.com/rate_limit", {
-      headers: getGithubHeaders(userToken),
+      headers: getGithubHeaders(userToken, { allowEnvFallback: false }),
       next: { revalidate: 0 }, // No cache for rate limit
     });
 
@@ -19,7 +21,8 @@ export async function GET() {
     return NextResponse.json({
       limit: data.rate.limit,
       remaining: data.rate.remaining,
-      reset: data.rate.reset
+      reset: data.rate.reset,
+      tokenSource: source,
     });
   } catch {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 });

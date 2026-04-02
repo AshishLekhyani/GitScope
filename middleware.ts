@@ -13,16 +13,13 @@ const PROTECTED_PREFIXES = [
   "/analytics",
   "/compare",
   "/trending",
+  "/intelligence",
 ];
 
 /** Routes that require GitHub OAuth (provider === "github") */
 const GITHUB_ONLY_PREFIXES = [
-  "/intelligence",
   "/organizations",
 ];
-
-/** Public routes that do NOT need protection (explicitly allowed) */
-const PUBLIC_PATHS = ["/guest"];
 
 const AUTH_PAGES = ["/login", "/signup"];
 

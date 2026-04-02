@@ -84,7 +84,7 @@ export default async function ReleasesPage() {
   const token = await getGitHubToken();
 
   // ── Get last 5 unique repos from search history ────────────────────────────
-  let recentRepos: { owner: string; repo: string; avatar: string | null }[] =
+  const recentRepos: { owner: string; repo: string; avatar: string | null }[] =
     [];
 
   try {
@@ -479,13 +479,13 @@ export default async function ReleasesPage() {
                     <p className="text-[11px] text-amber-700/80 dark:text-amber-400/80 leading-relaxed">
                       Releases are fetched without auth (60 req/hr limit). Connect GitHub for higher rate limits.
                     </p>
-                    <a
+                    <Link
                       href="/api/auth/signin/github"
                       className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:underline mt-1"
                     >
                       Connect GitHub
                       <MaterialIcon name="open_in_new" size={10} />
-                    </a>
+                    </Link>
                   </div>
                 </div>
               </div>

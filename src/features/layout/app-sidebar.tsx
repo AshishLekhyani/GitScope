@@ -187,7 +187,7 @@ export function AppSidebar({
       return pathname.startsWith(href);
     }
     return pathname === href;
-  }; const { rateLimit, latency, loading: rateLimitLoading } = useGitHubRateLimit();
+  }; const { rateLimit, loading: rateLimitLoading } = useGitHubRateLimit();
 
   return (
     <div className="flex min-h-0 flex-1 flex-col pt-2">

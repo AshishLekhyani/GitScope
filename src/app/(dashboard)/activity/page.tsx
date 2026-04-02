@@ -210,7 +210,7 @@ export default async function ActivityPage({
               {events.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground text-sm">
                   {page > 1
-                    ? "No more events found. You've reached the end of your activity history."
+                    ? "No more events found. You&apos;ve reached the end of your activity history."
                     : `No recent activity found for @${githubLogin}.`}
                 </div>
               ) : (
@@ -326,7 +326,7 @@ export default async function ActivityPage({
             <Card className="glass-panel p-6 border-none shadow-none">
               <h3 className="text-xs font-black uppercase tracking-widest mb-2">Pro Tip</h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
-                GitHub's Events API stores up to 90 days of activity across 10 pages. Use pagination to explore your full history. Visit the{" "}
+                GitHub&apos;s Events API stores up to 90 days of activity across 10 pages. Use pagination to explore your full history. Visit the{" "}
                 <Link href="/intelligence" className="text-indigo-500 hover:underline">Intelligence Hub</Link>{" "}
                 for DORA metrics and cycle time analysis.
               </p>

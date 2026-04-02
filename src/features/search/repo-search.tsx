@@ -21,6 +21,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
+import { signIn } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 function RepoNameHighlight({ fullName }: { fullName: string }) {
@@ -183,9 +184,13 @@ export function RepoSearchPanel() {
                         {is401 ? "Connect your GitHub account to enable search." : err.message}
                       </p>
                       {is401 && (
-                        <a href="/api/auth/signin/github" className="text-xs font-bold text-indigo-500 hover:underline">
+                        <button
+                          type="button"
+                          onClick={() => signIn("github", { callbackUrl: ROUTES.search })}
+                          className="text-xs font-bold text-indigo-500 hover:underline"
+                        >
                           Connect GitHub →
-                        </a>
+                        </button>
                       )}
                     </div>
                   );

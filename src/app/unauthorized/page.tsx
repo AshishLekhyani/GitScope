@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Github, Lock, ArrowRight, Zap, BarChart3, Building2, Brain } from "lucide-react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ConnectGitHubButton } from "@/components/connect-github-button";
 
 const GITHUB_FEATURES = [
   { icon: Brain, label: "Recursive Intelligence", desc: "DORA metrics, dependency radar, AI-powered risk scoring" },
@@ -61,14 +62,11 @@ export default async function UnauthorizedPage() {
             <p className="text-xs text-muted-foreground/50 font-mono uppercase tracking-widest">
               Currently signed in as: {session.user.email ?? session.user.name} (limited access)
             </p>
-            <Link
-              href="/api/auth/signin/github"
-              className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl btn-gitscope-primary text-sm font-bold"
-            >
-              <Github className="size-4" />
-              Connect GitHub Account
-              <ArrowRight className="size-4" />
-            </Link>
+            <ConnectGitHubButton
+              callbackUrl="/overview"
+              label="Connect GitHub Account"
+              className="px-7 py-3.5"
+            />
           </div>
         ) : (
           <Link

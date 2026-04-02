@@ -3,6 +3,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
+import { encryptGitHubToken } from "@/lib/github-token-crypto";
 
 function validatePasswordComplexity(pass: string): string | null {
   if (pass.length < 8) return "Password must be at least 8 characters.";
@@ -26,18 +27,35 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  // ── Update GitHub API key ──────────────────────────────────────────────────
+  // Update GitHub API key
   if ("githubApiKey" in body) {
     const key = body.githubApiKey?.trim() || null;
-    // Basic format check: GitHub PATs start with ghp_, gho_, github_pat_, or classic 40-char hex
+
+    // Basic format check: GitHub PATs start with ghp_, gho_, ghs_, ghu_, github_pat_, or classic 40-char hex
     if (key && !/^(ghp_|gho_|ghs_|ghu_|github_pat_|[0-9a-f]{40})/i.test(key)) {
       return NextResponse.json({ error: "That doesn't look like a valid GitHub token." }, { status: 400 });
     }
-    await prisma.user.update({ where: { id: session.user.id }, data: { githubApiKey: key } });
+
+    const encrypted = key ? encryptGitHubToken(key) : null;
+    if (key && !encrypted) {
+      return NextResponse.json(
+        {
+          error:
+            "Token encryption is not configured. Set GITHUB_PAT_ENCRYPTION_KEY (base64 32 bytes) in environment variables.",
+        },
+        { status: 503 }
+      );
+    }
+
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { githubApiKey: encrypted },
+    });
+
     return NextResponse.json({ success: true });
   }
 
-  // ── Update password ────────────────────────────────────────────────────────
+  // Update password
   const { newPassword, currentPassword } = body;
 
   if (!newPassword) {

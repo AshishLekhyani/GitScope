@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { DependencyRadar } from "@/features/intelligence/dependency-radar";
 import { VelocityChart } from "@/features/intelligence/velocity-chart";
@@ -8,14 +8,68 @@ import { IntelligenceSearch } from "@/features/intelligence/intelligence-search"
 import { RiskPredictor } from "@/features/intelligence/risk-predictor";
 import { cn } from "@/lib/utils";
 
+interface CapabilitiesResponse {
+  plan: "free" | "professional" | "team" | "enterprise";
+  capabilities: {
+    label: string;
+    maxReposInWorkspace: number;
+    aiAgentDepth: 0 | 1 | 2 | 3;
+    aiRequestsPerHour: number;
+  };
+  githubAuthSource: "session-oauth" | "user-pat" | "shared-env" | "none";
+  usage?: {
+    total: number;
+    byFeature: Record<string, number>;
+    since: string;
+  };
+}
+
 export function IntelligenceClient() {
   const [selectedRepos, setSelectedRepos] = useState<string[]>(["facebook/react"]);
   const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk">("radar");
+  const [caps, setCaps] = useState<CapabilitiesResponse | null>(null);
+  const [capsLoading, setCapsLoading] = useState(true);
+  const [limitNotice, setLimitNotice] = useState<string | null>(null);
+
+  useEffect(() => {
+    let mounted = true;
+    const loadCaps = async () => {
+      setCapsLoading(true);
+      try {
+        const res = await fetch("/api/user/ai-capabilities", { cache: "no-store" });
+        if (!res.ok) return;
+        const data: CapabilitiesResponse = await res.json();
+        if (!mounted) return;
+        setCaps(data);
+      } catch {
+        // Keep defaults if capability endpoint is temporarily unavailable.
+      } finally {
+        if (mounted) setCapsLoading(false);
+      }
+    };
+
+    loadCaps();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const maxRepos = caps?.capabilities.maxReposInWorkspace ?? 3;
+  const usedThisHour = caps?.usage?.total ?? 0;
+
+  const tierLabel = useMemo(() => {
+    if (!caps) return "Explorer";
+    return caps.capabilities.label;
+  }, [caps]);
 
   const handleSelect = (repo: string) => {
-    if (selectedRepos.length >= 10) return;
+    if (selectedRepos.length >= maxRepos) {
+      setLimitNotice(`Your ${tierLabel} plan supports up to ${maxRepos} repos in one workspace.`);
+      return;
+    }
     if (!selectedRepos.includes(repo)) {
       setSelectedRepos([...selectedRepos, repo]);
+      setLimitNotice(null);
     }
   };
 
@@ -29,7 +83,9 @@ export function IntelligenceClient() {
         <div className="space-y-4">
           <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-indigo-500/5 border border-indigo-500/10 mb-2">
             <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/80">GitHub Pro Hub</span>
+            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/80">
+              {capsLoading ? "Loading AI Tier" : `${tierLabel} AI Hub`}
+            </span>
           </div>
           <h1 className="text-2xl sm:text-4xl md:text-5xl font-black bg-gradient-to-br from-foreground via-foreground/90 to-foreground/40 bg-clip-text text-transparent tracking-tight">
             Recursive <span className="text-primary italic">Intelligence</span>
@@ -63,10 +119,32 @@ export function IntelligenceClient() {
         </div>
       </div>
 
+      <div className="grid gap-3 sm:grid-cols-3">
+        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">AI Tier</p>
+          <p className="text-sm font-black mt-1">{tierLabel}</p>
+        </div>
+        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Agent Depth</p>
+          <p className="text-sm font-black mt-1">{caps?.capabilities.aiAgentDepth ?? 1} specialist layer{(caps?.capabilities.aiAgentDepth ?? 1) > 1 ? "s" : ""}</p>
+        </div>
+        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Hourly AI Budget</p>
+          <p className="text-sm font-black mt-1">{usedThisHour} / {caps?.capabilities.aiRequestsPerHour ?? 20} calls used</p>
+        </div>
+      </div>
+
+      {limitNotice && (
+        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs font-bold text-amber-500">
+          {limitNotice}
+        </div>
+      )}
+
       <IntelligenceSearch
         selectedRepos={selectedRepos}
         onSelect={handleSelect}
         onRemove={handleRemove}
+        maxRepos={maxRepos}
       />
 
       <div className="space-y-12 min-h-[600px] relative">

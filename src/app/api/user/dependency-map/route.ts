@@ -1,7 +1,11 @@
-import { getGitHubToken } from "@/lib/github-auth";
+import { getGitHubTokenWithSource } from "@/lib/github-auth";
 import { getGithubHeaders } from "@/lib/github";
 import { sanitizeRepoList } from "@/lib/validate-repo";
+import { authOptions } from "@/lib/auth";
+import { getServerSession } from "next-auth";
 import { NextResponse } from "next/server";
+import { getCapabilitiesForPlan, resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { trackUsageEvent } from "@/lib/ai-usage";
 
 /** Manifest files to check per language ecosystem. */
 const MANIFESTS = [
@@ -84,17 +88,30 @@ async function fetchManifest(
 }
 
 export async function GET(req: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const plan = await resolveAiPlanFromSessionDb(session);
+  const caps = getCapabilitiesForPlan(plan);
+
   const { searchParams } = new URL(req.url);
   const reposParam = searchParams.get("repos");
   if (!reposParam) {
     return NextResponse.json({ error: "No repositories specified" }, { status: 400 });
   }
 
-  const repoList = sanitizeRepoList(reposParam);
+  const repoList = sanitizeRepoList(reposParam, caps.maxReposPerRequest);
   if (!repoList) return NextResponse.json({ error: "Invalid repository format" }, { status: 400 });
 
-  const userToken = await getGitHubToken();
-  const headers = getGithubHeaders(userToken);
+  const { token: userToken, source: tokenSource } = await getGitHubTokenWithSource({
+    allowEnvFallback: caps.allowSharedTokenFallback,
+    session,
+  });
+
+  const headers = getGithubHeaders(userToken, {
+    allowEnvFallback: caps.allowSharedTokenFallback,
+  });
 
   try {
     const results = await Promise.all(
@@ -119,7 +136,27 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ nodes, links });
+    const estimatedGithubCalls = repoList.length * MANIFESTS.length;
+    await trackUsageEvent({
+      userId: session.user.id,
+      feature: "dependency-map",
+      plan,
+      metadata: {
+        repoCount: repoList.length,
+        githubCalls: estimatedGithubCalls,
+      },
+    });
+
+    return NextResponse.json({
+      nodes,
+      links,
+      meta: {
+        plan,
+        repoLimit: caps.maxReposPerRequest,
+        tokenSource,
+        githubCalls: estimatedGithubCalls,
+      },
+    });
   } catch (error) {
     console.error("Dependency Map Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

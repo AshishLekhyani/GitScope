@@ -11,9 +11,10 @@ interface IntelligenceSearchProps {
   onSelect: (repo: string) => void;
   selectedRepos: string[];
   onRemove: (repo: string) => void;
+  maxRepos: number;
 }
 
-export function IntelligenceSearch({ onSelect, selectedRepos, onRemove }: IntelligenceSearchProps) {
+export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos }: IntelligenceSearchProps) {
   const [q, setQ] = useState("");
   const [results, setResults] = useState<SearchRepoResult[]>([]);
   const [loading, setLoading] = useState(false);
@@ -79,7 +80,7 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove }: Intell
            />
            <div className="pr-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 border border-outline-variant/10 px-2.5 py-1.5 rounded-xl">
-                 Scanned: {selectedRepos.length} / 10
+                 Scanned: {selectedRepos.length} / {maxRepos}
               </span>
            </div>
         </div>

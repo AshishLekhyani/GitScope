@@ -37,7 +37,8 @@ export function VelocityChart({ repos }: { repos: string[] }) {
       try {
         const res = await fetch(`/api/user/dora-metrics?repos=${encodeURIComponent(repos.join(","))}`);
         if (res.ok) {
-          setData(await res.json());
+          const payload = await res.json();
+          setData(Array.isArray(payload) ? payload : (payload.items ?? []));
         }
       } catch (e) {
         console.error(e);

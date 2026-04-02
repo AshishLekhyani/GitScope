@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { githubFetch } from "@/lib/github";
-import { getGitHubToken } from "@/lib/github-auth";
+import { getGitHubTokenWithSource } from "@/lib/github-auth";
 
 /**
  * Generic GitHub API proxy.
@@ -19,12 +19,14 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const userToken = await getGitHubToken();
-    const extraHeaders = userToken ? { Authorization: `Bearer ${userToken}` } : undefined;
+    const { token: userToken } = await getGitHubTokenWithSource({
+      allowEnvFallback: false,
+    });
 
     const apiPath = path.startsWith("/") ? path : `/${path}`;
     const { data } = await githubFetch<unknown>(apiPath, {
-      headers: extraHeaders,
+      userToken,
+      allowEnvFallback: false,
     });
 
     return NextResponse.json(data);

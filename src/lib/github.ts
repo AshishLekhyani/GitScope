@@ -1,10 +1,20 @@
 const GITHUB_API = "https://api.github.com";
 
-export function getGithubHeaders(userToken?: string | null): HeadersInit {
+function defaultAllowEnvFallback(): boolean {
+  return process.env.GITHUB_SHARED_FALLBACK === "1" || process.env.GITHUB_SHARED_FALLBACK === "true";
+}
+
+export function getGithubHeaders(
+  userToken?: string | null,
+  options?: { allowEnvFallback?: boolean }
+): HeadersInit {
+  const { allowEnvFallback = defaultAllowEnvFallback() } = options ?? {};
   const token =
     userToken ??
-    process.env.GITHUB_TOKEN ??
-    process.env.NEXT_PUBLIC_GITHUB_TOKEN;
+    (allowEnvFallback
+      ? process.env.GITHUB_TOKEN ?? process.env.NEXT_PUBLIC_GITHUB_TOKEN
+      : null);
+
   return {
     Accept: "application/vnd.github+json",
     "X-GitHub-Api-Version": "2022-11-28",
@@ -14,14 +24,14 @@ export function getGithubHeaders(userToken?: string | null): HeadersInit {
 
 export async function githubFetch<T>(
   path: string,
-  init?: RequestInit & { userToken?: string | null }
+  init?: RequestInit & { userToken?: string | null; allowEnvFallback?: boolean }
 ): Promise<{ data: T; rateLimitRemaining?: string }> {
-  const { userToken, ...fetchInit } = init ?? {};
+  const { userToken, allowEnvFallback, ...fetchInit } = init ?? {};
   const url = path.startsWith("http") ? path : `${GITHUB_API}${path}`;
   const res = await fetch(url, {
     ...fetchInit,
     headers: {
-      ...getGithubHeaders(userToken),
+      ...getGithubHeaders(userToken, { allowEnvFallback }),
       ...fetchInit?.headers,
     },
     next: { revalidate: 60 },

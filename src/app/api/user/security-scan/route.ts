@@ -1,6 +1,8 @@
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
+import { getCapabilitiesForPlan, resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { consumeUsageBudget } from "@/lib/ai-usage";
 
 interface NpmAdvisory {
   id: number;
@@ -16,6 +18,8 @@ export async function POST(req: Request) {
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+  const plan = await resolveAiPlanFromSessionDb(session);
+  const caps = getCapabilitiesForPlan(plan);
 
   let deps: string[] = [];
   try {
@@ -32,10 +36,24 @@ export async function POST(req: Request) {
   // Only npm-safe package names (covers scoped packages like @org/pkg)
   const safeDeps = deps
     .filter((d) => typeof d === "string" && /^(@[a-zA-Z0-9._-]+\/)?[a-zA-Z0-9._-]+$/.test(d))
-    .slice(0, 60);
+    .slice(0, caps.maxPackagesPerSecurityScan);
 
   if (safeDeps.length === 0) {
     return NextResponse.json({ vulnerabilities: [] });
+  }
+
+  const budget = await consumeUsageBudget({
+    userId: session.user.id,
+    feature: "security-scan",
+    plan,
+    limit: Math.max(10, Math.floor(caps.aiRequestsPerHour / 3)),
+    metadata: { endpoint: "/api/user/security-scan" },
+  });
+  if (!budget.allowed) {
+    return NextResponse.json(
+      { error: "Security scan limit reached for this hour." },
+      { status: 429 }
+    );
   }
 
   try {
@@ -74,7 +92,15 @@ export async function POST(req: Request) {
         })),
       }));
 
-    return NextResponse.json({ vulnerabilities, scanned: safeDeps.length });
+    return NextResponse.json({
+      vulnerabilities,
+      scanned: safeDeps.length,
+      meta: {
+        plan,
+        packageLimit: caps.maxPackagesPerSecurityScan,
+        rateRemaining: budget.remaining,
+      },
+    });
   } catch (error) {
     console.error("Security scan error:", error);
     return NextResponse.json({ error: "Scan failed" }, { status: 500 });

@@ -159,6 +159,29 @@ DATABASE_URL=postgresql://user:password@localhost:5432/gitscope
 
 # --- GitHub API (optional, raises rate limit from 60 → 5000 req/hr) ---
 GITHUB_TOKEN=ghp_your_personal_access_token
+# Optional: true enables shared fallback to GITHUB_TOKEN when user token is missing.
+GITHUB_SHARED_FALLBACK=false
+
+# --- Encrypt stored user GitHub PATs (required in production) ---
+# openssl rand -base64 32
+GITHUB_PAT_ENCRYPTION_KEY=your_32_byte_base64_key
+
+# --- AI tiering and provider ---
+AI_PROVIDER=anthropic
+# Format: email:plan,email2:plan where plan is professional|team|enterprise
+AI_TIER_OVERRIDES=
+AI_TEAM_DOMAINS=
+AI_ENTERPRISE_DOMAINS=
+# Optional production admins allowed to patch tiers via /api/user/tier
+AI_TIER_ADMIN_EMAILS=
+
+# --- AI async jobs (Vercel cron worker) ---
+# Optional secret for /api/internal/ai-jobs/cron (Authorization: Bearer <secret>)
+AI_JOBS_CRON_SECRET=
+# Optional Vercel cron secret alias (usually same value)
+CRON_SECRET=
+# Jobs processed per cron run
+AI_JOBS_CRON_BATCH=2
 ```
 
 **Setting up GitHub OAuth:**

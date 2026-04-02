@@ -5,7 +5,6 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 import { ROUTES } from "@/constants/routes";
-import { cn } from "@/lib/utils";
 import { MaterialIcon } from "@/components/material-icon";
 import Link from "next/link";
 import type { Metadata } from "next";

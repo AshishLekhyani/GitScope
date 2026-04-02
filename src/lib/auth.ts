@@ -121,7 +121,7 @@ export const authOptions: NextAuthOptions = {
           
           if (!userExists) {
             console.warn(`▲ [Security] Active session for deleted user ${token.id} invalidated.`);
-            return null as any; // Trigger session invalidation
+            return null as unknown as typeof session; // Trigger session invalidation
           }
         } catch (error) {
           console.error("▲ [Security] Failed to verify user existence during session:", error);

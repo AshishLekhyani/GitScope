@@ -1,32 +1,86 @@
 import { getServerSession } from "next-auth/next";
+import type { Session } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  decryptGitHubToken,
+  encryptGitHubToken,
+  isEncryptedGitHubToken,
+} from "@/lib/github-token-crypto";
 
-export async function getGitHubToken() {
-  const session = await getServerSession(authOptions);
+export type GitHubTokenSource =
+  | "session-oauth"
+  | "user-pat"
+  | "shared-env"
+  | "none";
+
+function defaultAllowEnvFallback(): boolean {
+  return process.env.GITHUB_SHARED_FALLBACK === "1" || process.env.GITHUB_SHARED_FALLBACK === "true";
+}
+
+export async function getGitHubTokenWithSource(options?: {
+  allowEnvFallback?: boolean;
+  session?: Session | null;
+  userId?: string;
+}) {
+  const {
+    allowEnvFallback = defaultAllowEnvFallback(),
+    session: providedSession,
+    userId: explicitUserId,
+  } = options ?? {};
+  const session = providedSession ?? (await getServerSession(authOptions));
+  const userId = explicitUserId ?? session?.user?.id;
 
   // Only use session accessToken if the active provider is GitHub
-  if (session?.accessToken && session?.provider === "github") {
-    return session.accessToken;
+  const provider = session?.provider ?? (session?.accessToken ? "github" : undefined);
+  if (session?.accessToken && provider === "github") {
+    return { token: session.accessToken, source: "session-oauth" as GitHubTokenSource };
   }
 
   // If user has a stored personal GitHub API key, use that next
-  if (session?.user?.id) {
+  if (userId) {
     try {
       const user = await prisma.user.findUnique({
-        where: { id: session.user.id },
+        where: { id: userId },
         select: { githubApiKey: true },
       });
-      if (user?.githubApiKey) return user.githubApiKey;
+
+      if (user?.githubApiKey) {
+        const decrypted = decryptGitHubToken(user.githubApiKey);
+        if (decrypted) {
+          // Opportunistic one-way migration for legacy plaintext rows.
+          if (!isEncryptedGitHubToken(user.githubApiKey)) {
+            const encrypted = encryptGitHubToken(decrypted);
+            if (encrypted) {
+              await prisma.user
+                .update({
+                  where: { id: userId },
+                  data: { githubApiKey: encrypted },
+                })
+                .catch(() => {});
+            }
+          }
+          return { token: decrypted, source: "user-pat" as GitHubTokenSource };
+        }
+      }
     } catch {
-      // DB unavailable — fall through to env fallback
+      // DB unavailable - fall through to env fallback
     }
   }
 
   // Fall back to shared env token (development/demo)
-  if (process.env.GITHUB_TOKEN) {
-    return process.env.GITHUB_TOKEN;
+  if (allowEnvFallback && process.env.GITHUB_TOKEN) {
+    return { token: process.env.GITHUB_TOKEN, source: "shared-env" as GitHubTokenSource };
   }
 
-  return null;
+  return { token: null, source: "none" as GitHubTokenSource };
+}
+
+export async function getGitHubToken(options?: {
+  allowEnvFallback?: boolean;
+  session?: Session | null;
+  userId?: string;
+}) {
+  const { token } = await getGitHubTokenWithSource(options);
+  return token;
 }

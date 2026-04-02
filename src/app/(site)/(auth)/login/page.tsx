@@ -39,7 +39,7 @@ function AuthForm() {
       const emailParam = searchParams.get("email");
       if (emailParam) setEmail(emailParam);
     }
-  }, []);
+  }, [searchParams]);
 
   // Sync mode from query param
   useEffect(() => {
@@ -285,9 +285,9 @@ function AuthForm() {
                     <div className="flex items-center justify-between px-1">
                       <Label htmlFor="pass" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Password</Label>
                       {mode === "login" && (
-                        <a href="/forgot-password" className="text-[10px] font-bold text-primary hover:underline">
+                        <Link href="/forgot-password" className="text-[10px] font-bold text-primary hover:underline">
                           Forgot?
-                        </a>
+                        </Link>
                       )}
                     </div>
                     <div className="relative">

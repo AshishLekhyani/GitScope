@@ -36,31 +36,39 @@ export async function POST(request: Request) {
     if (!validatePassword(password)) return new NextResponse("Password does not meet security requirements.", { status: 400 });
 
     const normalizedEmail = email.trim().toLowerCase();
+    const displayName = String(name).slice(0, 100);
 
-    // Block if a verified user already exists with this email
+    // Avoid account enumeration: if user exists, respond with the same success shape.
     const existingUser = await prisma.user.findUnique({
       where: { email: normalizedEmail },
-      select: { emailVerified: true },
+      select: { id: true },
     });
+
     if (existingUser) {
-      return new NextResponse("Email already exists", { status: 400 });
+      return NextResponse.json({
+        ok: true,
+        message: "If registration is available for this email, a verification link has been sent.",
+      });
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + VERIFY_EXPIRY_MS);
 
-    // Upsert pending signup — replaces any previous unverified attempt for this email
+    // Upsert pending signup - replaces any previous unverified attempt for this email
     await prisma.pendingSignup.upsert({
       where: { email: normalizedEmail },
-      update: { name, hashedPassword, token, expires },
-      create: { email: normalizedEmail, name, hashedPassword, token, expires },
+      update: { name: displayName, hashedPassword, token, expires },
+      create: { email: normalizedEmail, name: displayName, hashedPassword, token, expires },
     });
 
-    const { subject, html } = buildVerificationEmail(name, token);
+    const { subject, html } = buildVerificationEmail(displayName, token);
     await sendEmail({ to: normalizedEmail, subject, html });
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      ok: true,
+      message: "If registration is available for this email, a verification link has been sent.",
+    });
   } catch (error) {
     console.error("REGISTRATION_ERROR", error);
     return new NextResponse("Internal Error", { status: 500 });

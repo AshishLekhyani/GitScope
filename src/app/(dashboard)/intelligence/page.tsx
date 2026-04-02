@@ -1,10 +1,10 @@
-export const dynamic = 'force-dynamic';
+export const dynamic = "force-dynamic";
 
 import { requireTier } from "@/lib/auth-tier";
 import { IntelligenceClient } from "@/features/intelligence/intelligence-client";
 
 export default async function IntelligencePage() {
-  // Hard server-side gate — middleware catches most cases, this is the final lock
-  await requireTier("github");
+  // Intelligence hub is available to all signed-in users with tiered capabilities.
+  await requireTier("credentials");
   return <IntelligenceClient />;
 }

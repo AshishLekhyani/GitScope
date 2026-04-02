@@ -31,10 +31,10 @@ export function useTier(): AuthTier {
  * "github" = GitHub OAuth (most features)
  */
 export const FEATURE_TIERS: Record<string, { minTier: AuthTier; label: string }> = {
-  "intelligence-hub":      { minTier: "github", label: "Intelligence Hub" },
-  "pr-risk":               { minTier: "github", label: "PR Risk Predictor" },
-  "dependency-radar":      { minTier: "github", label: "Dependency Radar" },
-  "velocity-chart":        { minTier: "github", label: "Velocity Chart" },
+  "intelligence-hub":      { minTier: "credentials", label: "Intelligence Hub" },
+  "pr-risk":               { minTier: "credentials", label: "PR Risk Predictor" },
+  "dependency-radar":      { minTier: "credentials", label: "Dependency Radar" },
+  "velocity-chart":        { minTier: "credentials", label: "Velocity Chart" },
   "activity-feed":         { minTier: "github", label: "Live Activity Feed" },
   "notifications":         { minTier: "github", label: "GitHub Notifications" },
   "releases":              { minTier: "credentials", label: "Release Tracker" },

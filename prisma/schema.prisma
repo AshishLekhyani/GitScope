@@ -7,6 +7,25 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum AiTier {
+  free
+  professional
+  team
+  enterprise
+}
+
+enum AiJobType {
+  deepImpact
+}
+
+enum AiJobStatus {
+  queued
+  running
+  completed
+  failed
+  canceled
+}
+
 model Account {
   id                 String  @id @default(cuid())
   userId             String  @map("user_id")
@@ -47,6 +66,8 @@ model User {
   bio           String?
   githubHandle  String?
   githubApiKey  String?   // Personal GitHub token for higher rate limits
+  aiTier        AiTier    @default(free) @map("ai_tier")
+  aiTierUpdatedAt DateTime @default(now()) @map("ai_tier_updated_at")
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   
@@ -54,6 +75,8 @@ model User {
   sessions      Session[]
   searchHistories SearchHistory[]
   notifications Notification[]
+  aiUsageEvents AiUsageEvent[]
+  aiAnalysisJobs AiAnalysisJob[]
   
   // Custom GitScope relations can be added here
   // e.g., Profile, Organizations, Projects
@@ -109,6 +132,42 @@ model VerificationToken {
 
   @@unique([identifier, token])
   @@map("verification_tokens")
+}
+
+model AiUsageEvent {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  feature   String
+  plan      AiTier
+  units     Int      @default(1)
+  metadata  Json?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId, feature, createdAt])
+  @@index([createdAt])
+  @@map("ai_usage_events")
+}
+
+model AiAnalysisJob {
+  id          String      @id @default(cuid())
+  userId      String      @map("user_id")
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type        AiJobType
+  status      AiJobStatus @default(queued)
+  plan        AiTier
+  input       Json
+  result      Json?
+  error       String?
+  attempts    Int         @default(0)
+  startedAt   DateTime?   @map("started_at")
+  completedAt DateTime?   @map("completed_at")
+  createdAt   DateTime    @default(now()) @map("created_at")
+  updatedAt   DateTime    @updatedAt @map("updated_at")
+
+  @@index([userId, createdAt])
+  @@index([status, createdAt])
+  @@map("ai_analysis_jobs")
 }
 // identifier prefixes:
 //   "verify:{email}"  — email address verification (expires 24h)

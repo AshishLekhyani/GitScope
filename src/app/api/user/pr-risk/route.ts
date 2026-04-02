@@ -1,8 +1,18 @@
-import { getGitHubToken } from "@/lib/github-auth";
 import { getServerSession } from "next-auth";
+import { NextResponse } from "next/server";
 import { authOptions } from "@/lib/auth";
 import { isValidRepo } from "@/lib/validate-repo";
-import { NextResponse } from "next/server";
+import { analyzePRBatch, hasAIProvider, PRSummary } from "@/lib/ai";
+import { getCapabilitiesForPlan, resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { getGitHubTokenWithSource } from "@/lib/github-auth";
+import { consumeUsageBudget } from "@/lib/ai-usage";
+
+function ghHeaders(token?: string | null): HeadersInit {
+  return {
+    Accept: "application/vnd.github.v3+json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -10,88 +20,189 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const token = await getGitHubToken();
-  if (!token) {
-    return NextResponse.json({ error: "GitHub token required" }, { status: 401 });
-  }
+  const plan = await resolveAiPlanFromSessionDb(session);
+  const caps = getCapabilitiesForPlan(plan);
 
   const { searchParams } = new URL(req.url);
   const repo = searchParams.get("repo");
   if (!repo) return NextResponse.json({ error: "No repository specified" }, { status: 400 });
   if (!isValidRepo(repo)) return NextResponse.json({ error: "Invalid repository format" }, { status: 400 });
 
-  try {
-    // 1. Fetch Open Pull Requests
-    const res = await fetch(`https://api.github.com/repos/${repo}/pulls?state=open&per_page=10`, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Accept": "application/vnd.github.v3+json",
+  const aiBudget = await consumeUsageBudget({
+    userId: session.user.id,
+    feature: "pr-risk",
+    plan,
+    limit: caps.aiRequestsPerHour,
+    metadata: { endpoint: "/api/user/pr-risk" },
+  });
+  if (!aiBudget.allowed) {
+    return NextResponse.json(
+      {
+        error: "AI analysis rate limit reached for your current plan.",
+        upgradeHint: "Upgrade your AI tier or wait for hourly reset.",
       },
-    });
+      { status: 429 }
+    );
+  }
 
-    if (!res.ok) return NextResponse.json({ error: "Failed to fetch PRs" }, { status: res.status });
+  const { token, source: tokenSource } = await getGitHubTokenWithSource({
+    allowEnvFallback: caps.allowSharedTokenFallback,
+    session,
+  });
 
-    const pulls = await res.json();
+  try {
+    const pullsRes = await fetch(
+      `https://api.github.com/repos/${repo}/pulls?state=open&per_page=${caps.maxOpenPRsPerRepo}`,
+      { headers: ghHeaders(token) }
+    );
 
-    type GitHubPR = { id: number; number: number; title: string; url: string; user: { login: string; avatar_url: string; url: string } };
-    // 2. Score each PR based on heuristics (AI Prediction)
-    const scoredPulls = await Promise.all(
-      (pulls as GitHubPR[]).map(async (p) => {
-        // Only follow URLs that are GitHub API endpoints
-        const GITHUB_API = "https://api.github.com/";
-        if (!p.url.startsWith(GITHUB_API) || !p.user.url.startsWith(GITHUB_API)) {
+    if (!pullsRes.ok) {
+      return NextResponse.json(
+        { error: "Failed to fetch PRs", githubStatus: pullsRes.status },
+        { status: pullsRes.status }
+      );
+    }
+
+    type RawPR = {
+      id: number;
+      number: number;
+      title: string;
+      body: string | null;
+      url: string;
+      user: { login: string; avatar_url: string; url: string };
+    };
+
+    type PRDetails = {
+      additions?: number;
+      deletions?: number;
+      changed_files?: number;
+    };
+
+    type GitHubUserProfile = {
+      public_repos?: number;
+    };
+
+    const pulls: RawPR[] = await pullsRes.json();
+    const githubApiPrefix = "https://api.github.com/";
+
+    const enriched = await Promise.all(
+      pulls.map(async (pull) => {
+        if (!pull.url.startsWith(githubApiPrefix) || !pull.user.url.startsWith(githubApiPrefix)) {
           return null;
         }
 
-        // Fetch PR specific details (files changed)
-        const detailRes = await fetch(p.url, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            "Accept": "application/vnd.github.v3+json",
-          },
-        });
-        const details = await detailRes.json();
+        const [detailRes, filesRes, userRes] = await Promise.all([
+          fetch(pull.url, { headers: ghHeaders(token) }),
+          fetch(`${pull.url}/files?per_page=50`, { headers: ghHeaders(token) }),
+          fetch(pull.user.url, { headers: ghHeaders(token) }),
+        ]);
 
-        // Heuristic 1: Size Risk (Massive changes)
-        const sizeRisk = Math.min(40, (details.additions + details.deletions) / 50);
+        const [details, filesData, userData] = await Promise.all([
+          detailRes.ok
+            ? (detailRes.json() as Promise<PRDetails>)
+            : Promise.resolve({} as PRDetails),
+          filesRes.ok ? filesRes.json() : Promise.resolve([]),
+          userRes.ok
+            ? (userRes.json() as Promise<GitHubUserProfile>)
+            : Promise.resolve({} as GitHubUserProfile),
+        ]);
 
-        // Heuristic 2: File Churn (Many files changed)
-        const fileRisk = Math.min(30, details.changed_files * 2);
+        const fileNames: string[] = Array.isArray(filesData)
+          ? filesData
+              .map((f: { filename?: string }) => f.filename)
+              .filter((f): f is string => Boolean(f))
+          : [];
 
-        // Heuristic 3: Contributor Risk (Junior or New)
-        const userRes = await fetch(p.user.url, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const userData = await userRes.json();
-        const contributorRisk = userData.public_repos < 5 ? 20 : 5;
+        const additions = details.additions ?? 0;
+        const deletions = details.deletions ?? 0;
+        const changedFiles = details.changed_files ?? 0;
 
-        // Heuristic 4: Dependency Risk (Touches package.json or go.mod)
-        // (Simplified: We usually check filenames here)
-        const touchesDeps = false; // logic would inspect files[]
+        const sizeRisk = Math.min(40, (additions + deletions) / 50);
+        const fileRisk = Math.min(30, changedFiles * 2);
+        const contributorRisk = (userData.public_repos ?? 0) < 5 ? 20 : 5;
+        const depRisk = fileNames.some((f) =>
+          /package\.json|go\.mod|requirements\.txt|Cargo\.toml|pom\.xml|Gemfile/i.test(f)
+        )
+          ? 10
+          : 0;
 
-        const totalRisk = Math.min(100, sizeRisk + fileRisk + contributorRisk + (touchesDeps ? 10 : 0));
+        const riskScore = Math.round(Math.min(100, sizeRisk + fileRisk + contributorRisk + depRisk));
 
         return {
-          id: p.id,
-          number: p.number,
-          title: p.title,
-          user: p.user.login,
-          avatar: p.user.avatar_url,
-          additions: details.additions,
-          deletions: details.deletions,
-          changedFiles: details.changed_files,
-          riskScore: Math.round(totalRisk),
-          riskLevel: totalRisk > 60 ? "CRITICAL" : totalRisk > 30 ? "MODERATE" : "STABLE",
-          analysis: totalRisk > 60 
-            ? "High architectural churn detected. Recommend multi-senior review."
-            : totalRisk > 30 
-              ? "Moderate scope. Monitor impact on downstream dependencies."
-              : "Standard refinement. Low structural impact predicted."
+          id: pull.id,
+          number: pull.number,
+          title: pull.title,
+          body: pull.body ?? "",
+          user: pull.user.login,
+          avatar: pull.user.avatar_url,
+          additions,
+          deletions,
+          changedFiles,
+          fileNames,
+          userRepos: userData.public_repos ?? 0,
+          riskScore,
+          riskLevel:
+            riskScore > 80 ? "CRITICAL" : riskScore > 60 ? "HIGH" : riskScore > 35 ? "MODERATE" : "STABLE",
         };
       })
     );
 
-    return NextResponse.json(scoredPulls.filter(Boolean));
+    const validPRs = enriched.filter(Boolean) as NonNullable<(typeof enriched)[0]>[];
+
+    const summaries: PRSummary[] = validPRs.map((pr) => ({
+      number: pr.number,
+      title: pr.title,
+      body: pr.body,
+      user: pr.user,
+      userRepos: pr.userRepos,
+      additions: pr.additions,
+      deletions: pr.deletions,
+      changedFiles: pr.changedFiles,
+      fileNames: pr.fileNames,
+      riskScore: pr.riskScore,
+    }));
+
+    const analysisMap = await analyzePRBatch(summaries, { plan });
+
+    const items = validPRs.map((pr) => {
+      const ai = analysisMap.get(pr.number);
+      return {
+        id: pr.id,
+        number: pr.number,
+        title: pr.title,
+        user: pr.user,
+        avatar: pr.avatar,
+        additions: pr.additions,
+        deletions: pr.deletions,
+        changedFiles: pr.changedFiles,
+        riskScore: pr.riskScore,
+        riskLevel: pr.riskLevel as "CRITICAL" | "HIGH" | "MODERATE" | "STABLE",
+        headline: ai?.headline ?? "",
+        analysis: ai?.analysis ?? "",
+        flags: ai?.flags ?? [],
+        hotFiles: ai?.hotFiles ?? [],
+      };
+    });
+
+    const aiMode: "heuristic" | "single-pass" | "multi-agent" = !hasAIProvider()
+      ? "heuristic"
+      : caps.aiAgentDepth >= 2
+      ? "multi-agent"
+      : "single-pass";
+
+    const estimatedGithubCalls = 1 + validPRs.length * 3;
+
+    return NextResponse.json({
+      items,
+      meta: {
+        plan,
+        aiMode,
+        tokenSource,
+        prLimit: caps.maxOpenPRsPerRepo,
+        rateRemaining: aiBudget.remaining,
+        githubCalls: estimatedGithubCalls,
+      },
+    });
   } catch (error) {
     console.error("PR Risk API Error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });

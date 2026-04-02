@@ -80,13 +80,7 @@ export function TrendingReposPanel() {
           </p>
         </div>
         {(is401 || isRate) && (
-          <a
-            href="/api/auth/signin/github"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold"
-          >
-            <MaterialIcon name="hub" size={18} />
-            Connect GitHub Account
-          </a>
+          <ConnectGitHubButton callbackUrl={ROUTES.trending} />
         )}
         {!is401 && !isRate && (
           <button
@@ -341,12 +335,12 @@ export function TrendingReposPanel() {
                 </Link>
               ))}
             </div>
-            <a
+            <Link
               href="/trending"
               className="mt-4 block w-full text-center font-mono text-[9px] font-bold tracking-widest text-primary uppercase transition-colors hover:text-primary/80"
             >
               View all trending →
-            </a>
+            </Link>
           </div>
 
           {/* Sector Trends — from real language data */}

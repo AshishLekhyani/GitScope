@@ -12,10 +12,29 @@ import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfile, setAvatarUrl } from "@/store/slices/userSlice";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
-import { useSession, signOut } from "next-auth/react";
+import { useSession, signIn, signOut } from "next-auth/react";
 
 type SettingsTab = "profile" | "account" | "appearance" | "workspace";
 type ThemeOption = "light" | "dark" | "system";
+type AiPlan = "free" | "professional" | "team" | "enterprise";
+
+interface AiUsageSnapshot {
+  total: number;
+  byFeature: Record<string, number>;
+  since: string;
+}
+
+interface AiJobSummary {
+  id: string;
+  type: string;
+  status: "queued" | "running" | "completed" | "failed" | "canceled";
+  plan: AiPlan;
+  attempts: number;
+  error: string | null;
+  createdAt: string;
+  startedAt: string | null;
+  completedAt: string | null;
+}
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "profile", label: "Profile", icon: "person" },
@@ -66,6 +85,21 @@ export function SettingsPanel() {
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
   const [deleting, setDeleting] = useState(false);
 
+  // AI plan + usage ops state
+  const [tierInfo, setTierInfo] = useState<{
+    resolvedPlan: AiPlan;
+    storedPlan: AiPlan;
+    aiTierUpdatedAt: string | null;
+  } | null>(null);
+  const [usageSnapshot, setUsageSnapshot] = useState<AiUsageSnapshot | null>(null);
+  const [jobHistory, setJobHistory] = useState<AiJobSummary[]>([]);
+  const [aiOpsLoading, setAiOpsLoading] = useState(false);
+  const [aiOpsError, setAiOpsError] = useState<string | null>(null);
+  const [tierTargetUserId, setTierTargetUserId] = useState("");
+  const [tierTargetPlan, setTierTargetPlan] = useState<AiPlan>("professional");
+  const [tierSaving, setTierSaving] = useState(false);
+  const [tierMsg, setTierMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   useEffect(() => {
     setMounted(true);
     const params = new URLSearchParams(window.location.search);
@@ -104,8 +138,56 @@ export function SettingsPanel() {
   // Sync local avatar input when Redux value changes (e.g. "Use OAuth photo" button or default avatar click)
   useEffect(() => {
     setAvatarUrlInput(avatarUrl ?? "");
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [avatarUrl]);
+
+  useEffect(() => {
+    if (activeTab !== "workspace" || !session?.user?.id) return;
+
+    let cancelled = false;
+    const loadAiOps = async () => {
+      setAiOpsLoading(true);
+      setAiOpsError(null);
+      try {
+        const [tierRes, capsRes, jobsRes] = await Promise.all([
+          fetch("/api/user/tier", { cache: "no-store" }),
+          fetch("/api/user/ai-capabilities", { cache: "no-store" }),
+          fetch("/api/user/ai-jobs", { cache: "no-store" }),
+        ]);
+
+        if (!cancelled && tierRes.ok) {
+          const tierData = await tierRes.json();
+          setTierInfo({
+            resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
+            storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
+            aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
+          });
+        }
+
+        if (!cancelled && capsRes.ok) {
+          const capsData = await capsRes.json();
+          setUsageSnapshot(capsData.usage ?? { total: 0, byFeature: {}, since: new Date().toISOString() });
+        }
+
+        if (!cancelled && jobsRes.ok) {
+          const jobsData = await jobsRes.json();
+          setJobHistory((jobsData.jobs ?? []) as AiJobSummary[]);
+        }
+
+        if (!tierRes.ok && !capsRes.ok && !jobsRes.ok && !cancelled) {
+          setAiOpsError("Could not load AI settings right now.");
+        }
+      } catch {
+        if (!cancelled) setAiOpsError("Could not load AI settings right now.");
+      } finally {
+        if (!cancelled) setAiOpsLoading(false);
+      }
+    };
+
+    loadAiOps();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeTab, session?.user?.id]);
 
   const handleDiscard = () => {
     fetch("/api/user/profile")
@@ -199,6 +281,50 @@ export function SettingsPanel() {
       setApiKeyMsg({ type: "error", text: "An error occurred. Please try again." });
     } finally {
       setApiKeySaving(false);
+    }
+  };
+
+  const handleTierUpdate = async () => {
+    setTierSaving(true);
+    setTierMsg(null);
+    try {
+      const payload: { plan: AiPlan; userId?: string } = { plan: tierTargetPlan };
+      if (tierTargetUserId.trim()) payload.userId = tierTargetUserId.trim();
+
+      const res = await fetch("/api/user/tier", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setTierMsg({ type: "error", text: data.error ?? "Failed to update tier." });
+        return;
+      }
+
+      setTierMsg({ type: "success", text: "Tier updated successfully." });
+
+      const [tierRes, capsRes] = await Promise.all([
+        fetch("/api/user/tier", { cache: "no-store" }),
+        fetch("/api/user/ai-capabilities", { cache: "no-store" }),
+      ]);
+      if (tierRes.ok) {
+        const tierData = await tierRes.json();
+        setTierInfo({
+          resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
+          storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
+          aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
+        });
+      }
+      if (capsRes.ok) {
+        const capsData = await capsRes.json();
+        setUsageSnapshot(capsData.usage ?? { total: 0, byFeature: {}, since: new Date().toISOString() });
+      }
+    } catch {
+      setTierMsg({ type: "error", text: "Failed to update tier." });
+    } finally {
+      setTierSaving(false);
     }
   };
 
@@ -476,13 +602,18 @@ export function SettingsPanel() {
                             <span key={f} className="text-[10px] font-bold bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20">{f}</span>
                           ))}
                         </div>
-                        <a
-                          href={`/api/auth/signin/github?callbackUrl=${encodeURIComponent("/settings?tab=account&connected=github")}`}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            signIn("github", {
+                              callbackUrl: "/settings?tab=account&connected=github",
+                            })
+                          }
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 active:scale-[0.98] transition-all"
                         >
                           <MaterialIcon name="hub" size={14} />
                           Connect GitHub Account
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -822,27 +953,200 @@ export function SettingsPanel() {
               </span>
               {provider !== "github" && (
                 <p className="font-mono text-[9px] text-muted-foreground">
-                  <a href="/api/auth/signin/github" className="text-primary underline">
+                  <button
+                    type="button"
+                    onClick={() => signIn("github", { callbackUrl: "/settings?tab=account" })}
+                    className="text-primary underline"
+                  >
                     Connect GitHub
-                  </a>{" "}
+                  </button>{" "}
                   to unlock Organization Pulse, Intelligence, and live feeds.
                 </p>
               )}
             </div>
-          </div>
+	          </div>
 
-          {/* Personal GitHub API Key */}
-          {provider !== "github" && (
+	          {/* AI Plan & Usage */}
+	          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-4">
+	            <div className="flex items-center justify-between gap-3">
+	              <div>
+	                <h3 className="font-heading text-lg font-bold text-foreground">AI Plan & Usage</h3>
+	                <p className="text-xs text-muted-foreground">
+	                  Manage plan tier and monitor AI consumption and job processing.
+	                </p>
+	              </div>
+	              <Button
+	                type="button"
+	                variant="outline"
+	                size="sm"
+	                onClick={() => {
+	                  if (session?.user?.id) {
+	                    setAiOpsLoading(true);
+	                    Promise.all([
+	                      fetch("/api/user/tier", { cache: "no-store" }),
+	                      fetch("/api/user/ai-capabilities", { cache: "no-store" }),
+	                      fetch("/api/user/ai-jobs", { cache: "no-store" }),
+	                    ])
+	                      .then(async ([tierRes, capsRes, jobsRes]) => {
+	                        if (tierRes.ok) {
+	                          const tierData = await tierRes.json();
+	                          setTierInfo({
+	                            resolvedPlan: (tierData.resolvedPlan ?? "free") as AiPlan,
+	                            storedPlan: (tierData.storedPlan ?? "free") as AiPlan,
+	                            aiTierUpdatedAt: tierData.aiTierUpdatedAt ?? null,
+	                          });
+	                        }
+	                        if (capsRes.ok) {
+	                          const capsData = await capsRes.json();
+	                          setUsageSnapshot(capsData.usage ?? { total: 0, byFeature: {}, since: new Date().toISOString() });
+	                        }
+	                        if (jobsRes.ok) {
+	                          const jobsData = await jobsRes.json();
+	                          setJobHistory((jobsData.jobs ?? []) as AiJobSummary[]);
+	                        }
+	                      })
+	                      .catch(() => setAiOpsError("Could not refresh AI data."))
+	                      .finally(() => setAiOpsLoading(false));
+	                  }
+	                }}
+	                className="font-mono text-[10px] uppercase tracking-widest"
+	              >
+	                {aiOpsLoading ? "Refreshing..." : "Refresh"}
+	              </Button>
+	            </div>
+
+	            {aiOpsError && (
+	              <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+	                {aiOpsError}
+	              </div>
+	            )}
+
+	            <div className="grid gap-3 md:grid-cols-3">
+	              <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Resolved Plan</p>
+	                <p className="text-sm font-semibold mt-1 capitalize">{tierInfo?.resolvedPlan ?? "free"}</p>
+	              </div>
+	              <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Stored Plan</p>
+	                <p className="text-sm font-semibold mt-1 capitalize">{tierInfo?.storedPlan ?? "free"}</p>
+	              </div>
+	              <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Calls This Window</p>
+	                <p className="text-sm font-semibold mt-1">{usageSnapshot?.total ?? 0}</p>
+	              </div>
+	            </div>
+
+	            {tierInfo?.aiTierUpdatedAt && (
+	              <p className="font-mono text-[9px] uppercase tracking-widest text-muted-foreground">
+	                Plan updated: {new Date(tierInfo.aiTierUpdatedAt).toLocaleString()}
+	              </p>
+	            )}
+
+	            <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3 space-y-2">
+	              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Usage By Feature</p>
+	              {usageSnapshot && Object.keys(usageSnapshot.byFeature).length > 0 ? (
+	                <div className="grid gap-1 md:grid-cols-2">
+	                  {Object.entries(usageSnapshot.byFeature)
+	                    .sort((a, b) => b[1] - a[1])
+	                    .map(([feature, count]) => (
+	                      <div key={feature} className="flex items-center justify-between text-xs">
+	                        <span className="capitalize text-muted-foreground">{feature.replace(/-/g, " ")}</span>
+	                        <span className="font-semibold">{count}</span>
+	                      </div>
+	                    ))}
+	                </div>
+	              ) : (
+	                <p className="text-xs text-muted-foreground">No AI usage recorded yet in the current window.</p>
+	              )}
+	            </div>
+
+	            <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3 space-y-2">
+	              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Recent AI Jobs</p>
+	              {jobHistory.length === 0 ? (
+	                <p className="text-xs text-muted-foreground">No jobs yet.</p>
+	              ) : (
+	                <div className="space-y-2">
+	                  {jobHistory.slice(0, 6).map((job) => (
+	                    <div key={job.id} className="flex items-center justify-between rounded-md border border-outline-variant/15 px-2 py-1.5 text-xs">
+	                      <div className="min-w-0">
+	                        <p className="font-mono truncate">{job.id}</p>
+	                        <p className="text-muted-foreground capitalize">{job.type} · {job.plan}</p>
+	                      </div>
+	                      <span className={cn(
+	                        "px-2 py-0.5 rounded-full text-[10px] font-bold uppercase",
+	                        job.status === "completed" && "bg-emerald-500/10 text-emerald-500",
+	                        job.status === "failed" && "bg-destructive/10 text-destructive",
+	                        (job.status === "queued" || job.status === "running") && "bg-amber-500/10 text-amber-500"
+	                      )}>
+	                        {job.status}
+	                      </span>
+	                    </div>
+	                  ))}
+	                </div>
+	              )}
+	            </div>
+
+	            <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-3">
+	              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-indigo-500">
+	                Tier Override (Admin / Local)
+	              </p>
+	              <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
+	                <input
+	                  type="text"
+	                  value={tierTargetUserId}
+	                  onChange={(e) => setTierTargetUserId(e.target.value)}
+	                  placeholder="Target user id (optional, blank = me)"
+	                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
+	                />
+	                <select
+	                  value={tierTargetPlan}
+	                  onChange={(e) => setTierTargetPlan(e.target.value as AiPlan)}
+	                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
+	                >
+	                  <option value="free">Free</option>
+	                  <option value="professional">Professional</option>
+	                  <option value="team">Team</option>
+	                  <option value="enterprise">Enterprise</option>
+	                </select>
+	                <Button
+	                  type="button"
+	                  onClick={handleTierUpdate}
+	                  disabled={tierSaving}
+	                  className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest"
+	                >
+	                  {tierSaving ? "Updating..." : "Update Tier"}
+	                </Button>
+	              </div>
+	              {tierMsg && (
+	                <p className={cn("text-xs", tierMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>
+	                  {tierMsg.text}
+	                </p>
+	              )}
+	            </div>
+	          </div>
+
+	          {/* Personal GitHub API Key */}
+	          {provider !== "github" && (
             <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
               <h3 className="font-heading text-lg font-bold text-foreground mb-1">Personal GitHub Token</h3>
-              <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
-                Add your own{" "}
-                <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary underline">
-                  GitHub Personal Access Token
-                </a>{" "}
-                to raise the API rate limit from 60 to 5,000 req/hr without connecting GitHub OAuth. Tokens are stored encrypted and never exposed.
-              </p>
-              {hasGithubApiKey ? (
+	              <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
+	                Add your own{" "}
+	                <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+	                  GitHub Personal Access Token
+	                </a>{" "}
+	                to raise the API rate limit from 60 to 5,000 req/hr without connecting GitHub OAuth. Tokens are stored encrypted and never exposed.
+	              </p>
+	              <div className="mb-5 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3">
+	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
+	                  Quick Setup
+	                </p>
+	                <ol className="list-decimal pl-4 space-y-1 text-xs text-muted-foreground">
+	                  <li>Open GitHub token settings and create a personal access token.</li>
+	                  <li>Copy the token value once and paste it below.</li>
+	                  <li>Click Save Token and verify status turns active.</li>
+	                </ol>
+	              </div>
+	              {hasGithubApiKey ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
                     <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />

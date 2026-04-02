@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -10,7 +9,6 @@ interface OrgSearchBarProps {
 }
 
 export function OrgSearchBar({ suggestions }: OrgSearchBarProps) {
-  const router = useRouter();
   const [q, setQ] = useState("");
 
   const analyze = () => {

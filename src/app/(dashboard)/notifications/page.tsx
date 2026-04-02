@@ -192,13 +192,13 @@ export default async function NotificationsPage() {
               feed — pull requests, issues, releases, and more.
             </p>
           </div>
-          <a
+          <Link
             href="/api/auth/signin/github"
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
           >
             <MaterialIcon name="link" size={16} className="text-white" />
             Connect GitHub Account
-          </a>
+          </Link>
         </div>
       )}
 
