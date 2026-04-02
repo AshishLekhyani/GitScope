@@ -26,6 +26,9 @@ export function DependencyRadar({ repos }: { repos: string[] }) {
   const [data, setData] = useState<DependencyData | null>(null);
   const [loading, setLoading] = useState(false);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
+  const [scanResults, setScanResults] = useState<{ package: string; advisories: { id: number; severity: string; title: string; url: string; fixedIn: string }[] }[]>([]);
+  const [scanError, setScanError] = useState("");
 
   useEffect(() => {
     if (repos.length === 0) return;
@@ -46,6 +49,28 @@ export function DependencyRadar({ repos }: { repos: string[] }) {
 
     fetchMap();
   }, [repos]);
+
+  const handleSecurityScan = async () => {
+    const allDeps = data?.nodes.filter(n => n.type === "library").map(n => n.id) ?? [];
+    if (allDeps.length === 0 || scanState === "scanning") return;
+    setScanState("scanning");
+    setScanError("");
+    setScanResults([]);
+    try {
+      const res = await fetch("/api/user/security-scan", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ deps: allDeps }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "Scan failed");
+      setScanResults(json.vulnerabilities ?? []);
+      setScanState("done");
+    } catch (e) {
+      setScanError(e instanceof Error ? e.message : "Scan failed");
+      setScanState("idle");
+    }
+  };
 
   if (loading) {
     return (
@@ -211,12 +236,83 @@ export function DependencyRadar({ repos }: { repos: string[] }) {
               </p>
            </div>
            
-           <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-600 font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all">
-              Run Security Simulation
-              <MaterialIcon name="bolt" size={14} />
+           <button
+             type="button"
+             onClick={handleSecurityScan}
+             disabled={scanState === "scanning" || !data || data.nodes.filter(n => n.type === "library").length === 0}
+             className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white text-indigo-600 font-black text-[10px] uppercase tracking-widest shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+           >
+              {scanState === "scanning" ? "Scanning…" : "Run Security Simulation"}
+              <MaterialIcon name={scanState === "scanning" ? "hourglass_top" : "bolt"} size={14} />
            </button>
         </div>
       </div>
+
+      {/* Security Scan Results */}
+      {(scanState === "scanning" || scanState === "done" || scanError) && (
+        <div className="mt-6 rounded-3xl border border-outline-variant/10 bg-surface-container/30 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-bold flex items-center gap-2">
+              <MaterialIcon name="security" size={18} className="text-amber-500" />
+              Security Vulnerability Report
+            </h4>
+            {scanState === "done" && (
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60">
+                {scanResults.length === 0 ? "No vulnerabilities found" : `${scanResults.length} vulnerable package${scanResults.length > 1 ? "s" : ""} detected`}
+              </span>
+            )}
+          </div>
+
+          {scanState === "scanning" && (
+            <div className="flex items-center gap-3 text-muted-foreground/60 animate-pulse py-4">
+              <div className="size-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
+              <span className="text-xs font-bold">Querying npm advisory database…</span>
+            </div>
+          )}
+
+          {scanError && (
+            <p className="text-xs text-destructive font-medium">{scanError}</p>
+          )}
+
+          {scanState === "done" && scanResults.length === 0 && (
+            <div className="flex items-center gap-3 py-4">
+              <MaterialIcon name="verified_user" size={24} className="text-emerald-500" />
+              <div>
+                <p className="text-sm font-bold text-emerald-500">All clear</p>
+                <p className="text-xs text-muted-foreground">No known vulnerabilities found in your npm dependencies.</p>
+              </div>
+            </div>
+          )}
+
+          {scanState === "done" && scanResults.length > 0 && (
+            <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+              {scanResults.map((vuln) => (
+                <div key={vuln.package} className="rounded-2xl border border-outline-variant/10 bg-surface-container/50 p-4 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-black text-foreground">{vuln.package}</span>
+                    <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
+                      vuln.advisories[0]?.severity === "critical" ? "bg-red-500/10 text-red-500" :
+                      vuln.advisories[0]?.severity === "high" ? "bg-orange-500/10 text-orange-500" :
+                      "bg-amber-500/10 text-amber-500"
+                    }`}>
+                      {vuln.advisories[0]?.severity ?? "moderate"}
+                    </span>
+                  </div>
+                  {vuln.advisories.slice(0, 2).map((adv) => (
+                    <div key={adv.id} className="text-xs text-muted-foreground space-y-1">
+                      <p className="font-medium">{adv.title}</p>
+                      <p className="text-[10px]">{adv.fixedIn}</p>
+                      <a href={adv.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline">
+                        View advisory ↗
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

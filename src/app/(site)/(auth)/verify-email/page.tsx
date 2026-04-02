@@ -1,0 +1,273 @@
+"use client";
+
+import { useEffect, useState, useRef, Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { motion } from "framer-motion";
+import { MaterialIcon } from "@/components/material-icon";
+import { signIn } from "next-auth/react";
+
+type State = "pending" | "signing-in" | "success" | "error" | "resending" | "resent";
+
+const ERROR_MESSAGES: Record<string, string> = {
+  missing_token: "The verification link is missing a token.",
+  invalid_token: "This verification link is invalid or has already been used.",
+  expired_token: "Your verification link has expired (30 min limit).",
+  already_exists: "An account with this email already exists. Try signing in.",
+};
+
+function VerifyEmailContent() {
+  const params = useSearchParams();
+  const router = useRouter();
+  const [state, setState] = useState<State>("pending");
+  const [errorMsg, setErrorMsg] = useState("");
+  const [email, setEmail] = useState("");
+  const [resendError, setResendError] = useState("");
+  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const stopPolling = () => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  };
+
+  useEffect(() => {
+    const success = params.get("success");
+    const error = params.get("error");
+    const at = params.get("at");       // autologin token (clicking tab)
+    const emailParam = params.get("email") ?? "";
+
+    setEmail(emailParam);
+
+    if (success === "1" && at) {
+      // Clicking tab: sign in automatically using the one-time token
+      setState("signing-in");
+      signIn("token", { token: at, redirect: false }).then((res) => {
+        if (res?.ok) {
+          router.replace("/overview?welcome=true");
+        } else {
+          // Token used/expired — fall back to manual sign-in
+          setState("success");
+        }
+      });
+    } else if (success === "1") {
+      // Fallback if no autologin token
+      setState("success");
+    } else if (error) {
+      setState("error");
+      setErrorMsg(ERROR_MESSAGES[error] ?? "Something went wrong.");
+    } else if (emailParam) {
+      // Waiting tab: poll until verification detected
+      setState("pending");
+      pollingRef.current = setInterval(async () => {
+        try {
+          const res = await fetch(
+            `/api/auth/check-verification?email=${encodeURIComponent(emailParam)}`,
+            { cache: "no-store" }
+          );
+          const data = await res.json();
+          if (data.verified) {
+            stopPolling();
+            if (data.at) {
+              // Got a one-time token — sign in automatically
+              setState("signing-in");
+              const result = await signIn("token", { token: data.at, redirect: false });
+              if (result?.ok) {
+                router.replace("/overview?welcome=true");
+              } else {
+                // Token already used by another tab — fall back to login
+                router.replace(`/login?verified=1&email=${encodeURIComponent(emailParam)}`);
+              }
+            } else {
+              // Token already claimed by another polling tab
+              router.replace(`/login?verified=1&email=${encodeURIComponent(emailParam)}`);
+            }
+          }
+        } catch {
+          // ignore transient errors
+        }
+      }, 2000);
+    }
+
+    return stopPolling;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleResend = async () => {
+    if (!email.trim() || state === "resending") return;
+    setState("resending");
+    setResendError("");
+    try {
+      const res = await fetch("/api/auth/resend-verification", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: email.trim().toLowerCase() }),
+      });
+      const data = await res.json();
+      if (res.ok || data.ok) {
+        setState("resent");
+      } else {
+        setState("pending");
+        setResendError(data.error ?? "Failed to resend. Please try again.");
+      }
+    } catch {
+      setState("pending");
+      setResendError("Failed to resend. Please try again.");
+    }
+  };
+
+  return (
+    <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center py-12">
+      <motion.div
+        initial={{ opacity: 0, y: 12 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="w-full max-w-md"
+      >
+        <div className="glass-panel rounded-2xl p-10 shadow-2xl text-center space-y-6">
+
+          {/* ── Signing in automatically ── */}
+          {state === "signing-in" && (
+            <>
+              <div className="size-16 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Signing you in…</h2>
+                <p className="text-muted-foreground text-sm mt-2">Your email is verified. One moment.</p>
+              </div>
+            </>
+          )}
+
+          {/* ── Verified (fallback — no autologin token) ── */}
+          {state === "success" && (
+            <>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="size-16 mx-auto rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center"
+              >
+                <MaterialIcon name="check_circle" size={36} />
+              </motion.div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Email Verified</h2>
+                <p className="text-muted-foreground text-sm mt-2">
+                  Your account is active. Click below to sign in.
+                </p>
+              </div>
+              <Link
+                href={`/login?verified=1${email ? `&email=${encodeURIComponent(email)}` : ""}`}
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+              >
+                Sign In
+                <MaterialIcon name="arrow_forward" size={16} />
+              </Link>
+            </>
+          )}
+
+          {/* ── Resent confirmation ── */}
+          {state === "resent" && (
+            <>
+              <motion.div
+                initial={{ scale: 0.8, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                className="size-16 mx-auto rounded-full bg-emerald-500/20 text-emerald-500 flex items-center justify-center"
+              >
+                <MaterialIcon name="mark_email_read" size={36} />
+              </motion.div>
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Email Sent</h2>
+                <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
+                  A new link has been sent to{" "}
+                  <span className="text-foreground font-medium">{email}</span>.{" "}
+                  It expires in 30 minutes.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setState("pending")}
+                className="text-xs text-primary hover:underline"
+              >
+                Didn&apos;t receive it? Try again
+              </button>
+              <Link href="/login" className="block text-xs text-muted-foreground hover:text-primary transition-colors">
+                Back to sign in
+              </Link>
+            </>
+          )}
+
+          {/* ── Pending (just signed up) or link error ── */}
+          {(state === "pending" || state === "resending" || state === "error") && (
+            <>
+              <div className={`size-16 mx-auto rounded-full flex items-center justify-center ${
+                state === "error" ? "bg-amber-500/20 text-amber-500" : "bg-primary/10 text-primary"
+              }`}>
+                <MaterialIcon name="forward_to_inbox" size={36} />
+              </div>
+
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Check Your Inbox</h2>
+                <p className="text-muted-foreground text-sm mt-2 leading-relaxed">
+                  {state === "error"
+                    ? errorMsg
+                    : email
+                      ? <>We sent a link to <span className="text-foreground font-medium">{email}</span>. It expires in 30 minutes. This page will redirect automatically once verified.</>
+                      : "We sent a verification link to your email. It expires in 30 minutes."}
+                </p>
+              </div>
+
+              {/* Waiting indicator for the polling tab */}
+              {state === "pending" && email && (
+                <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                  <span className="relative flex size-2">
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-75" />
+                    <span className="relative inline-flex size-2 rounded-full bg-primary" />
+                  </span>
+                  <span className="font-mono text-[10px] tracking-widest uppercase">Waiting for verification…</span>
+                </div>
+              )}
+
+              {/* Resend form */}
+              <div className="space-y-3 text-left">
+                <label className="block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                  {email ? "Resend to" : "Enter your email to resend"}
+                </label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="name@example.com"
+                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                />
+                {resendError && <p className="text-destructive text-xs">{resendError}</p>}
+                <button
+                  type="button"
+                  disabled={state === "resending" || !email.trim()}
+                  onClick={handleResend}
+                  className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {state === "resending" ? "Sending…" : "Resend Verification Email"}
+                </button>
+              </div>
+
+              <Link href="/login" className="text-xs text-muted-foreground hover:text-primary transition-colors">
+                Back to sign in
+              </Link>
+            </>
+          )}
+
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+export default function VerifyEmailPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <div className="size-8 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+      </div>
+    }>
+      <VerifyEmailContent />
+    </Suspense>
+  );
+}

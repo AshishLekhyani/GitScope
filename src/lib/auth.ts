@@ -21,6 +21,11 @@ export const authOptions: NextAuthOptions = {
       clientId: process.env.GITHUB_ID as string,
       clientSecret: process.env.GITHUB_SECRET as string,
       allowDangerousEmailAccountLinking: true,
+      authorization: {
+        params: {
+          scope: "read:user user:email notifications",
+        },
+      },
     }),
     ...(process.env.GOOGLE_ID && process.env.GOOGLE_SECRET
       ? [GoogleProvider({
@@ -29,6 +34,27 @@ export const authOptions: NextAuthOptions = {
           allowDangerousEmailAccountLinking: true,
         })]
       : []),
+    // One-time autologin token — used immediately after email verification
+    CredentialsProvider({
+      id: "token",
+      name: "token",
+      credentials: { token: { type: "text" } },
+      async authorize(creds) {
+        if (!creds?.token) return null;
+        const record = await prisma.verificationToken.findUnique({
+          where: { token: creds.token },
+        });
+        if (
+          !record ||
+          (!record.identifier.startsWith("autologin:") && !record.identifier.startsWith("autologin-wait:")) ||
+          record.expires < new Date()
+        ) return null;
+        const email = record.identifier.replace(/^autologin(?:-wait)?:/, "");
+        await prisma.verificationToken.delete({ where: { token: creds.token } });
+        const user = await prisma.user.findUnique({ where: { email } });
+        return user ?? null;
+      },
+    }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -48,9 +74,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         const user = await prisma.user.findUnique({
-          where: {
-            email: credentials.email,
-          },
+          where: { email: credentials.email },
         });
 
         if (!user || !user.password) {
@@ -64,6 +88,10 @@ export const authOptions: NextAuthOptions = {
 
         if (!isPasswordValid) {
           throw new Error("Invalid credentials");
+        }
+
+        if (!user.emailVerified) {
+          throw new Error("EMAIL_NOT_VERIFIED:" + credentials.email);
         }
 
         const userWithoutPassword = { ...user, password: undefined };

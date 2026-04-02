@@ -46,6 +46,7 @@ model User {
   image         String?
   bio           String?
   githubHandle  String?
+  githubApiKey  String?   // Personal GitHub token for higher rate limits
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   
@@ -89,6 +90,18 @@ model Notification {
   @@map("notifications")
 }
 
+model PendingSignup {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  hashedPassword String   @db.Text
+  token          String   @unique
+  expires        DateTime
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@map("pending_signups")
+}
+
 model VerificationToken {
   identifier String
   token      String   @unique
@@ -97,4 +110,7 @@ model VerificationToken {
   @@unique([identifier, token])
   @@map("verification_tokens")
 }
+// identifier prefixes:
+//   "verify:{email}"  — email address verification (expires 24h)
+//   "reset:{email}"   — password reset (expires 1h)
 // Prisma schema v1 - User + Session

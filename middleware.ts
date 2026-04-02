@@ -49,8 +49,7 @@ export async function middleware(req: NextRequest) {
   // ── GitHub-only routes: authenticated but wrong provider → /unauthorized ──
   if (isAuthed && matchesPrefix(pathname, GITHUB_ONLY_PREFIXES)) {
     const provider = token?.provider as string | undefined;
-    // Accept "github" provider OR presence of accessToken (belt-and-suspenders)
-    const isGitHubUser = provider === "github" || Boolean(token?.accessToken);
+    const isGitHubUser = provider === "github";
     if (!isGitHubUser) {
       const res = NextResponse.redirect(new URL("/unauthorized", req.url));
       res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");

@@ -11,6 +11,7 @@ import { AppSidebar } from "./app-sidebar";
 import { GitScopeCommandPalette } from "./gitscope-command-palette";
 import { ShortcutsModal } from "./shortcuts-modal";
 import { TopNav } from "./top-nav";
+import { RateLimitBanner } from "./rate-limit-banner";
 import { MaterialIcon } from "@/components/material-icon";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
@@ -145,6 +146,7 @@ export function DashboardShell({
         session={session}
         onMenuClick={() => setMobileOpen(true)}
       />
+      <RateLimitBanner />
 
       <div className="relative flex min-h-0 flex-1">
         {/* Desktop sidebar — fixed under header (top-16) */}

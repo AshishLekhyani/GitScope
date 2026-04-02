@@ -36,7 +36,7 @@ export async function GET(req: Request) {
 
           if (!res.ok) return { name: fullName, metrics: null };
 
-          const pulls: { merged_at: string | null; created_at: string }[] = await res.json();
+          const pulls: { number: number; merged_at: string | null; created_at: string }[] = await res.json();
           const mergedPulls = pulls.filter((p) => p.merged_at);
 
           // 2. Fetch contributor diversity for Bus Factor
@@ -52,14 +52,39 @@ export async function GET(req: Request) {
 
           if (mergedPulls.length === 0) return { name: fullName, metrics: { leadTime: 0, cycleTime: 0, freq: 0, busFactor } };
 
-          const totalCycleTime = mergedPulls.reduce((acc: number, p) => {
-            const created = new Date(p.created_at).getTime();
-            const merged = new Date(p.merged_at!).getTime();
-            return acc + (merged - created);
+          // Cycle time = PR open → merge (real data)
+          const totalCycleMs = mergedPulls.reduce((acc: number, p) => {
+            return acc + (new Date(p.merged_at!).getTime() - new Date(p.created_at).getTime());
           }, 0);
+          const cycleTime = totalCycleMs / mergedPulls.length / (1000 * 60 * 60); // hours
 
-          const leadTime = (totalCycleTime / mergedPulls.length) / (1000 * 60 * 60); // Hours
-          const cycleTime = leadTime * 0.7; // Simulating lead time vs cycle time for MVP
+          // Lead time = first commit → merge (sample 5 PRs to limit API calls)
+          let totalLeadMs = 0;
+          let leadSamples = 0;
+          const samplePRs = mergedPulls.slice(0, 5);
+          for (const pr of samplePRs) {
+            try {
+              const prCommitsRes = await fetch(
+                `https://api.github.com/repos/${fullName}/pulls/${pr.number}/commits?per_page=100`,
+                { headers: { Authorization: `Bearer ${token}`, "Accept": "application/vnd.github.v3+json" } }
+              );
+              if (prCommitsRes.ok) {
+                const prCommits: { commit: { committer: { date: string } } }[] = await prCommitsRes.json();
+                if (prCommits.length > 0) {
+                  const earliest = prCommits.reduce((min, c) => {
+                    const d = c.commit.committer.date;
+                    return d < min ? d : min;
+                  }, prCommits[0].commit.committer.date);
+                  totalLeadMs += new Date(pr.merged_at!).getTime() - new Date(earliest).getTime();
+                  leadSamples++;
+                }
+              }
+            } catch { /* skip */ }
+          }
+          const leadTime = leadSamples > 0
+            ? totalLeadMs / leadSamples / (1000 * 60 * 60)
+            : cycleTime * 1.4; // fallback if commits unavailable
+
           const freq = mergedPulls.length / 30; // Merges per day (rough estimate)
 
           return {

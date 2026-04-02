@@ -430,12 +430,6 @@ export function RepoSearchPanel() {
         </div>
       </footer>
 
-      <div className="pointer-events-none fixed bottom-24 left-4 z-20 hidden items-center gap-3 rounded-full border border-white/10 bg-slate-800/30 px-4 py-2 opacity-50 backdrop-blur-md lg:left-72 lg:flex">
-        <MaterialIcon name="keyboard" size={14} />
-        <span className="font-mono text-[10px] tracking-widest uppercase">
-          ⌘ K command palette
-        </span>
-      </div>
     </div>
   );
 }

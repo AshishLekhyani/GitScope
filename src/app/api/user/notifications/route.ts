@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { getGitHubToken } from "@/lib/github-auth";
 import { NextResponse } from "next/server";
 
 export async function GET() {
@@ -20,11 +21,12 @@ export async function GET() {
     // 2. Fetch GitHub notifications if available
     type NotificationItem = { id: string; title: string; message: string; type: string; isRead: boolean; link: string; createdAt: string; source: string };
     let githubNotifications: NotificationItem[] = [];
-    if (session.accessToken) {
+    const ghToken = await getGitHubToken();
+    if (ghToken) {
       try {
         const ghRes = await fetch("https://api.github.com/notifications?participating=true", {
           headers: {
-            Authorization: `Bearer ${session.accessToken}`,
+            Authorization: `Bearer ${ghToken}`,
             "Accept": "application/vnd.github.v3+json",
           },
           next: { revalidate: 60 } // Cache for 1 min

@@ -12,7 +12,7 @@ import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfile, setAvatarUrl } from "@/store/slices/userSlice";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
-import { useSession, signOut, signIn } from "next-auth/react";
+import { useSession, signOut } from "next-auth/react";
 
 type SettingsTab = "profile" | "account" | "appearance" | "workspace";
 type ThemeOption = "light" | "dark" | "system";
@@ -55,6 +55,12 @@ export function SettingsPanel() {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // GitHub API key state
+  const [hasGithubApiKey, setHasGithubApiKey] = useState(false);
+  const [githubApiKeyInput, setGithubApiKeyInput] = useState("");
+  const [apiKeySaving, setApiKeySaving] = useState(false);
+  const [apiKeyMsg, setApiKeyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [deleteEmailInput, setDeleteEmailInput] = useState("");
@@ -81,6 +87,7 @@ export function SettingsPanel() {
           })
         );
         setHasPassword(data.hasPassword ?? false);
+        setHasGithubApiKey(data.hasGithubApiKey ?? false);
       })
       .catch(() => {
         if (session?.user && !displayName) {
@@ -127,13 +134,23 @@ export function SettingsPanel() {
     }
   };
 
+  const validatePasswordComplexity = (pass: string): string | null => {
+    if (pass.length < 8) return "Password must be at least 8 characters.";
+    if (!/[A-Z]/.test(pass)) return "Password must contain at least one uppercase letter.";
+    if (!/[a-z]/.test(pass)) return "Password must contain at least one lowercase letter.";
+    if (!/[0-9]/.test(pass)) return "Password must contain at least one number.";
+    if (!/[^A-Za-z0-9]/.test(pass)) return "Password must contain at least one special character.";
+    return null;
+  };
+
   const handlePasswordChange = async () => {
     if (newPassword !== confirmPassword) {
       setPasswordMsg({ type: "error", text: "Passwords do not match." });
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordMsg({ type: "error", text: "Password must be at least 8 characters." });
+    const complexityError = validatePasswordComplexity(newPassword);
+    if (complexityError) {
+      setPasswordMsg({ type: "error", text: complexityError });
       return;
     }
     setPasswordSaving(true);
@@ -158,6 +175,30 @@ export function SettingsPanel() {
       setPasswordMsg({ type: "error", text: "An error occurred. Please try again." });
     } finally {
       setPasswordSaving(false);
+    }
+  };
+
+  const handleSaveApiKey = async (remove = false) => {
+    setApiKeySaving(true);
+    setApiKeyMsg(null);
+    try {
+      const res = await fetch("/api/user/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ githubApiKey: remove ? null : githubApiKeyInput }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setApiKeyMsg({ type: "success", text: remove ? "API key removed." : "API key saved." });
+        setHasGithubApiKey(!remove);
+        if (remove) setGithubApiKeyInput("");
+      } else {
+        setApiKeyMsg({ type: "error", text: data.error ?? "Failed to save API key." });
+      }
+    } catch {
+      setApiKeyMsg({ type: "error", text: "An error occurred. Please try again." });
+    } finally {
+      setApiKeySaving(false);
     }
   };
 
@@ -435,14 +476,13 @@ export function SettingsPanel() {
                             <span key={f} className="text-[10px] font-bold bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20">{f}</span>
                           ))}
                         </div>
-                        <button
-                          type="button"
-                          onClick={() => signIn("github", { callbackUrl: "/settings?tab=account&connected=github" })}
+                        <a
+                          href={`/api/auth/signin/github?callbackUrl=${encodeURIComponent("/settings?tab=account&connected=github")}`}
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 active:scale-[0.98] transition-all"
                         >
                           <MaterialIcon name="hub" size={14} />
                           Connect GitHub Account
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -460,14 +500,13 @@ export function SettingsPanel() {
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                           Add Google sign-in to your account. Use your Google profile photo and sign in faster across devices.
                         </p>
-                        <button
-                          type="button"
-                          onClick={() => signIn("google", { callbackUrl: "/settings?tab=account&connected=google" })}
+                        <a
+                          href={`/api/auth/signin/google?callbackUrl=${encodeURIComponent("/settings?tab=account&connected=google")}`}
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 active:scale-[0.98] transition-all"
                         >
                           <MaterialIcon name="person" size={14} />
                           Connect Google Account
-                        </button>
+                        </a>
                       </div>
                     </div>
                   </div>
@@ -756,7 +795,11 @@ export function SettingsPanel() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MaterialIcon name="cloud_done" size={16} className="text-tertiary" />
                 <span className="font-mono text-xs">
-                  {session?.accessToken ? "GitHub OAuth active — using your token" : "Credentials auth — public API only"}
+                  {provider === "github"
+                    ? "GitHub OAuth active — 5,000 req/hr"
+                    : hasGithubApiKey
+                      ? "Custom token active — 5,000 req/hr"
+                      : "No GitHub token — 60 req/hr (unauthenticated)"}
                 </span>
               </div>
             </div>
@@ -765,13 +808,17 @@ export function SettingsPanel() {
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[9px] font-black uppercase tracking-widest border",
-                  provider === "github"
+                  provider === "github" || hasGithubApiKey
                     ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                     : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                 )}
               >
                 <span className="size-1.5 rounded-full bg-current" />
-                {provider === "github" ? "GitHub Tier — Full Access" : "Credentials Tier — Limited"}
+                {provider === "github"
+                  ? "GitHub Tier — Full Access"
+                  : hasGithubApiKey
+                    ? "Custom Token — Full Access"
+                    : "Limited — 60 req/hr"}
               </span>
               {provider !== "github" && (
                 <p className="font-mono text-[9px] text-muted-foreground">
@@ -783,6 +830,67 @@ export function SettingsPanel() {
               )}
             </div>
           </div>
+
+          {/* Personal GitHub API Key */}
+          {provider !== "github" && (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+              <h3 className="font-heading text-lg font-bold text-foreground mb-1">Personal GitHub Token</h3>
+              <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
+                Add your own{" "}
+                <a href="https://github.com/settings/tokens" target="_blank" rel="noopener noreferrer" className="text-primary underline">
+                  GitHub Personal Access Token
+                </a>{" "}
+                to raise the API rate limit from 60 to 5,000 req/hr without connecting GitHub OAuth. Tokens are stored encrypted and never exposed.
+              </p>
+              {hasGithubApiKey ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                    <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
+                    <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">Token active — rate limit boosted to 5,000 req/hr</span>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={apiKeySaving}
+                    onClick={() => handleSaveApiKey(true)}
+                    className="text-destructive border-destructive/30 hover:bg-destructive/10 font-mono text-[10px] uppercase tracking-widest"
+                  >
+                    {apiKeySaving ? "Removing..." : "Remove Token"}
+                  </Button>
+                  {apiKeyMsg && (
+                    <p className={cn("font-mono text-xs", apiKeyMsg.type === "success" ? "text-tertiary" : "text-destructive")}>
+                      {apiKeyMsg.text}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3 max-w-md">
+                  <input
+                    type="password"
+                    value={githubApiKeyInput}
+                    onChange={(e) => setGithubApiKeyInput(e.target.value)}
+                    placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
+                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    disabled={apiKeySaving || !githubApiKeyInput.trim()}
+                    onClick={() => handleSaveApiKey(false)}
+                    className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest"
+                  >
+                    {apiKeySaving ? "Saving..." : "Save Token"}
+                  </Button>
+                  {apiKeyMsg && (
+                    <p className={cn("font-mono text-xs", apiKeyMsg.type === "success" ? "text-tertiary" : "text-destructive")}>
+                      {apiKeyMsg.text}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       )}
 

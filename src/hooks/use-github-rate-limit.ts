@@ -1,7 +1,14 @@
 import { useState, useEffect } from "react";
 
+export interface RateLimitInfo {
+  remaining: number;
+  limit: number;
+  /** Unix timestamp (seconds) when the rate limit window resets */
+  reset: number;
+}
+
 export function useGitHubRateLimit() {
-  const [rateLimit, setRateLimit] = useState<{ remaining: number; limit: number } | null>(null);
+  const [rateLimit, setRateLimit] = useState<RateLimitInfo | null>(null);
   const [latency, setLatency] = useState<number>(0);
   const [loading, setLoading] = useState(true);
 
@@ -12,10 +19,10 @@ export function useGitHubRateLimit() {
         const res = await fetch("/api/github/rate-limit", { cache: "no-store" });
         const end = performance.now();
         setLatency(Math.round(end - start));
-        
+
         if (res.ok) {
           const data = await res.json();
-          setRateLimit({ remaining: data.remaining, limit: data.limit });
+          setRateLimit({ remaining: data.remaining, limit: data.limit, reset: data.reset ?? 0 });
         }
       } catch (e) {
         console.error("Failed to fetch rate limit", e);

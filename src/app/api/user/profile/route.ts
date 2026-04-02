@@ -11,12 +11,12 @@ export async function GET() {
 
   const user = await prisma.user.findUnique({
     where: { id: session.user.id },
-    select: { name: true, bio: true, githubHandle: true, image: true, email: true, password: true },
+    select: { name: true, bio: true, githubHandle: true, image: true, email: true, password: true, githubApiKey: true },
   });
 
   if (!user) return NextResponse.json({});
-  const { password, ...rest } = user;
-  return NextResponse.json({ ...rest, hasPassword: !!password });
+  const { password, githubApiKey, ...rest } = user;
+  return NextResponse.json({ ...rest, hasPassword: !!password, hasGithubApiKey: !!githubApiKey });
 }
 
 export async function PATCH(req: Request) {

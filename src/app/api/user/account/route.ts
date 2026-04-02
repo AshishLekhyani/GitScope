@@ -4,26 +4,49 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 
+function validatePasswordComplexity(pass: string): string | null {
+  if (pass.length < 8) return "Password must be at least 8 characters.";
+  if (!/[A-Z]/.test(pass)) return "Password must contain at least one uppercase letter.";
+  if (!/[a-z]/.test(pass)) return "Password must contain at least one lowercase letter.";
+  if (!/[0-9]/.test(pass)) return "Password must contain at least one number.";
+  if (!/[^A-Za-z0-9]/.test(pass)) return "Password must contain at least one special character.";
+  return null;
+}
+
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { newPassword?: string; currentPassword?: string };
+  let body: { newPassword?: string; currentPassword?: string; githubApiKey?: string | null };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
+  // ── Update GitHub API key ──────────────────────────────────────────────────
+  if ("githubApiKey" in body) {
+    const key = body.githubApiKey?.trim() || null;
+    // Basic format check: GitHub PATs start with ghp_, gho_, github_pat_, or classic 40-char hex
+    if (key && !/^(ghp_|gho_|ghs_|ghu_|github_pat_|[0-9a-f]{40})/i.test(key)) {
+      return NextResponse.json({ error: "That doesn't look like a valid GitHub token." }, { status: 400 });
+    }
+    await prisma.user.update({ where: { id: session.user.id }, data: { githubApiKey: key } });
+    return NextResponse.json({ success: true });
+  }
+
+  // ── Update password ────────────────────────────────────────────────────────
   const { newPassword, currentPassword } = body;
 
   if (!newPassword) {
     return NextResponse.json({ error: "New password is required." }, { status: 400 });
   }
-  if (newPassword.length < 8) {
-    return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
+
+  const complexityError = validatePasswordComplexity(newPassword);
+  if (complexityError) {
+    return NextResponse.json({ error: complexityError }, { status: 400 });
   }
 
   const user = await prisma.user.findUnique({
@@ -35,7 +58,6 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "User not found." }, { status: 404 });
   }
 
-  // If user already has a password, verify the current one first
   if (user.password) {
     if (!currentPassword) {
       return NextResponse.json({ error: "Current password is required." }, { status: 400 });
@@ -47,10 +69,7 @@ export async function PATCH(req: Request) {
   }
 
   const hashed = await bcrypt.hash(newPassword, 12);
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { password: hashed },
-  });
+  await prisma.user.update({ where: { id: session.user.id }, data: { password: hashed } });
 
   return NextResponse.json({ success: true });
 }
