@@ -13,7 +13,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square)](CONTRIBUTING.md)
 
-[Live Demo](https://gitscope.vercel.app) · [Report a Bug](https://github.com/AshishLekhyani/GitScope/issues) · [Request a Feature](https://github.com/AshishLekhyani/GitScope/issues)
+[Live Demo](https://git-scope-pi.vercel.app) · [Report a Bug](https://github.com/AshishLekhyani/GitScope/issues) · [Request a Feature](https://github.com/AshishLekhyani/GitScope/issues)
 
 </div>
 
@@ -29,21 +29,26 @@ GitScope is a full-stack GitHub analytics platform that turns raw GitHub data in
 
 ## Table of Contents
 
-- [Features](#-features)
-- [Tech Stack](#-tech-stack)
-- [Architecture](#-architecture)
-- [Screenshots](#-screenshots)
-- [Getting Started](#-getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
-  - [Environment Variables](#environment-variables)
-  - [Database Setup](#database-setup)
-- [Usage](#-usage)
-- [Deployment](#-deployment)
-- [Roadmap](#-roadmap)
-- [Contributing](#-contributing)
-- [License](#-license)
-- [Acknowledgements](#-acknowledgements)
+- [GitScope](#gitscope)
+  - [What is GitScope?](#what-is-gitscope)
+  - [Table of Contents](#table-of-contents)
+  - [✨ Features](#-features)
+  - [🛠 Tech Stack](#-tech-stack)
+  - [🏗 Architecture](#-architecture)
+  - [🚀 Getting Started](#-getting-started)
+    - [Prerequisites](#prerequisites)
+    - [Installation](#installation)
+    - [Environment Variables](#environment-variables)
+    - [Database Setup](#database-setup)
+  - [💡 Usage](#-usage)
+    - [Searching a Repository](#searching-a-repository)
+    - [Keyboard Shortcuts](#keyboard-shortcuts)
+    - [Comparing Repositories](#comparing-repositories)
+  - [☁️ Deployment](#️-deployment)
+    - [Deploy to Vercel (Recommended)](#deploy-to-vercel-recommended)
+  - [🗺 Roadmap](#-roadmap)
+  - [🤝 Contributing](#-contributing)
+  - [🙏 Acknowledgements](#-acknowledgements)
 
 ---
 
