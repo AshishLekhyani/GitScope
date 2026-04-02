@@ -92,15 +92,42 @@ GitScope is a full-stack GitHub analytics platform that turns raw GitHub data in
 ## 🏗 Architecture
 
 ```mermaid
-graph TD
-    A[Browser / Client] -->|OAuth| B(NextAuth.js)
-    A -->|RSC + Client Components| C(Next.js App Router)
-    C -->|Server Actions| D(GitHub REST API)
-    C -->|Prisma ORM| E[(PostgreSQL)]
-    B -->|Session| E
-    D -->|Rate-limited responses| C
-    C -->|Redux State| A
-    C -->|React Query Cache| A
+graph TB
+    subgraph Client ["Client Layer (Browser)"]
+        UI["User Interface (Next.js/React)"]
+        RTK["Redux Toolkit (State Management)"]
+        RQ["React Query (Server Data Cache)"]
+        AUTH_C["NextAuth.js Client"]
+    end
+
+    subgraph Server ["Server Layer (Next.js)"]
+        ROUTER["App Router (Routing & Layouts)"]
+        RSC["Server Components (Data Fetching)"]
+        API["API Routes (Proxy & AI Backend)"]
+        MID["Middleware (Auth & Security)"]
+    end
+
+    subgraph External ["External Services"]
+        GH["GitHub REST API v3"]
+        ANT["Anthropic Claude API (AI Analysis)"]
+    end
+
+    subgraph Data ["Data Layer"]
+        PRISMA["Prisma ORM"]
+        POSTGRES[(PostgreSQL Database)]
+    end
+
+    UI <--> RTK
+    UI <--> RQ
+    UI <--> AUTH_C
+    AUTH_C <--> MID
+    RSC -->|Live Metadata| GH
+    API -->|Live Metadata| GH
+    API -->|Analysis Request| ANT
+    RSC -->|Schema Query| PRISMA
+    API -->|Schema Query| PRISMA
+    PRISMA <--> POSTGRES
+    ROUTER -->|Universal Rendering| UI
 ```
 
 The application follows a **hybrid rendering** strategy:
