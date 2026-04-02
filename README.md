@@ -92,42 +92,44 @@ GitScope is a full-stack GitHub analytics platform that turns raw GitHub data in
 ## 🏗 Architecture
 
 ```mermaid
-graph TB
-    subgraph Client ["Client Layer (Browser)"]
-        UI["User Interface (Next.js/React)"]
-        RTK["Redux Toolkit (State Management)"]
-        RQ["React Query (Server Data Cache)"]
-        AUTH_C["NextAuth.js Client"]
-    end
+graph TD
+    %% Styling
+    classDef client fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef server fill:#10b981,color:#fff,stroke:#059669
+    classDef external fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef data fill:#8b5cf6,color:#fff,stroke:#7c3aed
 
-    subgraph Server ["Server Layer (Next.js)"]
-        ROUTER["App Router (Routing & Layouts)"]
-        RSC["Server Components (Data Fetching)"]
-        API["API Routes (Proxy & AI Backend)"]
-        MID["Middleware (Auth & Security)"]
-    end
+    %% Nodes
+    CLIENT[Browser / Client UI]:::client
+    RTK[Redux Toolkit]:::client
+    RQ[React Query]:::client
+    
+    APP[Next.js App Router]:::server
+    API[Proxy & AI Routes]:::server
+    AUTH(NextAuth.js):::server
+    
+    GH[GitHub REST API]:::external
+    AI[Anthropic API]:::external
+    
+    DB[(PostgreSQL Database)]:::data
 
-    subgraph External ["External Services"]
-        GH["GitHub REST API v3"]
-        ANT["Anthropic Claude API (AI Analysis)"]
-    end
-
-    subgraph Data ["Data Layer"]
-        PRISMA["Prisma ORM"]
-        POSTGRES[(PostgreSQL Database)]
-    end
-
-    UI <--> RTK
-    UI <--> RQ
-    UI <--> AUTH_C
-    AUTH_C <--> MID
-    RSC -->|Live Metadata| GH
-    API -->|Live Metadata| GH
-    API -->|Analysis Request| ANT
-    RSC -->|Schema Query| PRISMA
-    API -->|Schema Query| PRISMA
-    PRISMA <--> POSTGRES
-    ROUTER -->|Universal Rendering| UI
+    %% Edges
+    CLIENT <-->|Global State| RTK
+    CLIENT <-->|Server Cache| RQ
+    
+    CLIENT -->|App Routing| APP
+    CLIENT -->|API Calls| API
+    CLIENT -->|OAuth Flow| AUTH
+    
+    AUTH -->|User Sessions| DB
+    
+    APP -->|RSC Data Fetching| GH
+    APP -->|Prisma ORM| DB
+    
+    API -->|Metadata Proxy| GH
+    API -->|AI Repository Analysis| AI
+    
+    APP -->|Hydration| CLIENT
 ```
 
 The application follows a **hybrid rendering** strategy:
@@ -137,7 +139,6 @@ The application follows a **hybrid rendering** strategy:
 - **Middleware** enforces route-level authentication guards
 
 ---
-
 
 ## 🚀 Getting Started
 
