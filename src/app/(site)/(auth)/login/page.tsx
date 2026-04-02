@@ -85,29 +85,20 @@ function AuthForm() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Client-side validations
+    // Client-side validations — show error immediately, no fake loading state
     if (!validateEmail(email)) {
-      setLoading(true); // briefly show loading to trigger feedback flow
-      setAuthStatus("error");
       setError("Please enter a valid email address.");
-      setTimeout(() => { setLoading(false); setAuthStatus("idle"); }, 2500);
       return;
     }
 
     if (mode === "signup") {
       const complexityError = validatePasswordComplexity(password);
       if (complexityError) {
-        setLoading(true);
-        setAuthStatus("error");
         setError(complexityError);
-        setTimeout(() => { setLoading(false); setAuthStatus("idle"); }, 2500);
         return;
       }
       if (password !== confirmPassword) {
-        setLoading(true);
-        setAuthStatus("error");
         setError("Passwords do not match.");
-        setTimeout(() => { setLoading(false); setAuthStatus("idle"); }, 2500);
         return;
       }
     }
@@ -387,9 +378,22 @@ function AuthForm() {
                     </div>
                   )}
 
-                  <Button type="submit" className="w-full btn-gitscope-primary rounded-xl font-bold uppercase tracking-widest py-6 mt-2">
-                    {mode === "login" ? "Log In" : "Create Account"}
-                    <ArrowRight className="ml-2 size-4" />
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full btn-gitscope-primary rounded-xl font-bold uppercase tracking-widest py-6 mt-2 disabled:opacity-70"
+                  >
+                    {loading ? (
+                      <>
+                        <span className="mr-2 size-4 rounded-full border-2 border-primary-foreground border-t-transparent animate-spin inline-block" />
+                        {mode === "login" ? "Signing in…" : "Creating account…"}
+                      </>
+                    ) : (
+                      <>
+                        {mode === "login" ? "Log In" : "Create Account"}
+                        <ArrowRight className="ml-2 size-4" />
+                      </>
+                    )}
                   </Button>
                 </form>
 
