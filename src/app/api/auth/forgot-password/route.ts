@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { sendEmail, buildPasswordResetEmail } from "@/lib/email";
+import { sendEmail, buildPasswordResetEmail, buildSetPasswordEmail } from "@/lib/email";
 import { checkRateLimit, getRateLimitKey } from "@/lib/rate-limit";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
+import { logAuth } from "@/lib/audit-log";
 import crypto from "crypto";
 
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   const genericSuccess = NextResponse.json({
     ok: true,
     message: "If an account exists for that email, a password reset link has been sent.",
@@ -33,26 +35,48 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({
     where: { email },
-    select: { id: true, name: true, password: true },
+    select: { id: true, name: true, password: true, emailVerified: true },
   });
 
-  if (!user || !user.password) {
-    // Return a generic response to avoid revealing account existence/state.
+  // User doesn't exist - return generic success (don't reveal account existence)
+  if (!user) {
     return genericSuccess;
   }
 
   try {
-    // Delete any existing reset token for this email
-    await prisma.verificationToken.deleteMany({ where: { identifier: `reset:${email}` } });
+    // Check if user has OAuth accounts (Google/GitHub)
+    const oauthAccounts = await prisma.account.findMany({
+      where: { userId: user.id, provider: { in: ["google", "github"] } },
+      select: { provider: true },
+    });
+    const hasOAuth = oauthAccounts.length > 0;
+
+    // Determine token type:
+    // - "reset" if user has a password
+    // - "set" if user has OAuth but no password
+    const tokenType = user.password ? "reset" : hasOAuth ? "set" : null;
+
+    // If user has no password AND no OAuth, they can't reset password
+    // (they need to sign up or use OAuth)
+    if (!tokenType) {
+      return genericSuccess;
+    }
+
+    // Delete any existing token for this email
+    await prisma.verificationToken.deleteMany({ 
+      where: { identifier: { in: [`reset:${email}`, `set:${email}`] } } 
+    });
 
     const token = crypto.randomBytes(32).toString("hex");
     const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
     await prisma.verificationToken.create({
-      data: { identifier: `reset:${email}`, token, expires },
+      data: { identifier: `${tokenType}:${email}`, token, expires },
     });
 
-    const { subject, html } = buildPasswordResetEmail(user.name ?? "", token);
+    // Send appropriate email based on token type
+    const emailBuilder = tokenType === "reset" ? buildPasswordResetEmail : buildSetPasswordEmail;
+    const { subject, html } = emailBuilder(user.name ?? "", token);
     await sendEmail({ to: email, subject, html });
   } catch (error) {
     console.error("FORGOT_PASSWORD_ERROR", error);
@@ -60,3 +84,6 @@ export async function POST(req: NextRequest) {
 
   return genericSuccess;
 }
+
+// Apply security middleware with auth preset (strict rate limiting + audit logging)
+export const POST = withRouteSecurity(postHandler, SecurityPresets.auth);

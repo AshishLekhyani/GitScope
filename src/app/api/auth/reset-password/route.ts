@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 import bcrypt from "bcryptjs";
 
 function validatePasswordComplexity(pass: string): string | null {
@@ -11,7 +12,7 @@ function validatePasswordComplexity(pass: string): string | null {
   return null;
 }
 
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   let body: { token?: string; password?: string };
   try {
     body = await req.json();
@@ -32,7 +33,8 @@ export async function POST(req: NextRequest) {
 
   const record = await prisma.verificationToken.findUnique({ where: { token } });
 
-  if (!record || !record.identifier.startsWith("reset:")) {
+  // Accept both "reset:" and "set:" token identifiers
+  if (!record || (!record.identifier.startsWith("reset:") && !record.identifier.startsWith("set:"))) {
     return NextResponse.json({ error: "Invalid or expired reset link." }, { status: 400 });
   }
 
@@ -41,11 +43,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "This reset link has expired. Please request a new one." }, { status: 400 });
   }
 
-  const email = record.identifier.replace("reset:", "");
+  // Extract email from either "reset:email" or "set:email"
+  const email = record.identifier.replace(/^(reset|set):/, "");
   const hashed = await bcrypt.hash(password, 12);
 
-  await prisma.user.updateMany({ where: { email }, data: { password: hashed } });
-  await prisma.verificationToken.delete({ where: { token } });
+  // Update password and mark email as verified (for OAuth users setting password for first time)
+  await prisma.user.updateMany({ 
+    where: { email }, 
+    data: { 
+      password: hashed,
+      emailVerified: new Date(), // Mark as verified since OAuth already verified it
+    } 
+  });
+  
+  // Delete both reset and set tokens for this email to clean up
+  await prisma.verificationToken.deleteMany({ 
+    where: { 
+      identifier: { in: [`reset:${email}`, `set:${email}`] } 
+    } 
+  });
 
   return NextResponse.json({ ok: true });
 }
+
+// Apply security middleware for password reset (sensitive operation)
+export const POST = withRouteSecurity(postHandler, SecurityPresets.sensitive);

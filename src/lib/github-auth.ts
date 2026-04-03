@@ -18,6 +18,36 @@ function defaultAllowEnvFallback(): boolean {
   return process.env.GITHUB_SHARED_FALLBACK === "1" || process.env.GITHUB_SHARED_FALLBACK === "true";
 }
 
+async function hasGitHubConnected(userId: string): Promise<boolean> {
+  try {
+    const account = await prisma.account.findFirst({
+      where: { userId, provider: "github" },
+      select: { id: true },
+    });
+    return !!account;
+  } catch {
+    return false;
+  }
+}
+
+async function getGitHubTokenFromDb(userId: string): Promise<string | null> {
+  try {
+    const account = await prisma.account.findFirst({
+      where: { userId, provider: "github" },
+      select: { 
+        access_token: true,
+        refresh_token: true,
+      },
+    });
+    // Debug log to help troubleshoot
+    console.log("[GitHub Auth] DB lookup for user", userId, "found:", account ? "yes" : "no", "token exists:", account?.access_token ? "yes" : "no");
+    return account?.access_token ?? null;
+  } catch (err) {
+    console.error("[GitHub Auth] Error fetching token from DB:", err);
+    return null;
+  }
+}
+
 export async function getGitHubTokenWithSource(options?: {
   allowEnvFallback?: boolean;
   session?: Session | null;
@@ -31,10 +61,18 @@ export async function getGitHubTokenWithSource(options?: {
   const session = providedSession ?? (await getServerSession(authOptions));
   const userId = explicitUserId ?? session?.user?.id;
 
-  // Only use session accessToken if the active provider is GitHub
-  const provider = session?.provider ?? (session?.accessToken ? "github" : undefined);
-  if (session?.accessToken && provider === "github") {
+  // Check if user has GitHub connected via session (current provider is GitHub)
+  if (session?.accessToken && session?.provider === "github") {
     return { token: session.accessToken, source: "session-oauth" as GitHubTokenSource };
+  }
+
+  // If user has GitHub connected in database but signed in with different provider,
+  // fetch the GitHub token from the Account table
+  if (userId) {
+    const gitHubTokenFromDb = await getGitHubTokenFromDb(userId);
+    if (gitHubTokenFromDb) {
+      return { token: gitHubTokenFromDb, source: "session-oauth" as GitHubTokenSource };
+    }
   }
 
   // If user has a stored personal GitHub API key, use that next

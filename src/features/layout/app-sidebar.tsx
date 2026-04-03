@@ -9,6 +9,7 @@ import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
 import { useSession, signIn } from "next-auth/react";
+import { useState, useEffect } from "react";
 
 function parseRepo(pathname: string): { owner?: string; repo?: string } {
   const m = pathname.match(/^\/dashboard\/([^/]+)\/([^/]+)/);
@@ -38,10 +39,30 @@ export function AppSidebar({
   const { owner, repo } = parseRepo(pathname);
   const { setTheme, resolvedTheme } = useTheme();
   const { data: session } = useSession();
-  // Mirror the same fallback logic as server-side auth-tier.ts:
-  // provider === "github" covers normal flow; accessToken without provider covers JWTs
-  // created before provider tracking was added (sign out + back in fixes it permanently).
-  const isGitHub = session?.provider === "github" || (!session?.provider && Boolean(session?.accessToken));
+  
+  // Connected providers from database (source of truth)
+  const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
+  const [hasLoadedProviders, setHasLoadedProviders] = useState(false);
+  
+  useEffect(() => {
+    // Fetch connected providers from database
+    fetch("/api/user/account")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.connectedProviders) {
+          setConnectedProviders(data.connectedProviders);
+        }
+        setHasLoadedProviders(true);
+      })
+      .catch(() => setHasLoadedProviders(true));
+  }, []);
+  
+  // Check if GitHub is connected using database-stored providers
+  const hasGitHub = connectedProviders.includes("github");
+  // Fallback to session check while loading or if DB fetch fails
+  const isGitHub = hasLoadedProviders 
+    ? hasGitHub 
+    : session?.provider === "github" || (!session?.provider && Boolean(session?.accessToken));
 
   // Sidebar content is static — never needs session-based loading
   const isLoading = false;

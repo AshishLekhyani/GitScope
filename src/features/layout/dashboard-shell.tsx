@@ -32,6 +32,19 @@ export function DashboardShell({
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
+  // Load sidebar state from localStorage on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("gitscope:sidebar:collapsed");
+    if (saved !== null) {
+      setIsCollapsed(saved === "true");
+    }
+  }, []);
+
+  // Save sidebar state to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem("gitscope:sidebar:collapsed", String(isCollapsed));
+  }, [isCollapsed]);
+
   const session = propSession;
 
   const title =

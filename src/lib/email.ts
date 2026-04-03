@@ -146,3 +146,24 @@ export function buildPasswordResetEmail(name: string, token: string) {
     ),
   };
 }
+
+export function buildSetPasswordEmail(name: string, token: string) {
+  const url = `${APP_URL}/reset-password?token=${token}&mode=set`;
+  return {
+    subject: "Set your GitScope password",
+    html: baseTemplate(
+      "Set Password",
+      `<p style="margin:0 0 8px;font-size:16px;font-weight:600;color:#f1f5f9;">Hey ${name || "there"},</p>
+       <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;line-height:1.6;">
+         You're signing in with Google/GitHub but haven't set a password yet. Click below to create one so you can also log in with your email and password.
+         This link expires in <strong style="color:#e2e8f0;">1 hour</strong>.
+       </p>
+       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
+         Set Password
+       </a>
+       <p style="margin:24px 0 0;font-size:12px;color:rgba(255,255,255,0.3);font-family:monospace;word-break:break-all;">
+         Or copy this link: ${url}
+       </p>`
+    ),
+  };
+}

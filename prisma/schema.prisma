@@ -26,6 +26,13 @@ enum AiJobStatus {
   canceled
 }
 
+enum SecurityEventSeverity {
+  info
+  warning
+  error
+  critical
+}
+
 model Account {
   id                 String  @id @default(cuid())
   userId             String  @map("user_id")
@@ -168,6 +175,26 @@ model AiAnalysisJob {
   @@index([userId, createdAt])
   @@index([status, createdAt])
   @@map("ai_analysis_jobs")
+}
+
+model AuditLog {
+  id        String               @id @default(cuid())
+  eventType String               @map("event_type")
+  userId    String?              @map("user_id")
+  email     String?
+  ip        String
+  userAgent String?              @map("user_agent")
+  metadata  Json?
+  severity  SecurityEventSeverity
+  success   Boolean              @default(true)
+  timestamp DateTime             @default(now())
+
+  @@index([userId])
+  @@index([eventType])
+  @@index([severity])
+  @@index([timestamp])
+  @@index([ip])
+  @@map("audit_logs")
 }
 // identifier prefixes:
 //   "verify:{email}"  — email address verification (expires 24h)

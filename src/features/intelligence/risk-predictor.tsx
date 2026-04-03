@@ -123,16 +123,29 @@ export function RiskPredictor({ repo }: { repo: string }) {
     setPrs([]);
     setMeta(null);
     fetch(`/api/user/pr-risk?repo=${encodeURIComponent(repo)}`)
-      .then(async (r) => (r.ok ? r.json() : { items: [] }))
-      .then((payload: ScoredPR[] | { items?: ScoredPR[]; meta?: PRRiskMeta }) => {
-        if (Array.isArray(payload)) {
-          setPrs(payload);
-          return;
+      .then(async (r) => {
+        const text = await r.text();
+        // Try to parse as JSON, fallback to empty if HTML/error
+        try {
+          const data = JSON.parse(text);
+          if (!r.ok) {
+            console.error("PR Risk API error:", data.error || r.status);
+            return { items: [], meta: null };
+          }
+          return data;
+        } catch (parseErr) {
+          // Response was HTML (likely error page)
+          console.error("PR Risk API returned non-JSON:", text.substring(0, 100));
+          return { items: [], meta: null };
         }
+      })
+      .then((payload: { items?: ScoredPR[]; meta?: PRRiskMeta }) => {
         setPrs(payload.items ?? []);
         setMeta(payload.meta ?? null);
       })
-      .catch(() => {})
+      .catch((err) => {
+        console.error("PR Risk fetch error:", err);
+      })
       .finally(() => setLoading(false));
   }, [repo]);
 

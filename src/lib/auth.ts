@@ -4,8 +4,10 @@ import GitHubProvider from "next-auth/providers/github";
 import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
+import { sendEmail, buildVerificationEmail } from "@/lib/email";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -91,7 +93,40 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (!user.emailVerified) {
-          throw new Error("EMAIL_NOT_VERIFIED:" + credentials.email);
+          // Check if user has OAuth providers connected (email already verified by Google/GitHub)
+          const oauthAccounts = await prisma.account.findMany({
+            where: { userId: user.id, provider: { in: ["google", "github"] } },
+            select: { id: true },
+            take: 1,
+          });
+          
+          // If no OAuth accounts and email not verified, require verification
+          if (oauthAccounts.length === 0) {
+            // Auto-resend verification email
+            try {
+              const userEmail = credentials.email!; // Already validated above
+              
+              // Delete any existing verification token for this email
+              await prisma.verificationToken.deleteMany({
+                where: { identifier: `verify:${userEmail}` },
+              });
+
+              const token = crypto.randomBytes(32).toString("hex");
+              const expires = new Date(Date.now() + 30 * 60 * 1000); // 30 minutes
+
+              await prisma.verificationToken.create({
+                data: { identifier: `verify:${userEmail}`, token, expires },
+              });
+
+              const { subject, html } = buildVerificationEmail(user.name ?? "", token);
+              await sendEmail({ to: userEmail, subject, html });
+            } catch (emailErr) {
+              console.error("[Auth] Failed to resend verification email:", emailErr);
+            }
+
+            throw new Error("EMAIL_NOT_VERIFIED:" + credentials.email);
+          }
+          // Otherwise allow login - OAuth providers already verified the email
         }
 
         const userWithoutPassword = { ...user, password: undefined };
@@ -100,6 +135,11 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
+    async signIn() {
+      // Allow account linking for already-authenticated users
+      // NextAuth's Prisma adapter handles the actual linking if emails match
+      return true;
+    },
     async session({ token, session }) {
       if (token && session.user) {
         // Robust mapping to prevent identity loss across tab switches
@@ -109,6 +149,23 @@ export const authOptions: NextAuthOptions = {
         session.user.image = token.picture;
         session.accessToken = token.accessToken;
         session.provider = token.provider;
+
+        // If user doesn't have GitHub token in session but has GitHub connected,
+        // fetch it from the database Account table
+        if (!token.accessToken || token.provider !== "github") {
+          try {
+            const githubAccount = await prisma.account.findFirst({
+              where: { userId: token.id as string, provider: "github" },
+              select: { access_token: true },
+            });
+            if (githubAccount?.access_token) {
+              session.accessToken = githubAccount.access_token;
+              session.provider = "github";
+            }
+          } catch (error) {
+            console.error("[Auth] Failed to fetch GitHub token for session:", error);
+          }
+        }
 
         // [STRICT SECURITY] Instant User Sync
         // Verify user still exists in the database on every session check.

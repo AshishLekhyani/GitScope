@@ -101,11 +101,27 @@ export function SettingsPanel() {
   const [tierSaving, setTierSaving] = useState(false);
   const [tierMsg, setTierMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
+  // Connected OAuth providers from database (not just current session)
+  const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
+
   useEffect(() => {
     setMounted(true);
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as SettingsTab | null;
     if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
+
+    // Load connected providers from database
+    fetch("/api/user/account")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.connectedProviders) {
+          setConnectedProviders(data.connectedProviders);
+        }
+        if (data?.hasPassword !== undefined) {
+          setHasPassword(data.hasPassword);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Load profile from DB on mount
@@ -336,9 +352,11 @@ export function SettingsPanel() {
   const ratePctClass =
     ratePct > 50 ? "from-tertiary to-emerald-400" : ratePct > 20 ? "from-amber-400 to-yellow-400" : "from-destructive to-red-400";
 
-  const rawProvider = session?.provider;
-  // If provider isn't set but accessToken exists, this is a GitHub session (pre-provider-tracking JWT)
-  const provider = rawProvider ?? (session?.accessToken && !rawProvider ? "github" : undefined);
+  // Check if provider is connected using database-stored providers, not just current session
+  const isProviderConnected = (providerName: string) => connectedProviders.includes(providerName);
+  const hasGithub = isProviderConnected("github");
+  const hasGoogle = isProviderConnected("google");
+  const hasCredentials = isProviderConnected("credentials") || hasPassword;
 
   const themeOptions: { value: ThemeOption; label: string; bgClass: string }[] = [
     { value: "light", label: "Light", bgClass: "bg-slate-200" },
@@ -411,7 +429,7 @@ export function SettingsPanel() {
                         onClick={() => { dispatch(setAvatarUrl(session.user!.image!)); setAvatarCleared(false); setDirty(true); }}
                       >
                         <MaterialIcon name="sync" size={12} />
-                        Use {session.provider === "github" ? "GitHub" : "OAuth"} photo
+                        Use {hasGithub ? "GitHub" : hasGoogle ? "Google" : "OAuth"} photo
                       </button>
                     )}
                     <button
@@ -566,22 +584,22 @@ export function SettingsPanel() {
                 </label>
                 {/* Active connections */}
                 <div className="flex flex-wrap gap-2 mb-5">
-                  {(provider === "credentials" || hasPassword) && (
+                  {(hasCredentials) && (
                     <span className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest px-3 py-1.5 text-xs font-bold text-foreground">
                       <MaterialIcon name="lock" size={14} /> Email & Password
                     </span>
                   )}
-                  {provider === "github" && (
+                  {hasGithub && (
                     <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       <MaterialIcon name="check_circle" size={14} /> GitHub Connected
                     </span>
                   )}
-                  {provider === "google" && (
+                  {hasGoogle && (
                     <span className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
                       <MaterialIcon name="check_circle" size={14} /> Google Connected
                     </span>
                   )}
-                  {!hasPassword && provider !== "credentials" && (
+                  {!hasCredentials && (
                     <span className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
                       <MaterialIcon name="info" size={14} /> No password set
                     </span>
@@ -589,7 +607,7 @@ export function SettingsPanel() {
                 </div>
 
                 {/* GitHub connect card */}
-                {provider !== "github" && (
+                {!hasGithub && (
                   <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-4 mb-3">
                     <div className="flex items-start gap-3">
                       <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -623,7 +641,7 @@ export function SettingsPanel() {
                 )}
 
                 {/* Google connect card */}
-                {provider !== "google" && (
+                {!hasGoogle && (
                   <div className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 p-4">
                     <div className="flex items-start gap-3">
                       <div className="size-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
@@ -634,13 +652,18 @@ export function SettingsPanel() {
                         <p className="text-xs text-muted-foreground leading-relaxed mb-3">
                           Add Google sign-in to your account. Use your Google profile photo and sign in faster across devices.
                         </p>
-                        <a
-                          href={`/api/auth/signin/google?callbackUrl=${encodeURIComponent("/settings?tab=account&connected=google")}`}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            signIn("google", {
+                              callbackUrl: "/settings?tab=account&connected=google",
+                            })
+                          }
                           className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 active:scale-[0.98] transition-all"
                         >
                           <MaterialIcon name="person" size={14} />
                           Connect Google Account
-                        </a>
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -929,7 +952,7 @@ export function SettingsPanel() {
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MaterialIcon name="cloud_done" size={16} className="text-tertiary" />
                 <span className="font-mono text-xs">
-                  {provider === "github"
+                  {hasGithub
                     ? "GitHub OAuth active — 5,000 req/hr"
                     : hasGithubApiKey
                       ? "Custom token active — 5,000 req/hr"
@@ -942,19 +965,19 @@ export function SettingsPanel() {
               <span
                 className={cn(
                   "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full font-mono text-[9px] font-black uppercase tracking-widest border",
-                  provider === "github" || hasGithubApiKey
+                  hasGithub || hasGithubApiKey
                     ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                     : "bg-amber-500/10 text-amber-500 border-amber-500/20"
                 )}
               >
                 <span className="size-1.5 rounded-full bg-current" />
-                {provider === "github"
+                {hasGithub
                   ? "GitHub Tier — Full Access"
                   : hasGithubApiKey
                     ? "Custom Token — Full Access"
                     : "Limited — 60 req/hr"}
               </span>
-              {provider !== "github" && (
+              {!hasGithub && (
                 <p className="font-mono text-[9px] text-muted-foreground">
                   <button
                     type="button"
@@ -1132,7 +1155,7 @@ export function SettingsPanel() {
 	          </div>
 
 	          {/* Personal GitHub API Key */}
-	          {provider !== "github" && (
+          {!hasGithub && (
             <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
               <h3 className="font-heading text-lg font-bold text-foreground mb-1">Personal GitHub Token</h3>
 	              <p className="text-xs text-muted-foreground mb-5 leading-relaxed">

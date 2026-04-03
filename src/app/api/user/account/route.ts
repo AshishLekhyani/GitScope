@@ -14,6 +14,34 @@ function validatePasswordComplexity(pass: string): string | null {
   return null;
 }
 
+export async function GET() {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  // Get user details
+  const user = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { password: true, email: true },
+  });
+
+  // Get all connected OAuth accounts
+  const accounts = await prisma.account.findMany({
+    where: { userId: session.user.id },
+    select: { provider: true },
+  });
+
+  const connectedProviders = accounts.map((a) => a.provider);
+  const hasPassword = !!user?.password;
+
+  return NextResponse.json({
+    connectedProviders,
+    hasPassword,
+    email: user?.email,
+  });
+}
+
 export async function PATCH(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {

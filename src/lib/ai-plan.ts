@@ -89,13 +89,13 @@ function normalizePlan(value: string): AiPlan | null {
   return null;
 }
 
-function planRank(plan: AiPlan): number {
-  return PLAN_ORDER.indexOf(plan);
-}
+// function planRank(plan: AiPlan): number {
+//   return PLAN_ORDER.indexOf(plan);
+// }
 
-function maxPlan(a: AiPlan, b: AiPlan): AiPlan {
-  return planRank(a) >= planRank(b) ? a : b;
-}
+// function maxPlan(a: AiPlan, b: AiPlan): AiPlan {
+//   return planRank(a) >= planRank(b) ? a : b;
+// }
 
 function toPrismaTier(plan: AiPlan): PrismaAiTier {
   return plan as PrismaAiTier;
@@ -155,8 +155,8 @@ function inferAiPlanFromSession(session: Session | null): AiPlan {
     if (matchesDomain(email, teamDomains)) return "team";
   }
 
-  const provider = session.provider ?? (session.accessToken ? "github" : undefined);
-  if (provider === "github") return "professional";
+  // const provider = session.provider ?? (session.accessToken ? "github" : undefined);
+  // New users should default to free tier regardless of auth provider
   return "free";
 }
 
@@ -165,35 +165,22 @@ export function resolveAiPlanFromSession(session: Session | null): AiPlan {
 }
 
 export async function resolveAiPlanFromSessionDb(session: Session | null): Promise<AiPlan> {
-  const inferred = inferAiPlanFromSession(session);
   const userId = session?.user?.id;
-  if (!userId) return inferred;
+  if (!userId) return inferAiPlanFromSession(session);
 
   try {
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: { aiTier: true },
     });
-    if (!user?.aiTier) return inferred;
-
-    const stored = fromPrismaTier(user.aiTier);
-    const resolved = maxPlan(stored, inferred);
-
-    if (resolved !== stored) {
-      await prisma.user
-        .update({
-          where: { id: userId },
-          data: {
-            aiTier: toPrismaTier(resolved),
-            aiTierUpdatedAt: new Date(),
-          },
-        })
-        .catch(() => {});
+    // Database is the source of truth - use stored tier if it exists
+    if (user?.aiTier) {
+      return fromPrismaTier(user.aiTier);
     }
-
-    return resolved;
+    // Fall back to inference only if no tier is set in DB
+    return inferAiPlanFromSession(session);
   } catch {
-    return inferred;
+    return inferAiPlanFromSession(session);
   }
 }
 

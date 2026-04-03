@@ -93,35 +93,40 @@ GitScope is a full-stack GitHub analytics platform that turns raw GitHub data in
 
 ```mermaid
 graph TD
-    CLIENT["Browser / Client UI"]
-    RTK["Redux Toolkit"]
-    RQ["React Query"]
-    
-    APP["Next.js App Router"]
-    API["Proxy & AI Routes"]
-    AUTH["NextAuth.js"]
-    
-    GH["GitHub REST API"]
-    AI["Anthropic API"]
-    
-    DB[("(PostgreSQL Database)")]
+    classDef client fill:#0ea5e9,color:#fff,stroke:#0284c7
+    classDef server fill:#10b981,color:#fff,stroke:#059669
+    classDef external fill:#f59e0b,color:#fff,stroke:#d97706
+    classDef data fill:#8b5cf6,color:#fff,stroke:#7c3aed
 
-    CLIENT <--> RTK
-    CLIENT <--> RQ
+    CLIENT["Browser / Client UI"]:::client
+    RTK["Redux Toolkit"]:::client
+    RQ["React Query"]:::client
     
-    CLIENT --> APP
-    CLIENT --> API
-    CLIENT --> AUTH
+    APP["Next.js App Router"]:::server
+    API["Proxy & AI Routes"]:::server
+    AUTH["NextAuth.js"]:::server
     
-    AUTH --> DB
+    GH["GitHub REST API"]:::external
+    AI["Anthropic API"]:::external
     
-    APP --> GH
-    APP --> DB
+    DB[(PostgreSQL Database)]:::data
+
+    CLIENT <-->|Global State| RTK
+    CLIENT <-->|Server Cache| RQ
     
-    API --> GH
-    API --> AI
+    CLIENT -->|App Routing| APP
+    CLIENT -->|API Calls| API
+    CLIENT -->|OAuth Flow| AUTH
     
-    APP --> CLIENT
+    AUTH -->|User Sessions| DB
+    
+    APP -->|RSC Data Fetching| GH
+    APP -->|Prisma ORM| DB
+    
+    API -->|Metadata Proxy| GH
+    API -->|AI Repository Analysis| AI
+    
+    APP -->|Hydration| CLIENT
 ```
 
 The application follows a **hybrid rendering** strategy:

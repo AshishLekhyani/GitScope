@@ -3,9 +3,22 @@
 import { signOut } from "next-auth/react";
 
 export async function performLogout() {
-  // Avoid soft client navigation cache artifacts by forcing a hard redirect after sign out.
-  await signOut({ redirect: false });
-  if (typeof window !== "undefined") {
-    window.location.replace("/");
+  try {
+    // Call signOut and wait for it to complete
+    await signOut({ redirect: false, callbackUrl: "/" });
+    
+    // Small delay to ensure cookies are cleared
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Force a full page reload to clear all client state
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
+  } catch (error) {
+    console.error("[Auth] Sign out failed:", error);
+    // Fallback: force redirect anyway
+    if (typeof window !== "undefined") {
+      window.location.href = "/";
+    }
   }
 }
