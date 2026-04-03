@@ -9,7 +9,10 @@
 
 import { createHmac, timingSafeEqual as cryptoTimingSafeEqual } from "crypto";
 
-const REQUEST_SIGNING_SECRET = process.env.REQUEST_SIGNING_SECRET || process.env.NEXTAUTH_SECRET || "";
+const REQUEST_SIGNING_SECRET = process.env.REQUEST_SIGNING_SECRET || process.env.NEXTAUTH_SECRET;
+if (!REQUEST_SIGNING_SECRET) {
+  throw new Error("REQUEST_SIGNING_SECRET or NEXTAUTH_SECRET must be configured in environment variables");
+}
 
 export interface SignedRequest {
   signature: string;
@@ -176,11 +179,12 @@ function timingSafeEqual(a: string, b: string): boolean {
 export function verifyWebhookSignature(
   payload: string,
   signature: string,
-  secret: string = REQUEST_SIGNING_SECRET
+  secret?: string
 ): boolean {
-  if (!secret) return false;
+  const actualSecret = secret ?? REQUEST_SIGNING_SECRET;
+  if (!actualSecret) return false;
   
-  const expected = createHmac("sha256", secret)
+  const expected = createHmac("sha256", actualSecret as string)
     .update(payload)
     .digest("hex");
   

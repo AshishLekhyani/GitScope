@@ -6,7 +6,7 @@ import { setCommandPaletteOpen, setShortcutsOpen } from "@/store/slices/uiSlice"
 import { useTheme } from "next-themes";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { AppSidebar } from "./app-sidebar";
 import { GitScopeCommandPalette } from "./gitscope-command-palette";
 import { ShortcutsModal } from "./shortcuts-modal";
@@ -31,6 +31,10 @@ export function DashboardShell({
   const { resolvedTheme, setTheme } = useTheme();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [mounted, setMounted] = useState(false);
+  
+  // Ref for search input to enable keyboard shortcut focus
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Load sidebar state from localStorage on mount
   useEffect(() => {
@@ -38,12 +42,15 @@ export function DashboardShell({
     if (saved !== null) {
       setIsCollapsed(saved === "true");
     }
+    setMounted(true);
   }, []);
 
   // Save sidebar state to localStorage when it changes
   useEffect(() => {
-    localStorage.setItem("gitscope:sidebar:collapsed", String(isCollapsed));
-  }, [isCollapsed]);
+    if (mounted) {
+      localStorage.setItem("gitscope:sidebar:collapsed", String(isCollapsed));
+    }
+  }, [isCollapsed, mounted]);
 
   const session = propSession;
 
@@ -120,8 +127,7 @@ export function DashboardShell({
       // Shortcuts Helper: /
       if (e.key === "/" && !mod) {
         e.preventDefault();
-        const searchInput = document.querySelector('input[aria-label="Global repository search"]') as HTMLInputElement;
-        searchInput?.focus();
+        searchInputRef.current?.focus();
       }
 
       lastKey = e.key;
@@ -158,33 +164,42 @@ export function DashboardShell({
         title={title}
         session={session}
         onMenuClick={() => setMobileOpen(true)}
+        searchInputRef={searchInputRef}
       />
       <RateLimitBanner />
 
       <div className="relative flex min-h-0 flex-1">
-        {/* Desktop sidebar — fixed under header (top-16) */}
-        <aside
-          className={cn(
-            "border-sidebar-border bg-sidebar text-sidebar-foreground fixed top-16 left-0 z-30 hidden h-[calc(100vh-4rem)] flex-col border-r transition-all duration-300 md:flex",
-            isCollapsed ? "w-20" : "w-64"
-          )}
-        >
-          <AppSidebar 
-            isCollapsed={isCollapsed} 
-            onToggleCollapse={() => setIsCollapsed(!isCollapsed)} 
-          />
-        </aside>
-
-        <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
-          <SheetContent
-            side="left"
-            className="border-sidebar-border bg-sidebar w-[280px] border-r p-0"
+        {/* Desktop sidebar — fixed under header (top-16) — client only to prevent hydration mismatch */}
+        {mounted && (
+          <aside
+            className={cn(
+              "border-sidebar-border bg-sidebar text-sidebar-foreground fixed top-16 left-0 z-30 hidden h-[calc(100vh-4rem)] flex-col border-r transition-all duration-300 md:flex",
+              isCollapsed ? "w-20" : "w-64"
+            )}
+            suppressHydrationWarning
           >
-            <div className="flex h-full flex-col pt-12">
-              <AppSidebar onNavigate={() => setMobileOpen(false)} />
-            </div>
-          </SheetContent>
-        </Sheet>
+            <AppSidebar 
+              isCollapsed={isCollapsed} 
+              onToggleCollapse={() => setIsCollapsed(!isCollapsed)} 
+            />
+          </aside>
+        )}
+
+        {mobileOpen && (
+          <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+            <SheetContent
+              side="left"
+              className="border-sidebar-border bg-sidebar w-[280px] border-r p-0 [&[data-state='closed']]:hidden"
+            >
+              <div className="flex h-full flex-col pt-12">
+                <AppSidebar 
+                  key={`mobile-${Date.now()}`}
+                  onNavigate={() => setMobileOpen(false)} 
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
+        )}
 
         <div
           className={cn(
@@ -192,9 +207,7 @@ export function DashboardShell({
             isCollapsed ? "md:pl-20" : "md:pl-64"
           )}
         >
-          {/* Keyed main content forces a fresh render on every internal navigation,
-              solving the 'frozen' layout children issue mentioned in Next.js research. */}
-          <main key={pathname} className="flex-1 px-4 pt-6 pb-20 md:px-8 md:pb-12 md:pt-8">
+          <main className="flex-1 px-4 pt-6 pb-20 md:px-8 md:pb-12 md:pt-8">
             {children}
           </main>
         </div>

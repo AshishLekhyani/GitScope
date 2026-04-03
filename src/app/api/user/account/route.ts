@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { encryptGitHubToken } from "@/lib/github-token-crypto";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 function validatePasswordComplexity(pass: string): string | null {
   if (pass.length < 8) return "Password must be at least 8 characters.";
@@ -14,7 +15,7 @@ function validatePasswordComplexity(pass: string): string | null {
   return null;
 }
 
-export async function GET() {
+async function getHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -32,7 +33,7 @@ export async function GET() {
     select: { provider: true },
   });
 
-  const connectedProviders = accounts.map((a) => a.provider);
+  const connectedProviders = accounts.map((a: { provider: string }) => a.provider);
   const hasPassword = !!user?.password;
 
   return NextResponse.json({
@@ -42,7 +43,7 @@ export async function GET() {
   });
 }
 
-export async function PATCH(req: Request) {
+async function patchHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -120,7 +121,7 @@ export async function PATCH(req: Request) {
   return NextResponse.json({ success: true });
 }
 
-export async function DELETE() {
+async function deleteHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -129,3 +130,8 @@ export async function DELETE() {
   await prisma.user.delete({ where: { id: session.user.id } });
   return NextResponse.json({ success: true });
 }
+
+// Apply security middleware - GET is read-only, PATCH/DELETE require CSRF and stricter rate limiting
+export const GET = withRouteSecurity(getHandler, { ...SecurityPresets.public, csrf: false });
+export const PATCH = withRouteSecurity(patchHandler, SecurityPresets.sensitive);
+export const DELETE = withRouteSecurity(deleteHandler, SecurityPresets.sensitive);

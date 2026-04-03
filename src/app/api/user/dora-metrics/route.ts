@@ -142,7 +142,10 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("DORA Metrics Error:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("DORA Metrics Error:", error);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

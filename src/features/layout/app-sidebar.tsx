@@ -192,7 +192,7 @@ export function AppSidebar({
 
   const linkCls = (active: boolean) =>
     cn(
-      "flex items-center transition-all duration-150 active:scale-[0.98]",
+      "flex items-center active:scale-[0.98]",
       isCollapsed ? "justify-center p-2 rounded-md mx-2 my-1" : "gap-3 border-l-2 py-2.5 pr-4 pl-3 text-sm",
       active
         ? isCollapsed

@@ -30,7 +30,7 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
-} from "recharts";
+} from "recharts/es6";
 
 /* ─── Stars Growth Velocity ─── */
 function StarsGrowthChart({

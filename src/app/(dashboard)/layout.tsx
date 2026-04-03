@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { DashboardShell } from "@/features/layout/dashboard-shell";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
+import { ErrorBoundary } from "@/components/error-boundary";
 
 export default async function DashboardLayout({
   children,
@@ -10,5 +11,11 @@ export default async function DashboardLayout({
   children: React.ReactNode;
 }) {
   const session = await getServerSession(authOptions);
-  return <DashboardShell session={session}>{children}</DashboardShell>;
+  return (
+    <DashboardShell session={session}>
+      <ErrorBoundary>
+        {children}
+      </ErrorBoundary>
+    </DashboardShell>
+  );
 }

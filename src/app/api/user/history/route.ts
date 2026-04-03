@@ -2,7 +2,7 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { Prisma } from "@prisma/client";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 type HistoryItem = {
   query: string;
@@ -12,7 +12,7 @@ type HistoryItem = {
 };
 
 // GET: Fetch last 10 history items
-export async function GET() {
+async function getHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ history: [] });
@@ -35,14 +35,17 @@ export async function GET() {
       })) 
     });
   } catch (error) {
-    console.error("Failed to fetch history:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to fetch history:", error);
+    }
     // Return empty history instead of 500 to keep UI stable
     return NextResponse.json({ history: [] });
   }
 }
 
 // DELETE: Clear all history for the current user
-export async function DELETE() {
+async function deleteHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -54,13 +57,16 @@ export async function DELETE() {
     });
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("Failed to clear history:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to clear history:", error);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
 // POST: Upsert history item
-export async function POST(req: Request) {
+async function postHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -101,10 +107,18 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ success: true, item: historyItem });
   } catch (error) {
-    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+    if (error instanceof Error && 'code' in error) {
       return NextResponse.json({ error: "Database request failed" }, { status: 500 });
     }
-    console.error("Failed to save history:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Failed to save history:", error);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
+
+// Apply security middleware - GET is read-only (no CSRF), POST/DELETE require CSRF protection
+export const GET = withRouteSecurity(getHandler, { ...SecurityPresets.public, csrf: false });
+export const POST = withRouteSecurity(postHandler, SecurityPresets.standard);
+export const DELETE = withRouteSecurity(deleteHandler, SecurityPresets.standard);

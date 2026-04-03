@@ -10,7 +10,7 @@ import {
   Tooltip, 
   ResponsiveContainer, 
   Cell
-} from "recharts";
+} from "recharts/es6";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 
@@ -104,7 +104,7 @@ export function VelocityChart({ repos }: { repos: string[] }) {
            </div>
 
            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                  <BarChart data={chartData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" strokeOpacity={0.1} vertical={false} />
                     <XAxis 

@@ -102,7 +102,10 @@ export async function POST(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Security scan error:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Security scan error:", error);
+    }
     return NextResponse.json({ error: "Scan failed" }, { status: 500 });
   }
 }

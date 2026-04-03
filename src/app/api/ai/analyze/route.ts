@@ -3,6 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
@@ -58,7 +59,7 @@ async function fetchRepoSummary(fullName: string, token: string): Promise<RepoSu
   };
 }
 
-export async function POST(req: Request) {
+async function handler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -148,7 +149,13 @@ Keep the total response under 300 words. Be specific, technical, and easy to und
       outputTokens: message.usage.output_tokens,
     });
   } catch (err) {
-    console.error("[AI analyze]", err);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("[AI analyze]", err);
+    }
     return NextResponse.json({ error: "AI analysis failed" }, { status: 500 });
   }
 }
+
+// Apply security middleware with AI preset (rate limiting for expensive operations)
+export const POST = withRouteSecurity(handler, SecurityPresets.ai);

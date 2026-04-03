@@ -70,7 +70,10 @@ export async function POST(request: Request) {
       message: "If registration is available for this email, a verification link has been sent.",
     });
   } catch (error) {
-    console.error("REGISTRATION_ERROR", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("REGISTRATION_ERROR", error);
+    }
     return new NextResponse("Internal Error", { status: 500 });
   }
 }

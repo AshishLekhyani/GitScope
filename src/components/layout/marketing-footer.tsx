@@ -20,6 +20,7 @@ export function MarketingFooter() {
                   src="/logo.png" 
                   alt="GitScope" 
                   fill 
+                  sizes="32px"
                   className="object-cover"
                 />
               </div>

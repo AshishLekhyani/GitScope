@@ -9,7 +9,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer
-} from "recharts";
+} from "recharts/es6";
 import { SearchRepoResult } from "@/features/layout/top-nav";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
@@ -171,7 +171,7 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
             </div>
           </div>
           
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={chartData} margin={{ top: 20, right: 30, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="currentColor" strokeOpacity={0.05} />
               <XAxis 

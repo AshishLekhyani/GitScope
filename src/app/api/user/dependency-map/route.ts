@@ -158,7 +158,10 @@ export async function GET(req: Request) {
       },
     });
   } catch (error) {
-    console.error("Dependency Map Error:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Dependency Map Error:", error);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

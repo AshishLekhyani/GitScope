@@ -13,7 +13,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
+} from "recharts/es6";
 
 function weekLabel(weekTs: number) {
   const d = new Date(weekTs * 1000);
@@ -75,7 +75,7 @@ export function CommitActivityChart({
         </CardTitle>
       </CardHeader>
       <CardContent className="h-[280px] pt-2">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <BarChart data={data}>
             <CartesianGrid strokeDasharray="3 3" className="stroke-muted" stroke="var(--border)" />
             <XAxis

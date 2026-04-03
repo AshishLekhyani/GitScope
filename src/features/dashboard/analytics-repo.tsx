@@ -17,7 +17,7 @@ import {
   Cell,
   Pie,
   PieChart,
-} from "recharts";
+} from "recharts/es6";
 import { MaterialIcon } from "@/components/material-icon";
 
 function processPRData(prs: GitHubPull[]) {
@@ -186,7 +186,7 @@ export function AnalyticsRepoPanel({ owner, repo }: { owner: string; repo: strin
             <CardTitle className="text-base">Merge Time Distribution</CardTitle>
           </CardHeader>
           <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={processed.timeBuckets} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted/30" />
                 <XAxis dataKey="name" tick={{ fontSize: 11, fill: "var(--muted-foreground)" }} tickLine={false} axisLine={false} />
@@ -213,7 +213,7 @@ export function AnalyticsRepoPanel({ owner, repo }: { owner: string; repo: strin
             <CardTitle className="text-base">PR Status Breakdown</CardTitle>
           </CardHeader>
           <CardContent className="h-[280px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={processed.statusChart}

@@ -103,44 +103,66 @@ export function SettingsPanel() {
 
   // Connected OAuth providers from database (not just current session)
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
+  const [settingsLoading, setSettingsLoading] = useState(true);
 
+  // Load all settings data in a single fetch
   useEffect(() => {
     setMounted(true);
     const params = new URLSearchParams(window.location.search);
     const tab = params.get("tab") as SettingsTab | null;
     if (tab && TABS.some((t) => t.id === tab)) setActiveTab(tab);
 
-    // Load connected providers from database
-    fetch("/api/user/account")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((data) => {
-        if (data?.connectedProviders) {
-          setConnectedProviders(data.connectedProviders);
-        }
-        if (data?.hasPassword !== undefined) {
-          setHasPassword(data.hasPassword);
-        }
-      })
-      .catch(() => {});
-  }, []);
-
-  // Load profile from DB on mount
-  useEffect(() => {
-    fetch("/api/user/profile")
+    // Load all settings data from consolidated endpoint
+    setSettingsLoading(true);
+    fetch("/api/user/settings")
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (!data) return;
-        dispatch(
-          updateProfile({
-            displayName: data.name ?? session?.user?.name ?? session?.user?.email?.split("@")[0] ?? "",
-            gitHandle: data.githubHandle ?? "",
-            bio: data.bio ?? "",
-          })
-        );
-        setHasPassword(data.hasPassword ?? false);
-        setHasGithubApiKey(data.hasGithubApiKey ?? false);
+        
+        // Profile data
+        if (data.profile) {
+          dispatch(
+            updateProfile({
+              displayName: data.profile.name ?? session?.user?.name ?? session?.user?.email?.split("@")[0] ?? "",
+              gitHandle: data.profile.githubHandle ?? "",
+              bio: data.profile.bio ?? "",
+            })
+          );
+          setHasPassword(data.profile.hasPassword ?? false);
+          setHasGithubApiKey(data.profile.hasGithubApiKey ?? false);
+        }
+        
+        // Connected providers
+        if (data.connectedProviders) {
+          setConnectedProviders(data.connectedProviders);
+        }
+        
+        // AI tier info
+        if (data.aiTier) {
+          setTierInfo({
+            resolvedPlan: data.aiTier.resolvedPlan,
+            storedPlan: data.aiTier.storedPlan,
+            aiTierUpdatedAt: data.aiTier.aiTierUpdatedAt,
+            canManage: data.aiTier.canManage,
+          });
+        }
+        
+        // AI jobs
+        if (data.recentJobs) {
+          setJobHistory(data.recentJobs as AiJobSummary[]);
+        }
+        
+        // AI usage
+        if (data.aiUsage) {
+          setUsageSnapshot({
+            total: data.aiUsage.totalEvents,
+            byFeature: {}, // Can be extended if needed
+            since: new Date().toISOString(),
+          });
+        }
       })
       .catch(() => {
+        // Fallback: at least set display name from session
         if (session?.user && !displayName) {
           dispatch(
             updateProfile({
@@ -148,7 +170,8 @@ export function SettingsPanel() {
             })
           );
         }
-      });
+      })
+      .finally(() => setSettingsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user?.id]);
 
@@ -158,7 +181,7 @@ export function SettingsPanel() {
   }, [avatarUrl]);
 
   useEffect(() => {
-    if (activeTab !== "workspace" || !session?.user?.id) return;
+    if (activeTab !== "workspace" || !session?.user?.id || jobHistory.length > 0) return;
 
     let cancelled = false;
     const loadAiOps = async () => {

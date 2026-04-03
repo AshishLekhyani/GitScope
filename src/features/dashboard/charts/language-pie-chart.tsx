@@ -11,7 +11,7 @@ import {
   PieChart,
   ResponsiveContainer,
   Tooltip,
-} from "recharts";
+} from "recharts/es6";
 
 const COLORS = [
   "var(--chart-1)",
@@ -74,7 +74,7 @@ export function LanguagePieChart({
         </CardTitle>
       </CardHeader>
       <CardContent className="h-[280px]">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
           <PieChart>
             <Pie
               data={data}

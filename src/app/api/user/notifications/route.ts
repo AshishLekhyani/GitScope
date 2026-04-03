@@ -3,8 +3,21 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { getGitHubToken } from "@/lib/github-auth";
 import { NextResponse } from "next/server";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
-export async function GET() {
+// Type for local notifications from Prisma
+interface LocalNotification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: string;
+  isRead: boolean;
+  link: string | null;
+  createdAt: Date;
+}
+
+async function getHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -46,24 +59,30 @@ export async function GET() {
           }));
         }
       } catch (e) {
-        console.error("Failed to fetch GH notifications", e);
+        // Silently fail - GitHub notifications are optional
+        if (process.env.NODE_ENV !== "production") {
+          console.error("Failed to fetch GH notifications", e);
+        }
       }
     }
 
     // Merge and sort
     const merged = [
-      ...localNotifications.map((n) => ({ ...n, source: "gitscope" })),
+      ...localNotifications.map((n: LocalNotification) => ({ ...n, source: "gitscope" })),
       ...githubNotifications
     ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
     return NextResponse.json(merged);
   } catch (error) {
-    console.error("Notification Fetch Error:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Notification Fetch Error:", error);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }
 
-export async function PATCH(req: Request) {
+async function patchHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -87,3 +106,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Update failed" }, { status: 500 });
   }
 }
+
+// Apply security middleware - GET is read-only (no CSRF), PATCH requires CSRF protection
+export const GET = withRouteSecurity(getHandler, { ...SecurityPresets.public, csrf: false });
+export const PATCH = withRouteSecurity(patchHandler, SecurityPresets.standard);

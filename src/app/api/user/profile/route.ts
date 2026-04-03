@@ -2,8 +2,9 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
-export async function GET() {
+async function getHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -19,7 +20,7 @@ export async function GET() {
   return NextResponse.json({ ...rest, hasPassword: !!password, hasGithubApiKey: !!githubApiKey });
 }
 
-export async function PATCH(req: Request) {
+async function patchHandler(req: Request) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -68,3 +69,7 @@ export async function PATCH(req: Request) {
 
   return NextResponse.json({ ok: true });
 }
+
+// Apply security middleware - GET is read-only, PATCH requires CSRF
+export const GET = withRouteSecurity(getHandler, { ...SecurityPresets.public, csrf: false });
+export const PATCH = withRouteSecurity(patchHandler, SecurityPresets.standard);

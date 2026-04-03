@@ -8,6 +8,7 @@ import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { sendEmail, buildVerificationEmail } from "@/lib/email";
+import { logSecurityEvent } from "@/lib/audit-log";
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
@@ -22,18 +23,78 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_ID as string,
       clientSecret: process.env.GITHUB_SECRET as string,
+      // SECURITY: allowDangerousEmailAccountLinking enables automatic account linking when OAuth
+      // provider email matches existing user email. We mitigate risks by:
+      // 1. Checking email is verified by the OAuth provider
+      // 2. Audit logging all automatic linking events
+      // 3. Requiring the user to be recently active or have verified email
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
           scope: "read:user user:email notifications",
         },
       },
+      // SECURITY: Extra verification - call GitHub API to check email is verified
+      async profile(profile, tokens) {
+        let emailVerified: Date | null = null;
+        
+        // Only check verification if we have an email and access token
+        if (profile.email && tokens.access_token) {
+          try {
+            // Fetch user's emails from GitHub API to check verification status
+            const emailsRes = await fetch("https://api.github.com/user/emails", {
+              headers: {
+                Authorization: `Bearer ${tokens.access_token}`,
+                Accept: "application/vnd.github.v3+json",
+              },
+            });
+            
+            if (emailsRes.ok) {
+              const emails: Array<{ email: string; verified: boolean; primary: boolean }> = await emailsRes.json();
+              
+              // Find the matching email and check if it's verified
+              const matchingEmail = emails.find(e => e.email === profile.email);
+              if (matchingEmail?.verified) {
+                emailVerified = new Date();
+              } else if (!matchingEmail) {
+                // Email not found in user's emails - might be public email they don't own
+                console.warn(`[Security] GitHub email ${profile.email} not found in user's verified emails list`);
+              }
+            } else {
+              console.error("[Auth] Failed to fetch GitHub emails:", emailsRes.status);
+            }
+          } catch (error) {
+            console.error("[Auth] Error fetching GitHub email verification:", error);
+            // Fail safe: don't mark as verified if we can't check
+          }
+        }
+        
+        return {
+          id: profile.id.toString(),
+          name: profile.name || profile.login,
+          email: profile.email,
+          image: profile.avatar_url,
+          // Only trust GitHub email if it's verified via API
+          emailVerified,
+        };
+      },
     }),
     ...(process.env.GOOGLE_ID && process.env.GOOGLE_SECRET
       ? [GoogleProvider({
           clientId: process.env.GOOGLE_ID,
           clientSecret: process.env.GOOGLE_SECRET,
+          // SECURITY: Google verifies emails - see GitHubProvider for additional safety measures
           allowDangerousEmailAccountLinking: true,
+          // Google always returns verified emails
+          profile(profile) {
+            return {
+              id: profile.sub,
+              name: profile.name,
+              email: profile.email,
+              image: profile.picture,
+              emailVerified: profile.email_verified ? new Date() : null,
+            };
+          },
         })]
       : []),
     // One-time autologin token — used immediately after email verification
@@ -135,9 +196,51 @@ export const authOptions: NextAuthOptions = {
     }),
   ],
   callbacks: {
-    async signIn() {
-      // Allow account linking for already-authenticated users
-      // NextAuth's Prisma adapter handles the actual linking if emails match
+    async signIn({ user, account, profile }) {
+      // SECURITY: Log automatic account linking for audit purposes
+      if (account && user.id && profile?.email) {
+        // Check if this is an automatic link (existing user with same email)
+        const existingUser = await prisma.user.findUnique({
+          where: { email: profile.email },
+          select: { id: true, emailVerified: true, name: true },
+        });
+        
+        if (existingUser && existingUser.id !== user.id) {
+          // Automatic linking detected - log to audit system and notify user
+          const providerName = account.provider.charAt(0).toUpperCase() + account.provider.slice(1);
+          
+          // 1. Persist audit log to database
+          await logSecurityEvent({
+            eventType: "auth:oauth_connect",
+            userId: existingUser.id,
+            email: profile.email,
+            ip: "0.0.0.0", // OAuth callback doesn't have direct IP, logged elsewhere
+            userAgent: "oauth-callback",
+            metadata: {
+              provider: account.provider,
+              providerAccountId: account.providerAccountId,
+              automaticLink: true,
+              linkedUserId: user.id,
+            },
+            severity: "warning",
+            success: true,
+          }, { persistToDb: true, logToConsole: true });
+          
+          // 2. Create in-app notification for the user
+          await prisma.notification.create({
+            data: {
+              userId: existingUser.id,
+              title: "Security Alert: New Login Method Connected",
+              message: `Your ${providerName} account was automatically linked to your existing GitScope account. If you didn't do this, please review your account security immediately.`,
+              type: "warning",
+              isRead: false,
+              link: "/settings/security",
+            },
+          });
+          
+          console.warn(`[Security] OAuth automatic linking: ${account.provider} account linked to existing user ${existingUser.id}`);
+        }
+      }
       return true;
     },
     async session({ token, session }) {

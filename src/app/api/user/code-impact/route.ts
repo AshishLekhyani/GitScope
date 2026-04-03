@@ -72,7 +72,10 @@ export async function GET(req: Request) {
     if (error instanceof DeepImpactError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
     }
-    console.error("Code Impact Error:", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("Code Impact Error:", error);
+    }
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

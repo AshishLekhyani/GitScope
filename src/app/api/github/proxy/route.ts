@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { githubFetch } from "@/lib/github";
 import { getGitHubTokenWithSource } from "@/lib/github-auth";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 /**
  * Generic GitHub API proxy.
  * Usage: GET /api/github/proxy?path=repos/owner/repo
  * Forwards the request to the GitHub API with auth token if available.
  */
-export async function GET(req: NextRequest) {
+async function getHandler(req: NextRequest) {
   const path = req.nextUrl.searchParams.get("path");
   if (!path) {
     return NextResponse.json({ error: "Missing path parameter" }, { status: 400 });
@@ -38,3 +39,6 @@ export async function GET(req: NextRequest) {
     );
   }
 }
+
+// Apply security middleware - GET is read-only but rate limited to prevent abuse
+export const GET = withRouteSecurity(getHandler, { ...SecurityPresets.public, csrf: false });

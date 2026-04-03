@@ -7,7 +7,10 @@
 
 import { randomBytes, createHmac } from "crypto";
 
-const CSRF_SECRET = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET || "csrf-secret-fallback";
+const CSRF_SECRET = process.env.CSRF_SECRET || process.env.NEXTAUTH_SECRET;
+if (!CSRF_SECRET) {
+  throw new Error("CSRF_SECRET or NEXTAUTH_SECRET must be configured in environment variables");
+}
 const CSRF_TOKEN_LENGTH = 32;
 
 export interface CsrfTokens {
@@ -28,7 +31,7 @@ export function generateCsrfToken(): CsrfTokens {
  * Hash a token using HMAC
  */
 function hashToken(token: string): string {
-  return createHmac("sha256", CSRF_SECRET).update(token).digest("hex");
+  return createHmac("sha256", CSRF_SECRET as string).update(token).digest("hex");
 }
 
 /**

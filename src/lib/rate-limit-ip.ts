@@ -30,21 +30,47 @@ const ipReputation = new Map<string, IpReputation>();
 const BLOCK_DURATION_BASE = 60_000; // 1 minute
 const MAX_BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
 
+// List of trusted proxy IPs (configure for your deployment environment)
+// In production, this should be populated with your actual load balancer/proxy IPs
+const TRUSTED_PROXIES = process.env.TRUSTED_PROXIES?.split(",").map(ip => ip.trim()) || [];
+
+/**
+ * Check if request comes from a trusted proxy
+ */
+function isTrustedProxy(req: Request): boolean {
+  // If no trusted proxies configured, assume we're behind a trusted proxy in production
+  // but verify the request has expected internal headers
+  if (TRUSTED_PROXIES.length === 0) {
+    // In production Vercel/Render/etc, these headers are set by the platform
+    // and cannot be spoofed by end users
+    return process.env.NODE_ENV === "production";
+  }
+  
+  const remoteIp = req.headers.get("x-real-ip") || "unknown";
+  return TRUSTED_PROXIES.includes(remoteIp);
+}
+
 /**
  * Get client IP from request headers
+ * SECURITY: Only trusts X-Forwarded-For when request comes from trusted proxy
  */
 export function getClientIp(req: Request): string {
-  const forwarded = req.headers.get("x-forwarded-for");
-  if (forwarded) {
-    return forwarded.split(",")[0].trim();
+  // Only trust proxy headers if request comes from a trusted source
+  if (isTrustedProxy(req)) {
+    const forwarded = req.headers.get("x-forwarded-for");
+    if (forwarded) {
+      // Get the leftmost (original client) IP from the chain
+      return forwarded.split(",")[0].trim();
+    }
+    
+    const realIp = req.headers.get("x-real-ip");
+    if (realIp) {
+      return realIp.trim();
+    }
   }
   
-  const realIp = req.headers.get("x-real-ip");
-  if (realIp) {
-    return realIp.trim();
-  }
-  
-  // Fallback - less reliable
+  // In development or when no proxy headers available, return unknown
+  // The rate limiter will still work but won't be IP-specific
   return "unknown";
 }
 

@@ -23,7 +23,7 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
+} from "recharts/es6";
 
 /* ─── PR Merge Frequency ─── */
 function PRMergeFrequency({
@@ -87,7 +87,7 @@ function PRMergeFrequency({
       </div>
       {chartData.length > 0 ? (
         <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <BarChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
               <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
@@ -179,7 +179,7 @@ function CodeSizeProgression({ weeks }: { weeks: CommitActivityWeek[] }) {
       </div>
       {data.length > 0 ? (
         <div className="h-[200px]">
-          <ResponsiveContainer width="100%" height="100%">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="codeGrad" x1="0" y1="0" x2="0" y2="1">

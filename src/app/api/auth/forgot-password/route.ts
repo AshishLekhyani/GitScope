@@ -79,7 +79,10 @@ async function postHandler(req: NextRequest) {
     const { subject, html } = emailBuilder(user.name ?? "", token);
     await sendEmail({ to: email, subject, html });
   } catch (error) {
-    console.error("FORGOT_PASSWORD_ERROR", error);
+    // Log error only in development
+    if (process.env.NODE_ENV !== "production") {
+      console.error("FORGOT_PASSWORD_ERROR", error);
+    }
   }
 
   return genericSuccess;

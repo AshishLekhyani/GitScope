@@ -69,15 +69,19 @@ type SearchUserResult = {
 
 import { Session } from "next-auth";
 
-export function TopNav({
-  onMenuClick,
-  title,
-  session
-}: {
+interface TopNavProps {
   onMenuClick?: () => void;
   title?: string;
   session: Session | null;
-}) {
+  searchInputRef?: React.RefObject<HTMLInputElement | null>;
+}
+
+export function TopNav({
+  onMenuClick,
+  title,
+  session,
+  searchInputRef
+}: TopNavProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const pathname = usePathname();
@@ -302,6 +306,7 @@ export function TopNav({
                 )}
               </div>
               <Input
+                ref={searchInputRef}
                 value={q}
                 onFocus={() => setIsFocused(true)}
                 onChange={(e) => setQ(e.target.value)}
