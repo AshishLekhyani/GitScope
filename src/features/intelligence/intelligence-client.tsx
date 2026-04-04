@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { DependencyRadar } from "@/features/intelligence/dependency-radar";
 import { VelocityChart } from "@/features/intelligence/velocity-chart";
 import { IntelligenceSearch } from "@/features/intelligence/intelligence-search";
 import { RiskPredictor } from "@/features/intelligence/risk-predictor";
+import { IntelligenceDemoModal } from "@/components/modals/intelligence-demo-modal";
 import { cn } from "@/lib/utils";
 
 interface CapabilitiesResponse {
@@ -22,6 +23,13 @@ interface CapabilitiesResponse {
     byFeature: Record<string, number>;
     since: string;
   };
+}
+
+const STORAGE_KEY = "intelligence-page-state";
+
+interface PageState {
+  selectedRepos: string[];
+  activeTab: "radar" | "velocity" | "risk";
 }
 
 export function IntelligenceClient() {
@@ -53,6 +61,34 @@ export function IntelligenceClient() {
       mounted = false;
     };
   }, []);
+
+  // Load saved state on mount
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        const state: PageState = JSON.parse(saved);
+        if (state.selectedRepos?.length > 0) {
+          setSelectedRepos(state.selectedRepos);
+        }
+        if (state.activeTab) {
+          setActiveTab(state.activeTab);
+        }
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  }, []);
+
+  // Save state whenever it changes
+  useEffect(() => {
+    try {
+      const state: PageState = { selectedRepos, activeTab };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    } catch {
+      // Ignore storage errors
+    }
+  }, [selectedRepos, activeTab]);
 
   const maxRepos = caps?.capabilities.maxReposInWorkspace ?? 3;
   const usedThisHour = caps?.usage?.total ?? 0;
@@ -87,7 +123,7 @@ export function IntelligenceClient() {
               {capsLoading ? "Loading AI Tier" : `${tierLabel} AI Hub`}
             </span>
           </div>
-          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black bg-gradient-to-br from-foreground via-foreground/90 to-foreground/40 bg-clip-text text-transparent tracking-tight">
+          <h1 className="text-2xl sm:text-4xl md:text-5xl font-black bg-linear-to-br from-foreground via-foreground/90 to-foreground/40 bg-clip-text text-transparent tracking-tight">
             Recursive <span className="text-primary italic">Intelligence</span>
           </h1>
           <p className="text-sm text-muted-foreground/60 max-w-xl leading-relaxed">
@@ -198,6 +234,8 @@ export function IntelligenceClient() {
           </>
         )}
       </div>
+
+      <IntelligenceDemoModal />
     </div>
   );
 }

@@ -242,10 +242,10 @@ export function RiskPredictor({ repo }: { repo: string }) {
               {/* ── Card header ── */}
               <div className="p-6 space-y-5">
                 {/* Author + score row */}
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-4 min-w-0">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
-                      <Image src={pr.avatar} width={44} height={44} className="size-11 rounded-2xl shadow-xl" alt="" />
+                      <Image src={pr.avatar} width={40} height={40} className="size-10 sm:size-11 rounded-2xl shadow-xl" alt="" />
                       <div className={cn(
                         "absolute -bottom-1 -right-1 size-5 rounded-lg flex items-center justify-center border-2 border-background",
                         pr.riskLevel === "CRITICAL" || pr.riskLevel === "HIGH" ? "bg-red-500" :
@@ -253,20 +253,20 @@ export function RiskPredictor({ repo }: { repo: string }) {
                       )}>
                         <MaterialIcon
                           name={pr.riskLevel === "CRITICAL" || pr.riskLevel === "HIGH" ? "error" : pr.riskLevel === "MODERATE" ? "warning" : "check"}
-                          size={12} className="text-white"
+                          size={10} className="text-white sm:size-[12px]"
                         />
                       </div>
                     </div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="text-xs font-black tracking-tight truncate">{pr.title}</div>
-                      <div className="text-[10px] font-bold text-muted-foreground/60 uppercase mt-0.5">
+                      <div className="text-[9px] sm:text-[10px] font-bold text-muted-foreground/60 uppercase mt-0.5">
                         PR #{pr.number} · {pr.user}
                       </div>
                     </div>
                   </div>
-                  <div className="text-right shrink-0">
-                    <div className={cn("text-3xl font-black italic tabular-nums", scoreColor)}>{pr.riskScore}</div>
-                    <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">Risk Index</div>
+                  <div className="flex sm:flex-col items-center sm:items-end gap-2 sm:gap-0 shrink-0">
+                    <div className={cn("text-2xl sm:text-3xl font-black italic tabular-nums", scoreColor)}>{pr.riskScore}</div>
+                    <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 sm:mt-0.5">Risk Index</div>
                   </div>
                 </div>
 
@@ -276,18 +276,18 @@ export function RiskPredictor({ repo }: { repo: string }) {
                 )}
 
                 {/* Stat row */}
-                <div className="grid grid-cols-3 gap-4 py-3 border-y border-outline-variant/10">
+                <div className="grid grid-cols-3 gap-2 sm:gap-4 py-3 border-y border-outline-variant/10">
                   <div className="text-center">
                     <div className="text-sm font-black text-emerald-500">+{pr.additions}</div>
-                    <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Added</div>
+                    <div className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Added</div>
                   </div>
                   <div className="text-center">
                     <div className="text-sm font-black text-red-500">-{pr.deletions}</div>
-                    <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Removed</div>
+                    <div className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Removed</div>
                   </div>
                   <div className="text-center">
                     <div className="text-sm font-black text-indigo-500">{pr.changedFiles}</div>
-                    <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Files</div>
+                    <div className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Files</div>
                   </div>
                 </div>
 
@@ -320,7 +320,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                 {pr.hotFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {pr.hotFiles.map((f) => (
-                      <span key={f} className="text-[9px] font-mono font-bold px-2 py-1 rounded-lg bg-surface-container-highest border border-outline-variant/10 text-muted-foreground truncate max-w-[200px]">
+                      <span key={f} className="text-[8px] sm:text-[9px] font-mono font-bold px-2 py-1 rounded-lg bg-surface-container-highest border border-outline-variant/10 text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
                         {f.split("/").slice(-2).join("/")}
                       </span>
                     ))}
@@ -461,7 +461,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                     )}
 
                     {/* Impact areas + affected systems */}
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       {r.impactAreas.length > 0 && (
                         <div className="space-y-2">
                           <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Impact Areas</div>
@@ -512,14 +512,14 @@ export function RiskPredictor({ repo }: { repo: string }) {
                     )}
 
                     {/* Stats footer */}
-                    <div className="grid grid-cols-2 gap-4 pt-2 border-t border-outline-variant/10">
-                      <div className="text-center p-3 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
-                        <div className="text-2xl font-black">{r.suggestedReviewers}</div>
-                        <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">Suggested Reviewers</div>
+                    <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-2 border-t border-outline-variant/10">
+                      <div className="text-center p-2 sm:p-3 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
+                        <div className="text-xl sm:text-2xl font-black">{r.suggestedReviewers}</div>
+                        <div className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">Suggested Reviewers</div>
                       </div>
-                      <div className="text-center p-3 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
-                        <div className="text-lg font-black">{r.estimatedReviewTime}</div>
-                        <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">Est. Review Time</div>
+                      <div className="text-center p-2 sm:p-3 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
+                        <div className="text-base sm:text-lg font-black">{r.estimatedReviewTime}</div>
+                        <div className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">Est. Review Time</div>
                       </div>
                     </div>
                   </div>

@@ -47,7 +47,7 @@ export async function GET(req: NextRequest) {
     // Parallel search for Repos and Users
     const [reposRes, usersRes] = await Promise.all([
       githubFetch<{ total_count: number; items: GithubRepoItem[] }>(
-        `/search/repositories?q=${encoded}&per_page=10`,
+        `/search/repositories?q=${encoded}&per_page=100`,
         { headers: extraHeaders }
       ),
       githubFetch<{ items: GithubUserItem[] }>(

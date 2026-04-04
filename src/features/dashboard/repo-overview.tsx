@@ -32,32 +32,75 @@ import {
   CartesianGrid,
 } from "recharts/es6";
 
-/* ─── Stars Growth Velocity ─── */
-function StarsGrowthChart({
-  weeks,
-  loading,
+/* ─── Commit Velocity Chart ─── */
+function CommitVelocityChart({
+  owner,
+  repo,
+  loading: initialLoading,
 }: {
-  weeks: CommitActivityWeek[];
+  owner: string;
+  repo: string;
   loading: boolean;
 }) {
   const [range, setRange] = useState<"1y" | "6m" | "90d" | "30d" | "7d">("6m");
+  const [commits, setCommits] = useState<Array<{ date: string; count: number }>>([]);
+  const [loading, setLoading] = useState(initialLoading);
 
-  // Use commit activity as proxy for "growth velocity"
-  let sliceCount = 26; // 6m default
-  if (range === "1y") sliceCount = 52;
-  if (range === "6m") sliceCount = 26;
-  if (range === "90d") sliceCount = 13;
-  if (range === "30d") sliceCount = 4;
-  if (range === "7d") sliceCount = 1;
+  useEffect(() => {
+    async function fetchCommits() {
+      setLoading(true);
+      try {
+        const sinceDate = new Date();
+        if (range === "7d") sinceDate.setDate(sinceDate.getDate() - 7);
+        else if (range === "30d") sinceDate.setDate(sinceDate.getDate() - 30);
+        else if (range === "90d") sinceDate.setDate(sinceDate.getDate() - 90);
+        else if (range === "6m") sinceDate.setMonth(sinceDate.getMonth() - 6);
+        else if (range === "1y") sinceDate.setFullYear(sinceDate.getFullYear() - 1);
 
-  const slicedWeeks = weeks.slice(-sliceCount);
+        const res = await fetch(
+          `/api/github/repos/${owner}/${repo}/commits?per_page=100&since=${sinceDate.toISOString()}`
+        );
+        const data = await res.json();
+        
+        // Aggregate commits by day
+        const commitCounts: Record<string, number> = {};
+        if (Array.isArray(data)) {
+          data.forEach((commit: { commit: { author: { date: string } } }) => {
+            const date = commit.commit.author.date.split('T')[0];
+            commitCounts[date] = (commitCounts[date] || 0) + 1;
+          });
+        }
+        
+        // Build daily data array
+        const dailyData: Array<{ date: string; count: number }> = [];
+        const endDate = new Date();
+        const currentDate = new Date(sinceDate);
+        
+        while (currentDate <= endDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          dailyData.push({
+            date: dateStr,
+            count: commitCounts[dateStr] || 0,
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        setCommits(dailyData);
+      } catch (e) {
+        console.error("Failed to fetch commits:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    if (owner && repo) {
+      fetchCommits();
+    }
+  }, [owner, repo, range]);
 
-  const data = slicedWeeks.map((w) => ({
-    name: new Date(w.week * 1000).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-    }),
-    value: w.total,
+  const data = commits.map((day) => ({
+    name: new Date(day.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    value: day.count,
   }));
 
   if (loading) {
@@ -70,27 +113,27 @@ function StarsGrowthChart({
   }
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-heading text-lg font-bold text-foreground">
             Commit Velocity
           </h3>
           <p className="text-muted-foreground text-xs">
-            Weekly commits over the selected period
+            Daily commits over the selected period
           </p>
         </div>
-        <div className="flex rounded-md border border-outline-variant/20 bg-surface-container-lowest p-0.5">
+        <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
           {(["1y", "6m", "90d", "30d", "7d"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setRange(t)}
               className={cn(
-                "rounded px-3 py-1 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
+                "rounded-md px-3 py-1 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
                 range === t
-                  ? "bg-surface-container-high text-foreground"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-white/10 text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
               )}
             >
               {t}
@@ -98,6 +141,7 @@ function StarsGrowthChart({
           ))}
         </div>
       </div>
+
       {data.length > 0 ? (
         <div className="h-[250px]">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
@@ -109,7 +153,7 @@ function StarsGrowthChart({
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={30} />
               <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
               <Tooltip
                 contentStyle={{
@@ -141,14 +185,17 @@ function StarsGrowthChart({
   );
 }
 
-/* ─── Commit Activity Bar Chart ─── */
-function CommitActivityBar({ weeks, loading }: { weeks: CommitActivityWeek[]; loading: boolean }) {
-  // Show latest week's daily breakdown
-  const lastWeek = weeks[weeks.length - 1];
-  const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  const data = lastWeek
-    ? lastWeek.days.map((v, i) => ({ name: days[i], commits: v }))
-    : [];
+/* ─── Top Contributors Chart ─── */
+function TopContributorsChart({
+  contributors,
+  loading,
+}: {
+  contributors: Array<{ login: string; contributions: number; avatar_url: string }>;
+  loading: boolean;
+}) {
+  const data = contributors
+    .slice(0, 6)
+    .map((c) => ({ name: c.login, contributions: c.contributions }));
 
   if (loading) {
     return (
@@ -160,16 +207,22 @@ function CommitActivityBar({ weeks, loading }: { weeks: CommitActivityWeek[]; lo
   }
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
       <h3 className="mb-3 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
-        Commit Activity
+        Top Contributors
       </h3>
       {data.length > 0 ? (
         <div className="h-[160px]">
           <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
-            <BarChart data={data}>
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
-              <YAxis allowDecimals={false} tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+            <BarChart data={data} layout="vertical" margin={{ left: 0, right: 20, top: 0, bottom: 0 }}>
+              <XAxis type="number" hide />
+              <YAxis
+                dataKey="name"
+                type="category"
+                width={100}
+                tick={{ fontSize: 10 }}
+                stroke="var(--muted-foreground)"
+              />
               <Tooltip
                 contentStyle={{
                   borderRadius: 8,
@@ -180,12 +233,18 @@ function CommitActivityBar({ weeks, loading }: { weeks: CommitActivityWeek[]; lo
                 }}
                 itemStyle={{ color: "var(--foreground)" }}
               />
-              <Bar dataKey="commits" fill="var(--chart-2)" radius={[3, 3, 0, 0]} name="Commits" />
+              <Bar
+                dataKey="contributions"
+                fill="var(--chart-3)"
+                radius={[0, 4, 4, 0]}
+                barSize={20}
+                name="Commits"
+              />
             </BarChart>
           </ResponsiveContainer>
         </div>
       ) : (
-        <p className="text-muted-foreground text-sm">No data available.</p>
+        <p className="text-muted-foreground text-sm">No contributor data.</p>
       )}
     </div>
   );
@@ -228,7 +287,7 @@ function LanguageBars({
   }
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
       <h3 className="mb-4 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
         Language Distribution
       </h3>
@@ -289,7 +348,6 @@ function IntelligentInsights({
   const velocityChange = olderAvg
     ? Math.round(((recentAvg - olderAvg) / olderAvg) * 100)
     : 0;
-
   const forkRatio = stars ? ((forks / stars) * 100).toFixed(1) : "0";
   const issueRatio = stars ? ((issues / stars) * 100).toFixed(1) : "0";
 
@@ -298,7 +356,10 @@ function IntelligentInsights({
       icon: velocityChange >= 0 ? "check_circle" : "warning",
       color: velocityChange >= 0 ? "text-tertiary" : "text-destructive",
       bg: velocityChange >= 0 ? "bg-tertiary/10" : "bg-destructive/10",
-      title: velocityChange >= 0 ? "Strong Commit Velocity" : "Declining Commit Velocity",
+      title:
+        velocityChange >= 0
+          ? "Strong Commit Velocity"
+          : "Declining Commit Velocity",
       desc: `Recent commit activity is ${Math.abs(velocityChange)}% ${velocityChange >= 0 ? "higher" : "lower"} than the previous period.`,
     },
     {
@@ -318,9 +379,11 @@ function IntelligentInsights({
   ];
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
       <div className="mb-1 flex items-center gap-2">
-        <MaterialIcon name="bolt" size={18} className="text-tertiary" />
+        <div className="p-1.5 rounded-lg bg-amber-500/10">
+          <MaterialIcon name="bolt" size={18} className="text-amber-500" />
+        </div>
         <h3 className="font-heading text-base font-bold text-foreground">
           Intelligent Insights
         </h3>
@@ -328,11 +391,15 @@ function IntelligentInsights({
       <p className="mb-4 font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
         Automated Health Checks
       </p>
-
       <div className="space-y-4">
         {insights.map((ins) => (
           <div key={ins.title} className="flex items-start gap-3">
-            <div className={cn("flex size-8 shrink-0 items-center justify-center rounded-lg", ins.bg)}>
+            <div
+              className={cn(
+                "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                ins.bg
+              )}
+            >
               <MaterialIcon name={ins.icon} size={18} className={ins.color} />
             </div>
             <div>
@@ -351,7 +418,6 @@ function IntelligentInsights({
 }
 
 /* ─── Main: RepoOverview ─── */
-
 export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
   const dispatch = useAppDispatch();
   const { addToHistory } = useRecentHistory();
@@ -359,30 +425,43 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
 
   useEffect(() => {
     try {
-      const stored: BookmarkedRepo[] = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) ?? "[]");
+      const stored: BookmarkedRepo[] = JSON.parse(
+        localStorage.getItem(BOOKMARKS_KEY) ?? "[]"
+      );
       setIsBookmarked(stored.some((b) => b.owner === owner && b.repo === repo));
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   }, [owner, repo]);
 
   const toggleBookmark = () => {
     try {
-      const stored: BookmarkedRepo[] = JSON.parse(localStorage.getItem(BOOKMARKS_KEY) ?? "[]");
+      const stored: BookmarkedRepo[] = JSON.parse(
+        localStorage.getItem(BOOKMARKS_KEY) ?? "[]"
+      );
       let next: BookmarkedRepo[];
       if (isBookmarked) {
         next = stored.filter((b) => !(b.owner === owner && b.repo === repo));
       } else {
         const data = repoQ.data;
-        next = [...stored, {
-          owner, repo,
-          avatar: data?.owner?.avatar_url ?? `https://github.com/${owner}.png`,
-          stars: data?.stargazers_count ?? 0,
-          description: data?.description ?? "",
-          bookmarkedAt: new Date().toISOString(),
-        }];
+        next = [
+          ...stored,
+          {
+            owner,
+            repo,
+            avatar:
+              data?.owner?.avatar_url ?? `https://github.com/${owner}.png`,
+            stars: data?.stargazers_count ?? 0,
+            description: data?.description ?? "",
+            bookmarkedAt: new Date().toISOString(),
+          },
+        ];
       }
       localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(next));
       setIsBookmarked(!isBookmarked);
-    } catch { /* ignore */ }
+    } catch {
+      /* ignore */
+    }
   };
 
   const repoQ = useQuery({
@@ -434,9 +513,14 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
         <p className="text-muted-foreground mt-2 text-sm">{err.message}</p>
         <p className="text-muted-foreground mt-3 text-sm">
           Tip: add a{" "}
-          <code className="bg-muted rounded px-1 py-0.5 text-xs">GITHUB_TOKEN</code> in{" "}
-          <code className="bg-muted rounded px-1 py-0.5 text-xs">.env.local</code> for
-          higher rate limits (5k/hr).
+          <code className="bg-muted rounded px-1 py-0.5 text-xs">
+            GITHUB_TOKEN
+          </code>{" "}
+          in{" "}
+          <code className="bg-muted rounded px-1 py-0.5 text-xs">
+            .env.local
+          </code>{" "}
+          for higher rate limits (5k/hr).
         </p>
       </div>
     );
@@ -468,19 +552,20 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
             Repository Overview
           </h1>
         </div>
-        <div className="flex flex-shrink-0 flex-wrap items-center gap-3">
+        <div className="flex shrink-0 flex-wrap items-center gap-3">
           <Button
             variant="outline"
             size="sm"
             onClick={toggleBookmark}
-            className={cn(isBookmarked && "border-indigo-500/50 text-indigo-500 bg-indigo-500/5")}
+            className={cn(isBookmarked && "border-indigo-500/50 text-indigo-500 bg-indigo-500/5"
+            )}
             title={isBookmarked ? "Remove bookmark" : "Bookmark this repo"}
           >
             <Bookmark className={cn("mr-1 size-4", isBookmarked && "fill-current")} />
             {isBookmarked ? "Bookmarked" : "Bookmark"}
           </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <MaterialIcon name="download" className="!text-base mr-1" />
+            <MaterialIcon name="download" className="text-base! mr-1" />
             Export
           </Button>
           {data?.html_url && (
@@ -509,9 +594,9 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
         contributors={contributors.length}
       />
 
-      {/* ── Stars Growth + Insights ── */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <StarsGrowthChart weeks={weeks} loading={activityQ.isLoading} />
+      {/* ── Commit Velocity + Insights ── */}
+      <div className="grid gap-6 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px]">
+        <CommitVelocityChart owner={owner} repo={repo} loading={activityQ.isLoading} />
         <IntelligentInsights
           stars={data?.stargazers_count ?? 0}
           forks={data?.forks_count ?? 0}
@@ -521,9 +606,9 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
         />
       </div>
 
-      {/* ── Commit Activity + Language Dist ── */}
+      {/* ── Top Contributors + Language Dist ── */}
       <div className="grid gap-6 md:grid-cols-2">
-        <CommitActivityBar weeks={weeks} loading={activityQ.isLoading} />
+        <TopContributorsChart contributors={contributors} loading={contributorsQ.isLoading} />
         <LanguageBars languages={languages} loading={languagesQ.isLoading} />
       </div>
 

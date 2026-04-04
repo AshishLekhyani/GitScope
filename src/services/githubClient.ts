@@ -16,6 +16,8 @@ import type {
   CommitActivityWeek,
   GitHubContributor,
   GitHubRepo,
+  GitHubUser,
+  Contribution,
   SearchRepositoriesResponse,
 } from "@/types/github";
 
@@ -117,8 +119,11 @@ export async function getPullRequests(
   return parseJson(res);
 }
 
-export async function getTrendingRepos(): Promise<SearchRepositoriesResponse> {
-  const res = await fetch("/api/github/trending", { method: "GET", cache: "no-store" });
+export async function getTrendingRepos(timeRange?: string): Promise<SearchRepositoriesResponse> {
+  const url = timeRange 
+    ? `/api/github/trending?time=${encodeURIComponent(timeRange)}`
+    : "/api/github/trending";
+  const res = await fetch(url, { method: "GET", cache: "no-store" });
   return parseJson<SearchRepositoriesResponse>(res);
 }
 
@@ -133,4 +138,14 @@ export async function getRepoContents(
     cache: "no-store",
   });
   return parseJson<GitHubFile | GitHubFile[]>(res);
+}
+
+export async function getUser(
+  username: string
+): Promise<{ user: GitHubUser; repos: GitHubRepo[]; contributions: Contribution[]; languageStats: Record<string, number>; rateLimitRemaining?: string }> {
+  const res = await fetch(
+    `/api/github/users/${encodeURIComponent(username)}`,
+    { method: "GET", cache: "no-store" }
+  );
+  return parseJson(res);
 }

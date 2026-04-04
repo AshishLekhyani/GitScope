@@ -1,6 +1,9 @@
 "use client";
 
+import * as React from "react";
 import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MaterialIcon } from "@/components/material-icon";
 import { ROUTES } from "@/constants/routes";
@@ -18,11 +21,34 @@ import { formatNumber } from "@/utils/formatDate";
 import { fuzzySort } from "@/utils/fuzzySearch";
 import { useDebounce } from "@/hooks/useDebounce";
 import { useQuery } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  Search,
+  Zap,
+  Star,
+  GitFork,
+  Clock,
+  TrendingUp,
+  Sparkles,
+  Target,
+  Compass,
+  BookOpen,
+  Code2,
+  Layers,
+  Box,
+  Cpu,
+  Globe,
+  ArrowRight,
+  X,
+  History,
+  Flame,
+  Bookmark,
+  ExternalLink,
+} from "lucide-react";
 
 function RepoNameHighlight({ fullName }: { fullName: string }) {
   const i = fullName.indexOf("/");
@@ -54,30 +80,83 @@ export function RepoSearchPanel() {
   const dispatch = useAppDispatch();
 
   useEffect(() => {
-    setQ(initial);
+    // Only sync from URL if the query param is different from current state
+    // and we're not currently typing (debounced value matches current value)
+    if (initial !== q && initial !== debounced) {
+      setQ(initial);
+    }
   }, [initial]);
 
   const searchQ = useQuery({
     queryKey: ["search", debounced],
     queryFn: () => searchRepositories(debounced),
     enabled: debounced.trim().length > 1,
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
   });
 
   const trendingQ = useQuery({
     queryKey: ["trending", "search-sidebar"],
     queryFn: () => getTrendingRepos(),
+    staleTime: 5 * 60 * 1000, // 5 minutes
+    gcTime: 10 * 60 * 1000, // 10 minutes
+  });
+
+  // Fetch rate limit data
+  const rateLimitQ = useQuery({
+    queryKey: ["rate-limit"],
+    queryFn: async () => {
+      const res = await fetch("/api/github/rate-limit");
+      if (!res.ok) throw new Error("Failed to fetch rate limit");
+      return res.json();
+    },
+    staleTime: 30 * 1000, // 30 seconds
   });
 
   const items = useMemo(() => {
     const raw = searchQ.data?.items ?? [];
     const searchStr = debounced.startsWith("@") ? debounced.slice(1) : debounced;
+    // Skip fuzzy filtering if query contains GitHub search qualifiers
+    const hasQualifiers = /(language:|stars:|topic:|pushed:|org:|repo:)/.test(searchStr);
+    if (hasQualifiers) return raw;
     return fuzzySort(raw, searchStr, (r) => r.full_name);
   }, [searchQ.data?.items, debounced]);
 
-  const trendingItems = useMemo(
-    () => (trendingQ.data?.items ?? []).slice(0, 4),
-    [trendingQ.data?.items]
-  );
+  const [trendingPage, setTrendingPage] = useState(0);
+  const [searchPage, setSearchPage] = useState(0);
+  const itemsPerPage = 6;
+
+  // Calculate paginated search items
+  const paginatedSearchItems = useMemo(() => {
+    const start = searchPage * itemsPerPage;
+    return items.slice(start, start + itemsPerPage);
+  }, [items, searchPage]);
+
+  // Total pages for search
+  const totalSearchPages = useMemo(() => {
+    return Math.ceil(items.length / itemsPerPage);
+  }, [items]);
+  const trendingItems = useMemo(() => {
+    const all = trendingQ.data?.items ?? [];
+    const start = trendingPage * itemsPerPage;
+    return all.slice(start, start + itemsPerPage);
+  }, [trendingQ.data?.items, trendingPage]);
+
+  // Total pages for trending
+  const totalTrendingPages = useMemo(() => {
+    const total = trendingQ.data?.items?.length ?? 0;
+    return Math.ceil(total / itemsPerPage);
+  }, [trendingQ.data?.items]);
+
+  // Get trending topic from first trending repo
+  const trendingTopic = useMemo(() => {
+    const all = trendingQ.data?.items ?? [];
+    if (all.length > 0) {
+      const firstRepo = all[0];
+      return firstRepo.language || "trending";
+    }
+    return "trending";
+  }, [trendingQ.data?.items]);
 
   const openRepo = useCallback(
     (r: GitHubRepo) => {
@@ -99,6 +178,18 @@ export function RepoSearchPanel() {
       }
     }
   }, [q, router]);
+
+  // Helper to set search query and execute immediately
+  const setSearchQuery = useCallback((query: string) => {
+    setQ(query);
+    setSearchPage(0); // Reset to first page
+    // Trigger search immediately without waiting for debounce
+    router.push(`/search?q=${encodeURIComponent(query)}`);
+    // Manually trigger the search query
+    setTimeout(() => {
+      searchQ.refetch();
+    }, 0);
+  }, [router, searchQ]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -148,8 +239,8 @@ export function RepoSearchPanel() {
           </div>
         </div>
 
-        <div className="flex max-h-[min(600px,70vh)] flex-col overflow-hidden md:flex-row">
-          <div className="custom-scrollbar flex-1 overflow-y-auto border-b border-outline-variant/10 md:max-h-[600px] md:border-r md:border-b-0">
+        <div className="flex h-[600px] flex-col overflow-hidden md:flex-row">
+          <div className="flex-1 overflow-hidden border-b border-outline-variant/10 md:border-r md:border-b-0">
             {showResults ? (
               <div className="p-4 sm:p-6">
                 <div className="mb-4 flex items-center justify-between">
@@ -205,7 +296,7 @@ export function RepoSearchPanel() {
                   )}
 
                 <div className="space-y-1">
-                  {items.map((r, idx) => (
+                  {paginatedSearchItems.map((r: GitHubRepo, idx: number) => (
                     <motion.button
                       key={r.id}
                       type="button"
@@ -241,13 +332,29 @@ export function RepoSearchPanel() {
                     </motion.button>
                   ))}
                 </div>
+
+                {/* Search Results Pagination - Smart */}
+                {totalSearchPages > 1 && (
+                  <SmartPagination
+                    currentPage={searchPage}
+                    totalPages={totalSearchPages}
+                    onPageChange={setSearchPage}
+                  />
+                )}
               </div>
             ) : (
               <>
                 <div className="p-4 sm:p-6">
-                  <h3 className="text-muted-foreground mb-4 font-mono text-[10px] font-bold tracking-[0.3em] uppercase">
-                    Trending globally
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.3em] uppercase">
+                      Trending globally
+                    </h3>
+                    <TrendingPagination 
+                      currentPage={trendingPage}
+                      totalPages={totalTrendingPages}
+                      onPageChange={setTrendingPage}
+                    />
+                  </div>
                   {trendingQ.isLoading && (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {Array.from({ length: 4 }).map((_, i) => (
@@ -262,53 +369,10 @@ export function RepoSearchPanel() {
                         : "Could not load trending repos."}
                     </p>
                   )}
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {trendingItems.map((r) => {
-                      const [owner, name] = r.full_name.split("/");
-                      const dotClass =
-                        r.language === "JavaScript"
-                          ? "bg-[#f1e05a]"
-                          : r.language === "TypeScript"
-                            ? "bg-[#3178c6]"
-                            : r.language === "Rust"
-                              ? "bg-[#dea584]"
-                              : r.language === "Go"
-                                ? "bg-[#00add8]"
-                                : r.language === "Python"
-                                  ? "bg-[#3572A5]"
-                                  : "bg-muted-foreground/60";
-                      return (
-                        <Link
-                          key={r.id}
-                          href={ROUTES.dashboard(owner, name)}
-                          className="bg-muted/40 hover:border-primary/50 hover:bg-muted/80 rounded-lg border border-outline-variant/10 p-4 transition-all"
-                        >
-                          <div className="mb-2 flex items-center gap-2">
-                            <MaterialIcon
-                              name="bolt"
-                              size={18}
-                              className="text-tertiary"
-                            />
-                            <span className="font-mono text-[12px] text-foreground">
-                              {r.full_name}
-                            </span>
-                          </div>
-                          <p className="text-muted-foreground line-clamp-2 text-[10px]">
-                            {r.description}
-                          </p>
-                          <div className="mt-3 flex items-center justify-between">
-                            <span className="text-tertiary font-mono text-[10px] font-bold">
-                              {formatNumber(r.stargazers_count)} stars
-                            </span>
-                            <span
-                              className={`size-2 shrink-0 rounded-full ${dotClass}`}
-                              aria-hidden
-                            />
-                          </div>
-                        </Link>
-                      );
-                    })}
-                  </div>
+                  <TrendingReposGrid 
+                    items={trendingItems} 
+                    page={trendingPage}
+                  />
                 </div>
               </>
             )}
@@ -397,44 +461,454 @@ export function RepoSearchPanel() {
         </div>
       </div>
 
-      <div className="mt-12 overflow-hidden px-4 text-center sm:mt-20">
-        <h2 className="font-heading text-foreground mb-4 text-2xl font-bold tracking-tighter sm:text-4xl md:text-5xl lg:text-6xl">
-          Engineer&apos;s <span className="text-primary italic">Compass</span>
-        </h2>
-        <p className="text-muted-foreground mx-auto max-w-xl break-words font-mono text-xs leading-relaxed sm:text-sm">
-          Precision query interface for the global software ecosystem. Deep
-          indexing via the GitHub Search API.
-        </p>
-      </div>
-
-      <footer className="text-muted-foreground mt-10 flex flex-col items-center justify-between gap-4 border-t border-outline-variant/5 px-4 py-6 font-mono text-[9px] tracking-widest uppercase sm:flex-row sm:px-8">
-        <div className="flex flex-wrap items-center justify-center gap-6 sm:justify-start">
-          <div>
-            <p className="mb-1 opacity-50">Results</p>
-            <p className="text-tertiary text-[11px] normal-case tracking-normal">
-              {searchQ.data?.total_count != null
-                ? formatNumber(searchQ.data.total_count)
-                : "—"}
-            </p>
+      {/* Engineer's Compass - Now Functional */}
+      <section className="mt-12 sm:mt-20 px-4">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-4">
+            <Compass className="size-4 text-primary" />
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-primary">
+              Quick Navigator
+            </span>
           </div>
-          <div>
-            <p className="mb-1 opacity-50">API</p>
-            <p className="text-foreground text-[11px] normal-case tracking-normal">
-              GitHub REST
-            </p>
+          <h2 className="font-heading text-foreground mb-3 text-2xl font-bold tracking-tighter sm:text-3xl md:text-4xl">
+            Engineer&apos;s <span className="text-primary italic">Compass</span>
+          </h2>
+          <p className="text-muted-foreground mx-auto max-w-lg text-xs sm:text-sm">
+            Jump to popular categories, trending topics, or discover new repositories across the ecosystem.
+          </p>
+        </div>
+
+        {/* Quick Action Cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4 max-w-4xl mx-auto mb-8">
+          <QuickActionCard
+            icon={Flame}
+            title="Trending"
+            description="Hot repos today"
+            href={ROUTES.trending}
+            color="text-rose-500"
+            bgColor="bg-rose-500/10"
+          />
+          <QuickActionCard
+            icon={Star}
+            title="Most Starred"
+            description="Top rated repos"
+            onClick={() => setSearchQuery("stars:>1000")}
+            color="text-amber-500"
+            bgColor="bg-amber-500/10"
+          />
+          <QuickActionCard
+            icon={Clock}
+            title="Recently Updated"
+            description="Fresh commits"
+            onClick={() => setSearchQuery("pushed:>2024-12-01")}
+            color="text-emerald-500"
+            bgColor="bg-emerald-500/10"
+          />
+          <QuickActionCard
+            icon={Bookmark}
+            title="Your Bookmarks"
+            description="Saved repos"
+            href={ROUTES.bookmarks}
+            color="text-purple-500"
+            bgColor="bg-purple-500/10"
+          />
+        </div>
+
+        {/* Search Categories */}
+        <div className="max-w-4xl mx-auto">
+          <h3 className="text-center text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground mb-4">
+            Popular Categories
+          </h3>
+          <div className="flex flex-wrap justify-center gap-2">
+            <CategoryBadge icon={Code2} label="JavaScript" onClick={() => setSearchQuery("language:javascript")} />
+            <CategoryBadge icon={Layers} label="TypeScript" onClick={() => setSearchQuery("language:typescript")} />
+            <CategoryBadge icon={Box} label="React" onClick={() => setSearchQuery("react")} />
+            <CategoryBadge icon={Cpu} label="Rust" onClick={() => setSearchQuery("language:rust")} />
+            <CategoryBadge icon={Globe} label="Go" onClick={() => setSearchQuery("language:go")} />
+            <CategoryBadge icon={BookOpen} label="Python" onClick={() => setSearchQuery("language:python")} />
+            <CategoryBadge icon={Sparkles} label="AI/ML" onClick={() => setSearchQuery("machine-learning")} />
+            <CategoryBadge icon={Target} label="DevTools" onClick={() => setSearchQuery("devtools")} />
           </div>
         </div>
-        <div className="flex flex-wrap items-center justify-center gap-4 opacity-70">
-          <Link href={ROUTES.trending} className="hover:text-primary transition-colors">
-            Trending
-          </Link>
-          <span className="bg-outline-variant size-1 rounded-full" />
-          <Link href="/" className="hover:text-primary transition-colors">
-            Engineering hub
-          </Link>
+      </section>
+
+      {/* Enhanced Footer */}
+      <footer className="mt-16 border-t border-outline-variant/10">
+        {/* Stats Bar */}
+        <div className="border-b border-outline-variant/5 px-4 py-4 sm:px-8">
+          <div className="max-w-6xl mx-auto flex flex-wrap items-center justify-center sm:justify-between gap-4">
+            <div className="flex items-center gap-6">
+              <FooterStat
+                label="Total Results"
+                value={searchQ.data?.total_count != null ? formatNumber(searchQ.data.total_count) : "—"}
+                icon={Search}
+              />
+              <FooterStat
+                label="API Source"
+                value="GitHub REST"
+                icon={Code2}
+              />
+              <FooterStat
+                label="Rate Limit"
+                value={rateLimitQ.data?.remaining != null 
+                  ? `${rateLimitQ.data.remaining}/${rateLimitQ.data.limit}` 
+                  : "—"}
+                icon={Clock}
+              />
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+              <span className="relative flex h-2 w-2">
+                <span className="bg-emerald-500 absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
+                <span className="bg-emerald-500 relative inline-flex h-2 w-2 rounded-full" />
+              </span>
+              System Operational
+            </div>
+          </div>
+        </div>
+
+        {/* Navigation Links */}
+        <div className="px-4 py-6 sm:px-8">
+          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="flex flex-wrap items-center justify-center gap-6">
+              <FooterLink href={ROUTES.trending} icon={TrendingUp}>
+                Trending
+              </FooterLink>
+              <FooterLink href="/compare" icon={GitFork}>
+                Compare
+              </FooterLink>
+              <FooterLink href="/topics" icon={Layers}>
+                Topics
+              </FooterLink>
+              <FooterLink href="/" icon={Compass}>
+                Dashboard
+              </FooterLink>
+            </div>
+            <div className="flex items-center gap-2 text-[10px] text-muted-foreground opacity-70">
+              <span>Press</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[9px]">ESC</kbd>
+              <span>to clear</span>
+              <span className="mx-2">•</span>
+              <span>Press</span>
+              <kbd className="px-1.5 py-0.5 rounded bg-muted font-mono text-[9px]">ENTER</kbd>
+              <span>to search</span>
+            </div>
+          </div>
         </div>
       </footer>
 
+    </div>
+  );
+}
+
+// Sub-components - Memoized for performance
+
+const QuickActionCard = React.memo(function QuickActionCard({
+  icon: Icon,
+  title,
+  description,
+  href,
+  onClick,
+  color,
+  bgColor,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  title: string;
+  description: string;
+  href?: string;
+  onClick?: () => void;
+  color: string;
+  bgColor: string;
+}) {
+  const content = (
+    <motion.div
+      whileHover={{ y: -2 }}
+      className="group cursor-pointer"
+    >
+      <Card className="p-4 h-full border-border hover:border-primary/30 transition-all hover:shadow-md">
+        <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center mb-3`}>
+          <Icon className={`w-5 h-5 ${color}`} />
+        </div>
+        <h4 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
+          {title}
+        </h4>
+        <p className="text-[10px] text-muted-foreground">{description}</p>
+      </Card>
+    </motion.div>
+  );
+
+  if (href) {
+    return <Link href={href}>{content}</Link>;
+  }
+  return <div onClick={onClick}>{content}</div>;
+});
+
+const CategoryBadge = React.memo(function CategoryBadge({
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  icon: React.ComponentType<{ className?: string }>;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted/50 border border-border hover:bg-muted hover:border-primary/30 transition-all text-xs font-medium"
+    >
+      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+      {label}
+    </button>
+  );
+});
+
+const FooterStat = React.memo(function FooterStat({
+  label,
+  value,
+  icon: Icon,
+}: {
+  label: string;
+  value: string;
+  icon: React.ComponentType<{ className?: string }>;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      <Icon className="w-3.5 h-3.5 text-muted-foreground" />
+      <div>
+        <p className="text-[9px] uppercase tracking-wider text-muted-foreground opacity-70">{label}</p>
+        <p className="text-[11px] font-medium">{value}</p>
+      </div>
+    </div>
+  );
+});
+
+const FooterLink = React.memo(function FooterLink({
+  href,
+  icon: Icon,
+  children,
+}: {
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-primary transition-colors"
+    >
+      <Icon className="w-3.5 h-3.5" />
+      {children}
+    </Link>
+  );
+});
+
+// Trending Pagination Component
+function TrendingPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  return (
+    <div className="flex items-center gap-1">
+      <button
+        onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+        disabled={currentPage === 0}
+        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="Previous page"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+      <span className="text-[10px] font-mono text-muted-foreground min-w-[3ch] text-center">
+        {currentPage + 1}/{totalPages}
+      </span>
+      <button
+        onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+        disabled={currentPage >= totalPages - 1}
+        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="Next page"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
+    </div>
+  );
+}
+
+// Trending Repos Grid Component
+function TrendingReposGrid({
+  items,
+  page,
+}: {
+  items: GitHubRepo[];
+  page: number;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <AnimatePresence mode="wait">
+        {items.map((r, idx) => {
+          const [owner, name] = r.full_name.split("/");
+          const dotClass =
+            r.language === "JavaScript"
+              ? "bg-[#f1e05a]"
+              : r.language === "TypeScript"
+                ? "bg-[#3178c6]"
+                : r.language === "Rust"
+                  ? "bg-[#dea584]"
+                  : r.language === "Go"
+                    ? "bg-[#00add8]"
+                    : r.language === "Python"
+                      ? "bg-[#3572A5]"
+                      : "bg-muted-foreground/60";
+          return (
+            <motion.div
+              key={r.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ delay: idx * 0.05 }}
+            >
+              <Link
+                href={ROUTES.dashboard(owner, name)}
+                className="bg-muted/40 hover:border-primary/50 hover:bg-muted/80 rounded-lg border border-outline-variant/10 p-4 transition-all block"
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <MaterialIcon
+                    name="bolt"
+                    size={18}
+                    className="text-tertiary"
+                  />
+                  <span className="font-mono text-[12px] text-foreground truncate">
+                    {r.full_name}
+                  </span>
+                </div>
+                <p className="text-muted-foreground line-clamp-2 text-[10px]">
+                  {r.description}
+                </p>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-tertiary font-mono text-[10px] font-bold">
+                    {formatNumber(r.stargazers_count)} stars
+                  </span>
+                  <span
+                    className={`size-2 shrink-0 rounded-full ${dotClass}`}
+                    aria-hidden
+                  />
+                </div>
+              </Link>
+            </motion.div>
+          );
+        })}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// Smart Pagination Component - Shows nearby pages only
+function SmartPagination({
+  currentPage,
+  totalPages,
+  onPageChange,
+}: {
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
+}) {
+  if (totalPages <= 1) return null;
+
+  const getVisiblePages = () => {
+    const pages: (number | string)[] = [];
+    const delta = 1; // Show 1 page before and after current
+
+    // Always show first page
+    pages.push(0);
+
+    // Calculate range around current page
+    const rangeStart = Math.max(1, currentPage - delta);
+    const rangeEnd = Math.min(totalPages - 2, currentPage + delta);
+
+    // Add ellipsis after first page if needed
+    if (rangeStart > 1) {
+      pages.push('...');
+    }
+
+    // Add pages in range
+    for (let i = rangeStart; i <= rangeEnd; i++) {
+      pages.push(i);
+    }
+
+    // Add ellipsis before last page if needed
+    if (rangeEnd < totalPages - 2) {
+      pages.push('...');
+    }
+
+    // Always show last page if different from first
+    if (totalPages > 1) {
+      pages.push(totalPages - 1);
+    }
+
+    return pages;
+  };
+
+  const visiblePages = getVisiblePages();
+
+  return (
+    <div className="mt-4 flex items-center justify-center gap-1">
+      {/* Previous Button */}
+      <button
+        onClick={() => onPageChange(Math.max(0, currentPage - 1))}
+        disabled={currentPage === 0}
+        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="Previous page"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+        </svg>
+      </button>
+
+      {/* Page Numbers */}
+      <div className="flex items-center gap-0.5">
+        {visiblePages.map((page, idx) => (
+          page === '...' ? (
+            <span key={`ellipsis-${idx}`} className="px-2 text-xs text-muted-foreground">
+              ...
+            </span>
+          ) : (
+            <button
+              key={page}
+              onClick={() => onPageChange(page as number)}
+              className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-medium transition-colors ${
+                currentPage === page
+                  ? 'bg-primary text-primary-foreground'
+                  : 'hover:bg-muted text-muted-foreground'
+              }`}
+            >
+              {(page as number) + 1}
+            </button>
+          )
+        ))}
+      </div>
+
+      {/* Next Button */}
+      <button
+        onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
+        disabled={currentPage >= totalPages - 1}
+        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        aria-label="Next page"
+      >
+        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </button>
     </div>
   );
 }

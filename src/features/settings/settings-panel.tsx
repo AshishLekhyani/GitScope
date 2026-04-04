@@ -12,7 +12,8 @@ import Image from "next/image";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { updateProfile, setAvatarUrl } from "@/store/slices/userSlice";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
+import { performLogout } from "@/lib/client-auth";
 
 type SettingsTab = "profile" | "account" | "appearance" | "workspace";
 type ThemeOption = "light" | "dark" | "system";
@@ -776,7 +777,7 @@ export function SettingsPanel() {
                 type="button"
                 variant="outline"
                 className="border-destructive/30 text-destructive hover:bg-destructive/10 font-mono text-[10px] tracking-widest uppercase"
-                onClick={() => signOut({ callbackUrl: "/" })}
+                onClick={() => void performLogout()}
               >
                 <MaterialIcon name="logout" size={14} className="mr-2" />
                 Sign Out
@@ -829,7 +830,7 @@ export function SettingsPanel() {
                       try {
                         const res = await fetch("/api/user/account", { method: "DELETE" });
                         if (res.ok) {
-                          await signOut({ callbackUrl: "/" });
+                          await performLogout();
                         }
                       } finally {
                         setDeleting(false);

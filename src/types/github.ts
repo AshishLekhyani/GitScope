@@ -1,3 +1,22 @@
+export interface GitHubUser {
+  id: number;
+  login: string;
+  name: string | null;
+  avatar_url: string;
+  html_url: string;
+  bio: string | null;
+  location: string | null;
+  company: string | null;
+  blog: string | null;
+  email: string | null;
+  twitter_username: string | null;
+  public_repos: number;
+  followers: number;
+  following: number;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface GitHubRepo {
   id: number;
   name: string;
@@ -9,6 +28,7 @@ export interface GitHubRepo {
   watchers_count: number;
   default_branch: string;
   language: string | null;
+  fork: boolean;
   owner: {
     login: string;
     avatar_url: string;
@@ -43,4 +63,10 @@ export interface CommitActivityWeek {
   days: number[];
   total: number;
   week: number;
+}
+
+/** Daily contribution count from user events */
+export interface Contribution {
+  date: string;
+  count: number;
 }

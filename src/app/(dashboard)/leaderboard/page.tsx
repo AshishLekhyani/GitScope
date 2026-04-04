@@ -10,6 +10,7 @@ import { MaterialIcon } from "@/components/material-icon";
 import Image from "next/image";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Top Contributors Leaderboard",
@@ -256,7 +257,7 @@ export default async function LeaderboardPage() {
           </div>
 
           {/* Full ranked list */}
-          <div className="lg:col-span-2 rounded-3xl border border-border bg-card overflow-hidden">
+          <Card className="lg:col-span-2 rounded-3xl border border-border overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-border/50 flex items-center gap-2">
               <MaterialIcon name="leaderboard" size={18} className="text-indigo-500" />
               <h2 className="font-black text-sm uppercase tracking-widest">Full Rankings</h2>
@@ -306,11 +307,11 @@ export default async function LeaderboardPage() {
                 );
               })}
             </div>
-          </div>
+          </Card>
 
           {/* Sidebar: stats + repo list */}
           <div className="space-y-5">
-            <div className="rounded-3xl border border-border bg-card p-6 space-y-4">
+            <Card className="rounded-3xl border border-border p-6 space-y-4 shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Summary</h3>
               {[
                 { label: "Repos Analyzed", value: repoQueries.length },
@@ -328,9 +329,9 @@ export default async function LeaderboardPage() {
                   <span className="text-xs font-black">{value}</span>
                 </div>
               ))}
-            </div>
+            </Card>
 
-            <div className="rounded-3xl border border-border bg-card p-6 space-y-3">
+            <Card className="rounded-3xl border border-border p-6 space-y-3 shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Analyzed Repos</h3>
               {repoQueries.map((q) => {
                 const [owner, repo] = q.split("/");
@@ -347,7 +348,7 @@ export default async function LeaderboardPage() {
                   </Link>
                 );
               })}
-            </div>
+            </Card>
           </div>
         </div>
       )}

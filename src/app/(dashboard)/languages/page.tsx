@@ -8,6 +8,7 @@ import { ROUTES } from "@/constants/routes";
 import { MaterialIcon } from "@/components/material-icon";
 import Link from "next/link";
 import type { Metadata } from "next";
+import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = {
   title: "Language Analytics",
@@ -226,7 +227,7 @@ export default async function LanguagesPage() {
       ) : (
         <div className="space-y-8">
           {/* ── Global Distribution ── */}
-          <section className="rounded-3xl border border-border bg-card p-6 sm:p-8">
+          <Card className="rounded-3xl border border-border p-6 sm:p-8 shadow-sm">
             <h2 className="text-base font-black uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
               <MaterialIcon name="pie_chart" size={18} className="text-indigo-500" />
               Overall Distribution
@@ -284,7 +285,7 @@ export default async function LanguagesPage() {
                 )}
               </div>
             </div>
-          </section>
+          </Card>
 
           {/* ── Per-repo breakdown ── */}
           {perRepo.length > 0 && (
@@ -302,9 +303,9 @@ export default async function LanguagesPage() {
                     .slice(0, 6);
 
                   return (
-                    <div
+                    <Card
                       key={query}
-                      className="rounded-3xl border border-border bg-card p-5 space-y-4"
+                      className="rounded-3xl border border-border p-5 space-y-4 shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Link
@@ -358,7 +359,7 @@ export default async function LanguagesPage() {
                           </p>
                         )}
                       </div>
-                    </div>
+                    </Card>
                   );
                 })}
               </div>

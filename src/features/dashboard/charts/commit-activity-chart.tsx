@@ -32,10 +32,18 @@ export function CommitActivityChart({
     setMounted(true);
   }, []);
 
-  const data = weeks.map((w) => ({
-    name: weekLabel(w.week),
-    commits: w.total,
-  }));
+// Flatten weekly data into daily data points
+  const data = weeks.flatMap((w) => {
+    const weekStart = new Date(w.week * 1000);
+    return w.days.map((dayValue, dayIndex) => {
+      const date = new Date(weekStart);
+      date.setDate(date.getDate() + dayIndex);
+      return {
+        name: date.toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+        commits: dayValue,
+      };
+    });
+  });
 
   if (loading || !mounted) {
     return (
@@ -71,7 +79,7 @@ export function CommitActivityChart({
     <Card className="bg-surface-container min-h-[320px] ring-1 ring-white/[0.06]">
       <CardHeader>
         <CardTitle className="font-heading text-on-surface">
-          Commits per week (last year)
+          Commits per day (last year)
         </CardTitle>
       </CardHeader>
       <CardContent className="h-[280px] pt-2">
@@ -83,6 +91,7 @@ export function CommitActivityChart({
               tick={{ fontSize: 11 }}
               stroke="var(--muted-foreground)"
               interval="preserveStartEnd"
+              minTickGap={30}
             />
             <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
             <Tooltip

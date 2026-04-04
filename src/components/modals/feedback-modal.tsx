@@ -58,7 +58,7 @@ export function FeedbackModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border border-white/10 bg-slate-900/95 backdrop-blur-xl">
+      <DialogContent className="w-[95vw] sm:max-w-[480px] p-0 overflow-hidden border border-white/10 bg-slate-900/95 backdrop-blur-xl max-h-[90vh] overflow-y-auto">
         <AnimatePresence mode="wait">
           {!isSuccess ? (
             <motion.div
@@ -68,25 +68,25 @@ export function FeedbackModal({
               exit={{ opacity: 0, scale: 1.05 }}
               className="p-6"
             >
-              <DialogHeader className="mb-6">
+              <DialogHeader className="mb-4 sm:mb-6">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="size-10 rounded-xl bg-indigo-500/20 flex items-center justify-center">
+                  <div className="size-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
                     <MaterialIcon name="chat_bubble" className="text-indigo-400" size={22} />
                   </div>
-                  <div>
-                    <DialogTitle className="text-xl font-bold tracking-tight text-white font-heading">
+                  <div className="min-w-0">
+                    <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-white font-heading">
                       Help Us Evolve
                     </DialogTitle>
-                    <DialogDescription className="text-slate-400 text-sm">
+                    <DialogDescription className="text-slate-400 text-xs sm:text-sm">
                       Your feedback directly shapes the future of GitScope.
                     </DialogDescription>
                   </div>
                 </div>
               </DialogHeader>
 
-              <div className="space-y-6">
+              <div className="space-y-4 sm:space-y-6">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 sm:mb-3 block">
                     Category
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -96,44 +96,44 @@ export function FeedbackModal({
                         type="button"
                         onClick={() => setCategory(c.id)}
                         className={cn(
-                          "flex items-center gap-3 p-3 rounded-xl border text-sm font-semibold transition-all text-left",
+                          "flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all text-left",
                           category === c.id 
                             ? "bg-indigo-500/10 border-indigo-500/50 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
                             : "bg-slate-800/40 border-white/5 text-slate-400 hover:bg-slate-800/80 hover:border-white/10"
                         )}
                       >
-                        <MaterialIcon name={c.icon} size={18} className={cn(category === c.id ? "text-indigo-400" : "text-slate-500")} />
-                        {c.label}
+                        <MaterialIcon name={c.icon} size={16} className={cn(category === c.id ? "text-indigo-400" : "text-slate-500")} />
+                        <span className="truncate">{c.label}</span>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 sm:mb-3 block">
                     Your Insight
                   </label>
                   <Textarea
                     placeholder="Tell us what's on your mind..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="min-h-[120px] bg-slate-800/40 border-white/5 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-white resize-none"
+                    className="min-h-[100px] sm:min-h-[120px] bg-slate-800/40 border-white/5 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-white resize-none text-sm"
                   />
                 </div>
               </div>
 
-              <DialogFooter className="mt-8 border-t border-white/10 pt-6">
+              <DialogFooter className="mt-6 sm:mt-8 border-t border-white/10 pt-4 sm:pt-6 flex-col sm:flex-row gap-2">
                 <Button 
                   variant="ghost" 
                   onClick={() => onOpenChange(false)}
-                  className="text-slate-400 hover:text-white"
+                  className="text-slate-400 hover:text-white w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleSubmit} 
                   disabled={isSubmitting || !message.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white min-w-[120px] transition-all active:scale-[0.98]"
+                  className="bg-indigo-600 hover:bg-indigo-500 text-white min-w-[120px] transition-all active:scale-[0.98] w-full sm:w-auto"
                 >
                   {isSubmitting ? (
                     <motion.div
@@ -150,14 +150,14 @@ export function FeedbackModal({
               key="success"
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              className="p-12 text-center"
+              className="p-6 sm:p-12 text-center"
             >
-              <div className="size-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <MaterialIcon name="verified" className="text-emerald-400" size={32} />
+              <div className="size-12 sm:size-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <MaterialIcon name="verified" className="text-emerald-400" size={24} />
               </div>
-              <h3 className="text-2xl font-heading font-black text-white mb-2 tracking-tight">Received!</h3>
-              <p className="text-slate-400">Our engineering team has intercepted your transmission.</p>
-              <p className="text-[10px] uppercase font-black tracking-widest text-emerald-400/50 mt-8">Transmitting Data... 100%</p>
+              <h3 className="text-xl sm:text-2xl font-heading font-black text-white mb-2 tracking-tight">Received!</h3>
+              <p className="text-slate-400 text-sm">Our engineering team has intercepted your transmission.</p>
+              <p className="text-[10px] uppercase font-black tracking-widest text-emerald-400/50 mt-6 sm:mt-8">Transmitting Data... 100%</p>
             </motion.div>
           )}
         </AnimatePresence>

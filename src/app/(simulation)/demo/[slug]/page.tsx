@@ -10,12 +10,12 @@ import { cn } from "@/lib/utils";
 function ComparisonMock() {
   return (
     <div className="space-y-8 p-12">
-      <div className="flex items-center justify-between border-b border-white/5 pb-8">
+      <div className="flex items-center justify-between border-b border-border pb-8">
         <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground">
           Fleet Standard Benchmarking
         </h2>
         <div className="flex gap-4">
-          <div className="bg-[#171f33] px-3 py-1.5 rounded-lg border border-primary/20 text-[10px] font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+          <div className="bg-surface-container px-3 py-1.5 rounded-lg border border-primary/20 text-[10px] font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-primary" />
             Live Benchmarking
           </div>
@@ -23,7 +23,7 @@ function ComparisonMock() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-2xl border border-white/5 bg-[#171f33]/50 p-6 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
             <div className="size-2 rounded-full bg-primary" />
             Primary Repo: architecture-core-v3
@@ -39,13 +39,13 @@ function ComparisonMock() {
               />
             ))}
           </div>
-          <div className="mt-6 flex justify-between text-[10px] font-mono font-bold uppercase text-muted-foreground border-t border-white/5 pt-4">
+          <div className="mt-6 flex justify-between text-[10px] font-mono font-bold uppercase text-muted-foreground border-t border-border pt-4">
             <span>Engineering Velocity</span>
             <span className="text-primary font-bold">+14.2%</span>
           </div>
         </div>
 
-        <div className="rounded-2xl border border-white/5 bg-[#171f33]/50 p-6 shadow-2xl backdrop-blur-xl">
+        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
             <div className="size-2 rounded-full bg-emerald-400" />
             Comparison: legacy-monolith-backup
@@ -61,7 +61,7 @@ function ComparisonMock() {
               />
             ))}
           </div>
-          <div className="mt-6 flex justify-between text-[10px] font-mono font-bold uppercase text-muted-foreground border-t border-white/5 pt-4">
+          <div className="mt-6 flex justify-between text-[10px] font-mono font-bold uppercase text-muted-foreground border-t border-border pt-4">
             <span>Engineering Velocity</span>
             <span className="text-emerald-400 font-bold">-4.5%</span>
           </div>
@@ -83,7 +83,7 @@ function ClustersMock() {
         </p>
       </div>
 
-      <div className="relative size-[500px] rounded-full border border-white/5 bg-[#0d111b]/50 shadow-inner flex items-center justify-center">
+      <div className="relative size-[500px] rounded-full border border-border bg-surface-container shadow-inner flex items-center justify-center">
         {/* Mock network nodes */}
         <motion.div 
           animate={{ scale: [1, 1.05, 1], rotate: 360 }}
@@ -121,7 +121,7 @@ function ClustersMock() {
 function HeatmapMock() {
   return (
     <div className="p-12 space-y-10">
-      <div className="flex items-end justify-between border-b border-white/5 pb-8">
+      <div className="flex items-end justify-between border-b border-border pb-8">
         <div>
           <h2 className="font-heading text-3xl font-bold tracking-tight text-foreground">
             Temporal Commit Density
@@ -130,7 +130,7 @@ function HeatmapMock() {
         </div>
         <div className="flex gap-2">
           {[1, 2, 3, 4].map(l => (
-            <div key={l} className={cn("size-3 rounded shadow-sm border border-white/5", 
+            <div key={l} className={cn("size-3 rounded shadow-sm border border-border", 
               l === 1 ? "bg-primary/10" : l === 2 ? "bg-primary/30" : l === 3 ? "bg-primary/60" : "bg-primary") } />
           ))}
         </div>
@@ -150,10 +150,10 @@ function HeatmapMock() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: i * 0.005 }}
               className={cn(
-                "rounded-sm border border-white/5 shadow-inner transition-colors hover:border-primary/50 cursor-default",
+                "rounded-sm border border-border shadow-inner transition-colors hover:border-primary/50 cursor-default",
                 Math.random() > 0.7 ? "bg-primary" : 
                 Math.random() > 0.5 ? "bg-primary/40" : 
-                Math.random() > 0.3 ? "bg-primary/10" : "bg-[#0d111b]"
+                Math.random() > 0.3 ? "bg-primary/10" : "bg-muted"
               )}
             />
           ))}
@@ -166,7 +166,7 @@ function HeatmapMock() {
           { label: "Temporal Gaps", value: "Zero Identified", icon: ShieldCheck },
           { label: "Active Nodes", value: "14.2k", icon: Code2 },
         ].map((stat, i) => (
-          <div key={i} className="rounded-xl border border-white/5 bg-[#171f33]/30 p-4 transition-all hover:bg-[#171f33]/50">
+          <div key={i} className="rounded-xl border border-border bg-card p-4 transition-all hover:bg-muted/50">
             <div className="flex items-center gap-3 mb-2">
               <stat.icon className="size-4 text-primary" />
               <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</span>
@@ -199,16 +199,16 @@ function HealthMock() {
           <div key={i} className="space-y-3">
             <div className="flex items-center justify-between font-mono text-[10px] font-bold uppercase tracking-wider">
               <span className="text-foreground">{item.label}</span>
-              <span className={cn(item.score > 80 ? "text-primary" : "text-amber-400")}>{item.status} ({item.score}%)</span>
+              <span className={cn(item.score > 80 ? "text-primary" : "text-amber-500")}>{item.status} ({item.score}%)</span>
             </div>
-            <div className="h-2 rounded-full bg-[#0d111b] border border-white/5 overflow-hidden">
+            <div className="h-2 rounded-full bg-muted border border-border overflow-hidden">
               <motion.div
                 initial={{ width: 0 }}
                 animate={{ width: `${item.score}%` }}
                 transition={{ duration: 1.5, delay: i * 0.1, ease: "circOut" }}
                 className={cn(
                   "h-full rounded-full transition-all",
-                  item.score > 80 ? "bg-primary shadow-[0_0_10px_rgba(75,77,216,0.5)]" : "bg-amber-400 shadow-[0_0_10px_rgba(251,191,36,0.3)]"
+                  item.score > 80 ? "bg-primary shadow-[0_0_10px_rgba(75,77,216,0.5)]" : "bg-amber-500 shadow-[0_0_10px_rgba(251,191,36,0.3)]"
                 )}
               />
             </div>
@@ -231,10 +231,10 @@ function ForecastingMock() {
         </p>
       </div>
 
-      <div className="relative rounded-2xl border border-white/5 bg-[#0d111b] p-8 overflow-hidden">
+      <div className="relative rounded-2xl border border-border bg-card p-8 overflow-hidden shadow-sm">
          <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-primary/5 to-transparent" />
          
-         <div className="relative z-10 flex items-end gap-1 h-[240px] border-b border-white/10">
+         <div className="relative z-10 flex items-end gap-1 h-[240px] border-b border-border">
             {Array.from({ length: 40 }).map((_, i) => {
               const h = 20 + Math.sin(i * 0.5) * 40 + Math.random() * 20;
               return (
@@ -248,7 +248,7 @@ function ForecastingMock() {
               )
             })}
             <div className="absolute left-[75%] top-0 bottom-0 w-px bg-amber-400/50 dashed-line flex flex-col items-center">
-               <div className="bg-amber-400 text-[#0b1326] px-2 py-0.5 rounded text-[8px] font-bold font-mono tracking-tighter uppercase mb-2">Predicted drift</div>
+               <div className="bg-amber-400 text-background px-2 py-0.5 rounded text-[8px] font-bold font-mono tracking-tighter uppercase mb-2">Predicted drift</div>
             </div>
          </div>
 
@@ -260,7 +260,7 @@ function ForecastingMock() {
                </div>
                <div>
                   <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Target Window</p>
-                  <p className="font-heading text-xl font-bold text-amber-400">Q4-2026 // Sept 12</p>
+                  <p className="font-heading text-xl font-bold text-amber-500">Q4-2026 // Sept 12</p>
                </div>
             </div>
             <div className="flex flex-col items-end">

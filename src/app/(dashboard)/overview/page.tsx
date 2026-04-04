@@ -97,7 +97,7 @@ export default async function OverviewPage() {
       {/* Onboarding tour: first-time users only, tracked per account in localStorage */}
       {isFirstTime && <OnboardingTour userKey={session.user.id ?? session.user.email ?? "unknown-user"} />}
       {/* Header section with radial glow */}
-      <div className="relative rounded-2xl border border-border bg-card p-5 shadow-sm overflow-hidden sm:p-8">
+      <Card className="relative rounded-2xl border border-border p-5 shadow-sm overflow-hidden sm:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(67,97,238,0.1),transparent_50%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(192,193,255,0.05),transparent_50%)]" />
         <div className="relative z-10 flex items-center gap-3 sm:gap-4">
           {image && (
@@ -137,12 +137,12 @@ export default async function OverviewPage() {
             </Link>
           )}
         </div>
-      </div>
+      </Card>
 
       <div className="grid gap-4 grid-cols-2 sm:gap-6 lg:grid-cols-4">
         {quickActions.map((action) => (
           <Link key={action.title} href={action.href}>
-            <Card className="group relative overflow-hidden flex h-full flex-col justify-between p-4 transition-all hover:shadow-md hover:border-primary/50 sm:p-6">
+            <Card className="group relative overflow-hidden flex h-full flex-col justify-between p-4 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-1 sm:p-6">
               <div className="space-y-4">
                 <div className={`inline-flex rounded-lg p-3 ${action.bg}`}>
                   <action.icon className={`h-6 w-6 ${action.color}`} />
@@ -164,9 +164,11 @@ export default async function OverviewPage() {
 
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Recent Organizations */}
-        <Card className="p-6">
+        <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="flex items-center gap-2 mb-4">
-            <Building2 className="h-5 w-5 text-muted-foreground" />
+            <div className="p-2 rounded-lg bg-indigo-500/10">
+              <Building2 className="h-5 w-5 text-indigo-500" />
+            </div>
             <h3 className="font-semibold">Recent Organizations</h3>
           </div>
           {orgHistory.length === 0 ? (
@@ -216,9 +218,11 @@ export default async function OverviewPage() {
         </Card>
 
         {/* Analyzed Repositories */}
-        <Card className="p-6">
+        <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
           <div className="flex items-center gap-2 mb-4">
-            <GitMerge className="h-5 w-5 text-muted-foreground" />
+            <div className="p-2 rounded-lg bg-purple-500/10">
+              <GitMerge className="h-5 w-5 text-purple-500" />
+            </div>
             <h3 className="font-semibold">Analyzed Repositories</h3>
           </div>
           {repoHistory.length === 0 ? (

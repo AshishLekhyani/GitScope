@@ -21,7 +21,7 @@ function VelocityHeatmap({ weeks }: { weeks: CommitActivityWeek[] }) {
   const max = Math.max(...allDays, 1);
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name="check_circle" size={18} className="text-tertiary" />
@@ -69,7 +69,7 @@ function TopContributors({ contributors }: { contributors: GitHubContributor[] }
   const maxContribs = top[0]?.contributions ?? 1;
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name="analytics" size={18} className="text-primary" />
@@ -143,7 +143,7 @@ function PeakPerformance({ weeks }: { weeks: CommitActivityWeek[] }) {
   const peakIdx = dayTotals.indexOf(Math.max(...dayTotals));
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center gap-2">
         <MaterialIcon name="schedule" size={18} className="text-primary" />
         <h3 className="font-heading text-base font-bold text-foreground">
@@ -198,7 +198,7 @@ function AllContributorsList({ contributors }: { contributors: GitHubContributor
   const shown = rest.slice(0, visible);
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-heading text-base font-bold text-foreground">
           All Contributors
@@ -304,7 +304,7 @@ export function ContributorsPageClient({
       {weeks.length > 0 && <VelocityHeatmap weeks={weeks} />}
 
       {/* Impact + Peak Performance */}
-      <div className="grid gap-6 lg:grid-cols-[1fr_300px]">
+      <div className="grid gap-6 lg:grid-cols-[1fr_260px] xl:grid-cols-[1fr_300px]">
         <TopContributors contributors={contributors} />
         <PeakPerformance weeks={weeks} />
       </div>

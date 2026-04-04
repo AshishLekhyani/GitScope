@@ -15,6 +15,7 @@ import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import Image from "next/image";
+import { formatNumber } from "@/utils/formatDate";
 
 interface CompareRadarProps {
   repositories: SearchRepoResult[];
@@ -150,6 +151,156 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
     return scoreB - scoreA;
   });
 
+  // Generate PDF content as HTML for printing
+  const handleExportPDF = () => {
+    const printWindow = window.open("", "_blank");
+    if (!printWindow) return;
+
+    const date = new Date().toLocaleDateString();
+    const overallScore = Math.round(metrics.reduce((acc, r) => acc + (r.docScore + r.activityScore) / 2, 0) / metrics.length);
+    
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>GitScope Intelligence Report</title>
+        <style>
+          @page { size: A4; margin: 20mm; }
+          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+          h1 { color: #6366f1; font-size: 28px; border-bottom: 3px solid #6366f1; padding-bottom: 10px; }
+          h2 { color: #4f46e5; font-size: 20px; margin-top: 30px; }
+          .header { text-align: center; margin-bottom: 40px; }
+          .date { color: #666; font-size: 14px; }
+          .score-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; border-radius: 16px; text-align: center; margin: 30px 0; }
+          .score-number { font-size: 64px; font-weight: bold; }
+          .score-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 2px; }
+          .repo-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 15px 0; }
+          .repo-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
+          .repo-rank { background: #6366f1; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
+          .repo-name { font-size: 18px; font-weight: bold; color: #1e293b; }
+          .repo-owner { color: #64748b; font-size: 14px; }
+          .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
+          .metric { text-align: center; padding: 15px; background: white; border-radius: 8px; }
+          .metric-value { font-size: 24px; font-weight: bold; color: #6366f1; }
+          .metric-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+          table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          th { background: #6366f1; color: white; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+          td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
+          tr:nth-child(even) { background: #f8fafc; }
+          .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 12px; }
+          @media print { .no-print { display: none; } }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>🎯 GitScope Intelligence Report</h1>
+          <p class="date">Generated on ${date}</p>
+        </div>
+        
+        <div class="score-card">
+          <div class="score-number">${overallScore}</div>
+          <div class="score-label">Overall Health Score</div>
+        </div>
+
+        <h2>📊 Repository Rankings</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Repository</th>
+              <th>Stars</th>
+              <th>Activity</th>
+              <th>Docs</th>
+              <th>Issues</th>
+            </tr>
+          </thead>
+          <tbody>
+    `;
+
+    sortedMetrics.forEach((repo, idx) => {
+      const score = Math.round((Number(repo.stars) * 0.4) + (repo.activityScore * 0.4) + (repo.docScore * 0.2));
+      html += `
+        <tr>
+          <td><strong>#${idx + 1}</strong></td>
+          <td>${repo.owner}/${repo.repo}</td>
+          <td>${Number(repo.stars).toLocaleString()}</td>
+          <td>${Math.round(repo.activityScore)}%</td>
+          <td>${Math.round(repo.docScore)}%</td>
+          <td>${repo.openIssues}</td>
+        </tr>
+      `;
+    });
+
+    html += `
+          </tbody>
+        </table>
+
+        <h2>📈 Detailed Analysis</h2>
+    `;
+
+    sortedMetrics.forEach((repo, idx) => {
+      const score = Math.round((Number(repo.stars) * 0.4) + (repo.activityScore * 0.4) + (repo.docScore * 0.2));
+      html += `
+        <div class="repo-card">
+          <div class="repo-header">
+            <div class="repo-rank">${idx + 1}</div>
+            <div>
+              <div class="repo-name">${repo.repo}</div>
+              <div class="repo-owner">${repo.owner}</div>
+            </div>
+          </div>
+          <div class="metrics-grid">
+            <div class="metric">
+              <div class="metric-value">${Number(repo.stars).toLocaleString()}</div>
+              <div class="metric-label">Stars</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${repo.forks.toLocaleString()}</div>
+              <div class="metric-label">Forks</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${repo.watchers.toLocaleString()}</div>
+              <div class="metric-label">Watchers</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${Math.round(repo.activityScore)}%</div>
+              <div class="metric-label">Activity</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${Math.round(repo.docScore)}%</div>
+              <div class="metric-label">Documentation</div>
+            </div>
+            <div class="metric">
+              <div class="metric-value">${repo.openIssues}</div>
+              <div class="metric-label">Open Issues</div>
+            </div>
+          </div>
+          <p style="margin-top: 15px; color: #64748b; font-size: 14px;">
+            <strong>Last updated:</strong> ${formatDistanceToNow(new Date(repo.updatedAt))} ago
+          </p>
+        </div>
+      `;
+    });
+
+    html += `
+        <div class="footer">
+          <p>Generated by GitScope - Repository Intelligence Platform</p>
+          <p style="font-size: 11px; margin-top: 5px;">${window.location.origin}/compare</p>
+        </div>
+        
+        <div class="no-print" style="text-align: center; margin-top: 30px;">
+          <button onclick="window.print()" style="background: #6366f1; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold;">
+            🖨️ Print / Save as PDF
+          </button>
+        </div>
+      </body>
+      </html>
+    `;
+
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
+
   return (
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
@@ -274,7 +425,11 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
             Our intelligence suggests {metrics.length > 1 ? `that ${metrics.sort((a, b) => b.activityScore - a.activityScore)[0].repo} is currently leading in development velocity.` : "you should compare against similar libraries to see relative engineering quality."}
           </p>
         </div>
-        <button className="relative z-10 px-8 py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl">
+        <button 
+          onClick={handleExportPDF}
+          className="relative z-10 px-8 py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-2"
+        >
+          <MaterialIcon name="download" size={16} />
           Export Intelligence PDF
         </button>
       </div>

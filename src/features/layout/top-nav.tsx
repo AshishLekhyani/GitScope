@@ -61,6 +61,8 @@ const RECOMMENDATIONS = {
   ]
 };
 
+const PKG_VERSION = "2.4.0-stable";
+
 type SearchUserResult = {
   name: string;
   avatar: string;
@@ -269,23 +271,37 @@ export function TopNav({
       </AnimatePresence>
 
       <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-8">
-        <Link
-          href="/"
-          className="font-heading shrink-0 text-lg font-bold tracking-tight text-foreground sm:text-xl"
-        >
-          GitScope
-        </Link>
-
         <Button
           type="button"
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:bg-accent md:hidden"
+          className="text-muted-foreground hover:bg-accent md:hidden -ml-1"
           onClick={onMenuClick}
           aria-label="Open menu"
         >
           <Menu className="size-5" />
         </Button>
+
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 sm:gap-2 shrink-0"
+        >
+          <Image
+            src="/logo.png"
+            width={24}
+            height={24}
+            alt="GitScope Logo"
+            className="size-6 sm:size-7 rounded-lg shadow-lg shadow-primary/10 ring-1 ring-white/10"
+          />
+          <div className="flex flex-col leading-none">
+            <span className="font-heading text-base sm:text-lg font-bold tracking-tight text-foreground sm:text-xl">
+              GitScope
+            </span>
+            <span className="hidden sm:block font-mono text-[8px] tracking-widest text-muted-foreground uppercase">
+              v{PKG_VERSION}
+            </span>
+          </div>
+        </Link>
 
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 md:gap-6">
           <div ref={searchRef} className="relative z-50 hidden min-w-0 max-w-md flex-1 items-center sm:flex">
@@ -387,7 +403,7 @@ export function TopNav({
                               onClick={() => {
                                 setQ(item.type === "repo" ? item.id : `@${item.name}`);
                                 setIsFocused(false);
-                                router.push(item.type === "repo" ? ROUTES.dashboard(item.id.split('/')[0], item.id.split('/')[1]) : `/${item.name}`);
+                                router.push(item.type === "repo" ? ROUTES.dashboard(item.id.split('/')[0], item.id.split('/')[1]) : `/dashboard/${item.name}`);
                               }}
                               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold hover:bg-indigo-500/10 hover:text-indigo-500 transition-colors group"
                             >
@@ -454,7 +470,7 @@ export function TopNav({
                           onClick={() => {
                             addToHistory({ id: item.name, name: item.name, type: "user", avatar: item.avatar });
                             setIsFocused(false);
-                            router.push(`/${item.name}`);
+                            router.push(`/dashboard/${item.name}`);
                           }}
                           className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
                         >
@@ -535,13 +551,8 @@ export function TopNav({
         </div>
       </div>
 
-      {title && (
-        <div className="text-foreground min-w-0 flex-1 truncate text-sm font-medium md:hidden">
-          {title}
-        </div>
-      )}
 
-      <div className="flex shrink-0 items-center gap-1 sm:gap-3">
+      <div className="flex shrink-0 items-center gap-0.5 sm:gap-1 md:gap-3">
         {/* Mobile search toggle */}
         <button
           type="button"
@@ -675,8 +686,9 @@ export function TopNav({
         >
           <MaterialIcon name="terminal" size={22} />
         </Button>
-        {/* Help & Resources Dropdown */}
-        <DropdownMenu>
+        {/* Help & Resources Dropdown - Hidden on mobile */}
+        <div className="hidden sm:block">
+          <DropdownMenu>
           <DropdownMenuTrigger render={
             <button
               type="button"
@@ -718,6 +730,7 @@ export function TopNav({
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        </div>
         {mounted && (
           <Button
             type="button"
@@ -729,6 +742,18 @@ export function TopNav({
           >
             <Sun className="inline size-5 dark:hidden" />
             <Moon className="hidden size-5 dark:inline" />
+          </Button>
+        )}
+        {mounted && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="text-muted-foreground hover:bg-accent rounded-full sm:hidden"
+            onClick={() => void performLogout()}
+            aria-label="Sign out"
+          >
+            <MaterialIcon name="logout" size={20} />
           </Button>
         )}
         {/* User Account Dropdown */}

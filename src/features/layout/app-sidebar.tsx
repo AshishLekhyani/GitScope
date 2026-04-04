@@ -4,7 +4,6 @@ import { MaterialIcon } from "@/components/material-icon";
 import { ROUTES } from "@/constants/routes";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
-import NextImage from "next/image";
 import { usePathname } from "next/navigation";
 import { useTheme } from "next-themes";
 import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
@@ -212,35 +211,8 @@ export function AppSidebar({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col pt-2">
-      <div className={cn("mb-6 flex items-center px-5", isCollapsed ? "justify-center px-0" : "justify-between")}>
-        <div className={cn("flex items-center", isCollapsed ? "justify-center" : "gap-3")}>
-          <NextImage 
-            src="/logo.png" 
-            width={32} 
-            height={32} 
-            alt="GitScope Logo" 
-            className="size-8 rounded-lg shadow-lg shadow-primary/10 ring-1 ring-white/10"
-          />
-          {!isCollapsed && (
-            <div>
-              <h3 className="font-heading text-lg leading-none font-black tracking-tight text-indigo-600 dark:text-indigo-400">
-                GitScope
-              </h3>
-              <p className="mt-1 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
-                v{PKG_VERSION}
-              </p>
-            </div>
-          )}
-        </div>
-        {!isCollapsed && onToggleCollapse && (
-          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors ml-auto">
-            <MaterialIcon name="keyboard_double_arrow_left" size={20} />
-          </button>
-        )}
-      </div>
-
-      {!isCollapsed ? (
-        <div className="border-border mb-4 border-b px-5 pb-4 dark:border-white/5">
+      <div className={cn("mb-1 flex items-center px-5", isCollapsed ? "justify-center px-0" : "justify-between")}>
+        {!isCollapsed && (
           <div className="flex items-center gap-2">
             <div className={cn("bg-indigo-500 size-2 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]", isLoading && "animate-pulse")} />
             {isLoading ? (
@@ -251,20 +223,27 @@ export function AppSidebar({
               </span>
             )}
           </div>
+        )}
+        {!isCollapsed && onToggleCollapse && (
+          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors">
+            <MaterialIcon name="keyboard_double_arrow_left" size={20} />
+          </button>
+        )}
+        {isCollapsed && onToggleCollapse && (
+          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-sidebar-accent/80">
+            <MaterialIcon name="keyboard_double_arrow_right" size={20} />
+          </button>
+        )}
+      </div>
+
+      {!isCollapsed && (
+        <div className="border-border mb-1 border-b px-5 pb-1 dark:border-white/5">
           {isLoading ? (
-            <div className="mt-2 h-4 w-44 animate-pulse rounded bg-slate-700/40 dark:bg-slate-900/80" />
+            <div className="h-4 w-44 animate-pulse rounded bg-slate-700/40 dark:bg-slate-900/80" />
           ) : (
-            <p className="mt-1 font-mono text-[10px] tracking-widest text-muted-foreground uppercase">
+            <p className="font-mono text-[8px] tracking-widest text-muted-foreground uppercase">
               Main Analytics Console
             </p>
-          )}
-        </div>
-      ) : (
-        <div className="border-border mb-4 flex justify-center border-b pb-4 dark:border-white/5 mx-2">
-          {onToggleCollapse && (
-            <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-sidebar-accent/80">
-              <MaterialIcon name="keyboard_double_arrow_right" size={20} />
-            </button>
           )}
         </div>
       )}

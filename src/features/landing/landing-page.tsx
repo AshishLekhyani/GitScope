@@ -13,6 +13,14 @@ import { Search, LogIn } from "lucide-react";
 import Link from "next/link";
 import NextImage from "next/image";
 import { MaterialIcon } from "@/components/material-icon";
+import { useEffect, useRef } from "react";
+import gsap from "gsap";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+// Register GSAP plugins
+if (typeof window !== "undefined") {
+  gsap.registerPlugin(ScrollTrigger);
+}
 
 /* ---------- tiny reusable pieces ---------- */
 function VersionBadge() {
@@ -145,8 +153,62 @@ const features = [
 
 /* ---------- main ---------- */
 export function LandingPage() {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const featuresRef = useRef<HTMLDivElement>(null);
+  const howItWorksRef = useRef<HTMLDivElement>(null);
+  const ctaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    const ctx = gsap.context(() => {
+      // Features section - staggered card animations
+      gsap.from(".feature-card", {
+        scrollTrigger: {
+          trigger: featuresRef.current,
+          start: "top 80%",
+          toggleActions: "play none none reverse"
+        },
+        y: 60,
+        opacity: 0,
+        duration: 0.8,
+        stagger: 0.15,
+        ease: "power3.out"
+      });
+
+      // How it works - slide in from left
+      gsap.from(".how-it-works-step", {
+        scrollTrigger: {
+          trigger: howItWorksRef.current,
+          start: "top 75%",
+          toggleActions: "play none none reverse"
+        },
+        x: -40,
+        opacity: 0,
+        duration: 0.7,
+        stagger: 0.2,
+        ease: "power2.out"
+      });
+
+      // CTA section - scale in
+      gsap.from(ctaRef.current, {
+        scrollTrigger: {
+          trigger: ctaRef.current,
+          start: "top 85%",
+          toggleActions: "play none none reverse"
+        },
+        scale: 0.9,
+        opacity: 0,
+        duration: 0.8,
+        ease: "power3.out"
+      });
+    }, containerRef);
+
+    return () => ctx.revert();
+  }, []);
+
   return (
-    <div className="relative z-10 mx-auto max-w-7xl px-6">
+    <div ref={containerRef} className="relative z-10 mx-auto max-w-7xl px-6">
       {/* ambient glow */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(192,193,255,0.12),transparent)]" />
 
@@ -155,33 +217,33 @@ export function LandingPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ duration: 0.5 }}
-            className="flex flex-col gap-10 pt-12 pb-20 lg:flex-row lg:items-center lg:gap-16 lg:pt-20 lg:pb-28"
+            className="flex flex-col gap-10 pt-8 pb-16 sm:pt-12 sm:pb-20 lg:flex-row lg:items-center lg:gap-16 lg:pt-20 lg:pb-28 min-h-[calc(100vh-8rem)] lg:min-h-0"
           >
-            <div className="max-w-xl space-y-6 lg:max-w-lg">
+            <div className="max-w-xl space-y-4 sm:space-y-6 lg:max-w-lg">
               <VersionBadge />
-              <div className="flex items-center gap-4 mb-2">
+              <div className="flex items-center gap-3 sm:gap-4 mb-2">
                 <NextImage 
                   src="/logo.png" 
                   width={48} 
                   height={48} 
                   alt="GitScope Logo" 
-                  className="size-12 rounded-xl shadow-2xl shadow-primary/20 ring-1 ring-white/10"
+                  className="size-10 sm:size-12 rounded-xl shadow-2xl shadow-primary/20 ring-1 ring-white/10"
                 />
-                <span className="font-heading text-2xl font-bold tracking-tighter text-foreground uppercase">GitScope</span>
+                <span className="font-heading text-xl sm:text-2xl font-bold tracking-tighter text-foreground uppercase">GitScope</span>
               </div>
-              <h1 className="font-heading text-4xl leading-[1.08] font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
+              <h1 className="font-heading text-3xl sm:text-4xl leading-[1.08] font-bold tracking-tight text-foreground md:text-5xl lg:text-6xl">
                 The Engineer&apos;s
                 <br />
-                <span className="bg-gradient-to-r from-tertiary to-emerald-300 bg-clip-text text-transparent">
+                <span className="bg-linear-to-r from-tertiary to-emerald-300 bg-clip-text text-transparent">
                   True Compass.
                 </span>
               </h1>
-              <p className="text-muted-foreground max-w-md text-base leading-relaxed md:text-lg">
+              <p className="text-muted-foreground max-w-md text-sm sm:text-base leading-relaxed md:text-lg">
                 GitScope provides high-fidelity telemetry to understand complex open-source
                 codebases. Gain deep architectural insights, track commit velocity, and
                 dissect repository metrics instantly.
               </p>
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-col sm:flex-row flex-wrap gap-3">
                 <Tooltip>
                   <TooltipTrigger
                     render={
@@ -189,7 +251,7 @@ export function LandingPage() {
                         href="/guest"
                         className={cn(
                           buttonVariants({ size: "lg" }),
-                          "btn-gitscope-primary rounded-full px-8 font-bold shadow-2xl shadow-primary/20"
+                          "btn-gitscope-primary rounded-full px-6 sm:px-8 font-bold shadow-2xl shadow-primary/20 w-full sm:w-auto justify-center"
                         )}
                       >
                         <Search className="mr-2 size-4" />
@@ -208,7 +270,7 @@ export function LandingPage() {
                         href={ROUTES.login}
                         className={cn(
                           buttonVariants({ variant: "outline", size: "lg" }),
-                          "rounded-full px-8 border-white/10 hover:bg-white/5"
+                          "rounded-full px-6 sm:px-8 border-white/10 hover:bg-white/5 w-full sm:w-auto justify-center"
                         )}
                       >
                         <LogIn className="mr-2 size-4" />
@@ -234,38 +296,34 @@ export function LandingPage() {
           </motion.section>
 
           {/* ───── FEATURES BENTO ───── */}
-          <motion.section
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="pb-24"
-          >
-            <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+          <section ref={featuresRef} className="pb-24">
+            <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               Advanced Engineering Intelligence
             </h2>
             <div className="mt-1 h-1 w-10 rounded-full bg-primary" />
 
-            <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="mt-8 sm:mt-10 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 touch-pan-x overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 snap-x snap-mandatory scrollbar-hide">
               {/* Repo Comparison — tall left */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      href={features[0].href}
-                      className="card-royal row-span-2 flex flex-col justify-between p-6"
-                    />
-                  }
-                >
+              <div className="feature-card row-span-1 sm:row-span-2 snap-start shrink-0 sm:shrink w-[85vw] sm:w-auto">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Link
+                        href={features[0].href}
+                        className="card-royal flex flex-col justify-between p-4 sm:p-6 h-full min-h-[200px] sm:min-h-0"
+                      />
+                    }
+                  >
                   <div>
                     <span className="text-xl">{features[0].icon}</span>
-                    <h3 className="font-heading mt-3 text-lg font-bold text-foreground">
+                    <h3 className="font-heading mt-3 text-base sm:text-lg font-bold text-foreground">
                       {features[0].title}
                     </h3>
-                    <p className="text-muted-foreground mt-2 text-sm leading-relaxed max-w-[200px]">
+                    <p className="text-muted-foreground mt-2 text-xs sm:text-sm leading-relaxed max-w-[200px]">
                       Benchmark any two public repositories side-by-side with high-fidelity metrics.
                     </p>
                   </div>
-                  <div className="mt-6 space-y-2 rounded-lg bg-surface-container-lowest/40 p-3 font-mono text-[9px] border border-white/5">
+                  <div className="mt-4 sm:mt-6 space-y-2 rounded-lg bg-surface-container-lowest/40 p-2 sm:p-3 font-mono text-[9px] border border-white/5">
                     <div className="flex justify-between text-muted-foreground/60 tracking-widest">
                       <span>SYNC STATUS</span>
                       <span className="text-emerald-400">OPERATIONAL</span>
@@ -277,45 +335,49 @@ export function LandingPage() {
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>{features[0].tooltip}</TooltipContent>
-              </Tooltip>
+                </Tooltip>
+              </div>
 
               {/* Network Graphing */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      href={features[1].href}
-                      className="card-royal p-6"
-                    />
-                  }
-                >
+              <div className="feature-card snap-start shrink-0 sm:shrink w-[85vw] sm:w-auto">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Link
+                        href={features[1].href}
+                        className="card-royal p-4 sm:p-6 block h-full"
+                      />
+                    }
+                  >
                   <span className="text-xl">{features[1].icon}</span>
-                  <h3 className="font-heading mt-3 text-lg font-bold text-foreground">
+                  <h3 className="font-heading mt-3 text-base sm:text-lg font-bold text-foreground">
                     {features[1].title}
                   </h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                  <p className="text-muted-foreground mt-2 text-xs sm:text-sm leading-relaxed">
                     {features[1].body}
                   </p>
                 </TooltipTrigger>
                 <TooltipContent>{features[1].tooltip}</TooltipContent>
-              </Tooltip>
+                </Tooltip>
+              </div>
 
               {/* heatmap visual */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      href={ROUTES.feature("contributor-heatmap")}
-                      className="card-royal flex items-center justify-center p-6"
-                    />
-                  }
-                >
+              <div className="feature-card snap-start shrink-0 sm:shrink w-[85vw] sm:w-auto">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Link
+                        href={ROUTES.feature("contributor-heatmap")}
+                        className="card-royal flex items-center justify-center p-4 sm:p-6 h-full min-h-[140px] sm:min-h-0"
+                      />
+                    }
+                  >
                   <div className="grid grid-cols-8 gap-1">
                     {Array.from({ length: 40 }).map((_, i) => (
                       <div
                         key={i}
                         className={cn(
-                          "size-3 rounded-sm",
+                          "size-2.5 sm:size-3 rounded-sm",
                           i % 3 === 0
                             ? "bg-tertiary/70"
                             : i % 5 === 0
@@ -329,78 +391,78 @@ export function LandingPage() {
                 <TooltipContent>
                   View contributor heatmaps — click to try
                 </TooltipContent>
-              </Tooltip>
+                </Tooltip>
+              </div>
 
               {/* Static Analysis */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      href={features[2].href}
-                      className="card-royal p-6"
-                    />
-                  }
-                >
+              <div className="feature-card snap-start shrink-0 sm:shrink w-[85vw] sm:w-auto">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Link
+                        href={features[2].href}
+                        className="card-royal p-4 sm:p-6 block h-full"
+                      />
+                    }
+                  >
                   <span className="text-xl">{features[2].icon}</span>
-                  <h3 className="font-heading mt-3 text-lg font-bold text-foreground">
+                  <h3 className="font-heading mt-3 text-base sm:text-lg font-bold text-foreground">
                     {features[2].title}
                   </h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                  <p className="text-muted-foreground mt-2 text-xs sm:text-sm leading-relaxed">
                     {features[2].body}
                   </p>
-                  <div className="mt-4 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
-                    <span className="font-heading text-lg font-bold text-primary">
+                  <div className="mt-3 sm:mt-4 flex items-center gap-2 font-mono text-[10px] text-muted-foreground">
+                    <span className="font-heading text-base sm:text-lg font-bold text-primary">
                       A+
                     </span>
-                    <span className="uppercase tracking-wider">
+                    <span className="uppercase tracking-wider text-[9px] sm:text-[10px]">
                       Fleet Security Score Verified
                     </span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>{features[2].tooltip}</TooltipContent>
-              </Tooltip>
+                </Tooltip>
+              </div>
 
               {/* Release Prediction */}
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Link
-                      href={features[3].href}
-                      className="card-royal p-6"
-                    />
-                  }
-                >
+              <div className="feature-card snap-start shrink-0 sm:shrink w-[85vw] sm:w-auto">
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Link
+                        href={features[3].href}
+                        className="card-royal p-4 sm:p-6 block h-full"
+                      />
+                    }
+                  >
                   <span className="text-xl">{features[3].icon}</span>
-                  <h3 className="font-heading mt-3 text-lg font-bold text-foreground">
+                  <h3 className="font-heading mt-3 text-base sm:text-lg font-bold text-foreground">
                     {features[3].title}
                   </h3>
-                  <p className="text-muted-foreground mt-2 text-sm leading-relaxed">
+                  <p className="text-muted-foreground mt-2 text-xs sm:text-sm leading-relaxed">
                     {features[3].body}
                   </p>
-                  <div className="mt-4 flex items-center gap-2">
+                  <div className="mt-3 sm:mt-4 flex items-center gap-2">
                     <span className="size-2 rounded-full bg-tertiary" />
-                    <span className="font-mono text-[10px] text-tertiary">
+                    <span className="font-mono text-[9px] sm:text-[10px] text-tertiary">
                       92% Confidence Interval
                     </span>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>{features[3].tooltip}</TooltipContent>
-              </Tooltip>
+                </Tooltip>
+              </div>
             </div>
-          </motion.section>
+          </section>
 
           {/* ── HOW IT WORKS ── */}
-          <motion.section
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ duration: 0.5 }}
-            className="pb-24"
-          >
-            <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground md:text-3xl">
+          <section ref={howItWorksRef} className="pb-24">
+            <h2 className="font-heading text-xl sm:text-2xl font-bold tracking-tight text-foreground md:text-3xl">
               How It Works
             </h2>
             <div className="mt-1 h-1 w-10 rounded-full bg-primary" />
-            <div className="mt-10 grid gap-8 sm:grid-cols-3">
+            <div className="mt-8 sm:mt-10 flex gap-4 sm:gap-8 overflow-x-auto sm:grid sm:grid-cols-3 touch-pan-x snap-x snap-mandatory scrollbar-hide pb-4 sm:pb-0">
               {[
                 {
                   step: "01",
@@ -421,43 +483,42 @@ export function LandingPage() {
                   body: "Analyze commit velocity, contributor clusters, language distribution, PR risk scores, and DORA metrics in seconds.",
                 },
               ].map((item) => (
-                <div key={item.step} className="relative space-y-4">
+                <div key={item.step} className="how-it-works-step relative space-y-3 sm:space-y-4 snap-start shrink-0 w-[80vw] sm:w-auto sm:shrink">
                   <div className="flex items-center gap-4">
                     <span className="font-mono text-[10px] font-black text-primary/40 tracking-widest">{item.step}</span>
                     <div className="h-px flex-1 bg-outline-variant/20" />
                   </div>
-                  <div className="flex size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/10">
-                    <MaterialIcon name={item.icon} size={24} className="text-primary" />
+                  <div className="flex size-10 sm:size-12 items-center justify-center rounded-2xl bg-primary/10 border border-primary/10">
+                    <MaterialIcon name={item.icon} size={20} className="sm:hidden text-primary" />
+                    <MaterialIcon name={item.icon} size={24} className="hidden sm:block text-primary" />
                   </div>
-                  <h3 className="font-heading text-lg font-bold text-foreground">{item.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{item.body}</p>
+                  <h3 className="font-heading text-base sm:text-lg font-bold text-foreground">{item.title}</h3>
+                  <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">{item.body}</p>
                 </div>
               ))}
             </div>
-          </motion.section>
+          </section>
 
-          <motion.section
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, amount: 0.1 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-            className="mb-20 overflow-hidden rounded-2xl border border-primary/10 bg-gradient-to-br from-primary/5 via-secondary/5 to-primary/10 px-6 py-16 text-center shadow-royal sm:px-8 dark:from-indigo-900/80 dark:via-primary-container/60 dark:to-indigo-950/80"
+          <section
+            ref={ctaRef}
+            className="mb-20 overflow-hidden rounded-2xl border border-primary/10 bg-linear-to-br from-primary/5 via-secondary/5 to-primary/10 px-4 py-12 sm:px-8 sm:py-16 text-center shadow-royal dark:from-indigo-900/80 dark:via-primary-container/60 dark:to-indigo-950/80"
           >
-            <h2 className="font-heading text-3xl font-bold tracking-tighter text-foreground md:text-5xl dark:text-white">
+            <h2 className="font-heading text-2xl sm:text-3xl font-bold tracking-tighter text-foreground md:text-5xl dark:text-white">
               Architect Your Engineering
               <br />
-              <span className="bg-gradient-to-r from-primary to-emerald-400 bg-clip-text text-transparent dark:from-indigo-300 dark:to-emerald-300">
+              <span className="bg-linear-to-r from-primary to-emerald-400 bg-clip-text text-transparent dark:from-indigo-300 dark:to-emerald-300">
                 Intelligence Network.
               </span>
             </h2>
-            <p className="mx-auto mt-6 max-w-xl text-base font-medium leading-relaxed text-muted-foreground dark:text-indigo-100/60">
+            <p className="mx-auto mt-4 sm:mt-6 max-w-xl text-sm sm:text-base font-medium leading-relaxed text-muted-foreground dark:text-indigo-100/60">
               World-class teams use GitScope to optimize architectural drift and delivery velocity with precision.
             </p>
-            <div className="mt-10 flex flex-wrap justify-center gap-4">
+            <div className="mt-8 sm:mt-10 flex flex-col sm:flex-row flex-wrap justify-center gap-3 sm:gap-4">
               <Link
                 href={ROUTES.login}
                 className={cn(
                   buttonVariants({ size: "lg" }),
-                  "btn-gitscope-primary rounded-full px-10 font-bold tracking-tight shadow-xl"
+                  "btn-gitscope-primary rounded-full px-6 sm:px-10 font-bold tracking-tight shadow-xl w-full sm:w-auto justify-center"
                 )}
               >
                 Sign Up Now
@@ -466,13 +527,13 @@ export function LandingPage() {
                 href={ROUTES.pricing}
                 className={cn(
                   buttonVariants({ variant: "outline", size: "lg" }),
-                  "rounded-full border-primary/20 px-10 font-bold transition-all hover:bg-primary/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10"
+                  "rounded-full border-primary/20 px-6 sm:px-10 font-bold transition-all hover:bg-primary/5 dark:border-white/20 dark:text-white dark:hover:bg-white/10 w-full sm:w-auto justify-center"
                 )}
               >
                 View Enterprise Pricing
               </Link>
             </div>
-          </motion.section>
+          </section>
         </div>
   );
 }

@@ -254,7 +254,7 @@ export function CompareReposPanel() {
           </div>
 
           {/* ── Health Matrix + Predictive Index ── */}
-          <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_320px]">
+          <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px]">
             {/* Health Matrix */}
             <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
               <h3 className="font-heading mb-4 text-lg font-bold text-foreground">

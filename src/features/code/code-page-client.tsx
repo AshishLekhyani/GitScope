@@ -12,7 +12,7 @@ import {
 import type { CommitActivityWeek } from "@/types/github";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Bar,
   BarChart,
@@ -40,7 +40,7 @@ function PRMergeFrequency({
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
         <Skeleton className="mb-4 h-5 w-40" />
         <Skeleton className="h-[200px] w-full rounded-lg" />
       </div>
@@ -72,7 +72,7 @@ function PRMergeFrequency({
     .map(([name, v]) => ({ name, ...v }));
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name="merge" size={18} className="text-tertiary" />
@@ -125,43 +125,81 @@ function PRMergeFrequency({
 }
 
 /* ─── Code Size from commit activity ─── */
-function CodeSizeProgression({ weeks }: { weeks: CommitActivityWeek[] }) {
-  const [range, setRange] = useState<"1y" | "6m" | "90d" | "30d" | "7d">("6m");
+function CodeSizeProgression({ owner, repo }: { owner: string; repo: string }) {
+  const [range, setRange] = useState<"7d" | "30d" | "90d" | "6m" | "1y">("6m");
+  const [commits, setCommits] = useState<Array<{ date: string; count: number }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchCommits() {
+      setLoading(true);
+      try {
+        const sinceDate = new Date();
+        if (range === "7d") sinceDate.setDate(sinceDate.getDate() - 7);
+        else if (range === "30d") sinceDate.setDate(sinceDate.getDate() - 30);
+        else if (range === "90d") sinceDate.setDate(sinceDate.getDate() - 90);
+        else if (range === "6m") sinceDate.setMonth(sinceDate.getMonth() - 6);
+        else if (range === "1y") sinceDate.setFullYear(sinceDate.getFullYear() - 1);
+
+        const res = await fetch(
+          `/api/github/repos/${owner}/${repo}/commits?per_page=100&since=${sinceDate.toISOString()}`
+        );
+        const data = await res.json();
+        
+        // Aggregate commits by day
+        const commitCounts: Record<string, number> = {};
+        if (Array.isArray(data)) {
+          data.forEach((commit: { commit: { author: { date: string } } }) => {
+            const date = commit.commit.author.date.split('T')[0];
+            commitCounts[date] = (commitCounts[date] || 0) + 1;
+          });
+        }
+        
+        // Build daily data array
+        const dailyData: Array<{ date: string; count: number }> = [];
+        const endDate = new Date();
+        const currentDate = new Date(sinceDate);
+        
+        while (currentDate <= endDate) {
+          const dateStr = currentDate.toISOString().split('T')[0];
+          dailyData.push({
+            date: dateStr,
+            count: commitCounts[dateStr] || 0,
+          });
+          currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        setCommits(dailyData);
+      } catch (e) {
+        console.error("Failed to fetch commits:", e);
+      } finally {
+        setLoading(false);
+      }
+    }
+    
+    fetchCommits();
+  }, [owner, repo, range]);
   
-  let sliceCount = 26; // 6m default
-  if (range === "1y") sliceCount = 52;
-  if (range === "6m") sliceCount = 26;
-  if (range === "90d") sliceCount = 13;
-  if (range === "30d") sliceCount = 4;
-  if (range === "7d") sliceCount = 1;
-
-  // Calculate cumulative commits prior to the sliced range
-  let cumulative = 0;
-  const priorWeeks = weeks.slice(0, Math.max(0, weeks.length - sliceCount));
-  priorWeeks.forEach((w) => { cumulative += w.total; });
-
-  const data = weeks.slice(-sliceCount).map((w) => {
-    cumulative += w.total;
-    return {
-      name: new Date(w.week * 1000).toLocaleDateString(undefined, {
-        month: "short",
-        day: "numeric",
-      }),
-      commits: cumulative,
-    };
-  });
+  // Build daily data (non-cumulative)
+  const data = commits.map((day) => ({
+    name: new Date(day.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+    commits: day.count,
+  }));
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <MaterialIcon name="data_usage" size={18} className="text-secondary" />
           <h3 className="font-heading text-lg font-bold text-foreground">
-            Cumulative Commit Progress
+            Daily Commits
           </h3>
+          <p className="text-muted-foreground text-xs">
+            Commits per day for selected range
+          </p>
         </div>
         <div className="flex rounded-md border border-outline-variant/20 bg-surface-container-lowest p-0.5">
-          {(["1y", "6m", "90d", "30d", "7d"] as const).map((t) => (
+          {(["7d", "30d", "90d", "6m", "1y"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setRange(t)}
@@ -188,7 +226,7 @@ function CodeSizeProgression({ weeks }: { weeks: CommitActivityWeek[] }) {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
+              <XAxis dataKey="name" tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" minTickGap={30} />
               <YAxis tick={{ fontSize: 10 }} stroke="var(--muted-foreground)" />
               <Tooltip
                 contentStyle={{
@@ -206,7 +244,7 @@ function CodeSizeProgression({ weeks }: { weeks: CommitActivityWeek[] }) {
                 stroke="#8b5cf6"
                 fill="url(#codeGrad)"
                 strokeWidth={2}
-                name="Total Commits"
+                name="Commits"
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -234,7 +272,7 @@ function TopLanguages({ languages, loading }: { languages: Record<string, number
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
         <Skeleton className="mb-4 h-5 w-32" />
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="mt-3 h-5 w-full" />
@@ -244,7 +282,7 @@ function TopLanguages({ languages, loading }: { languages: Record<string, number
   }
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center gap-2">
         <MaterialIcon name="code" size={18} className="text-primary" />
         <h3 className="font-heading text-base font-bold text-foreground">
@@ -304,7 +342,7 @@ function SummaryStats({
       {stats.map((s) => (
         <div
           key={s.label}
-          className="rounded-xl border border-outline-variant/15 bg-surface-container p-4"
+          className="rounded-xl border border-outline-variant/15 bg-surface-container p-4 shadow-sm dark:shadow-none"
         >
           <div className="flex items-center gap-2">
             <MaterialIcon name={s.icon} size={18} className="text-muted-foreground" />
@@ -385,7 +423,7 @@ export function CodePageClient({
       </div>
 
       {/* Code Size */}
-      <CodeSizeProgression weeks={weeks} />
+      <CodeSizeProgression owner={owner} repo={repo} />
     </motion.div>
   );
 }

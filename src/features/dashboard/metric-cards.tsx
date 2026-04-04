@@ -6,6 +6,27 @@ import { formatNumber } from "@/utils/formatDate";
 import { MaterialIcon } from "@/components/material-icon";
 import { motion } from "framer-motion";
 
+const gradients = [
+  "from-amber-500/20 via-orange-500/10 to-transparent",
+  "from-blue-500/20 via-cyan-500/10 to-transparent",
+  "from-red-500/20 via-rose-500/10 to-transparent",
+  "from-emerald-500/20 via-teal-500/10 to-transparent",
+];
+
+const iconColors = [
+  "text-amber-500",
+  "text-blue-500",
+  "text-red-500",
+  "text-emerald-500",
+];
+
+const glowColors = [
+  "shadow-amber-500/10",
+  "shadow-blue-500/10",
+  "shadow-red-500/10",
+  "shadow-emerald-500/10",
+];
+
 export function MetricCards({
   stars,
   forks,
@@ -61,14 +82,15 @@ export function MetricCards({
   if (loading) {
     return (
       <div className="mb-10 grid grid-cols-1 gap-5 md:grid-cols-4">
-        {items.map((i) => (
+        {items.map((i, idx) => (
           <div
             key={i.label}
-            className="bg-surface-container border-outline-variant/10 relative overflow-hidden rounded-xl border-l-2 p-6"
+            className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-md backdrop-blur-xl dark:bg-slate-900/30 dark:shadow-none"
           >
-            <Skeleton className="mb-2 h-3 w-20" />
-            <Skeleton className="h-9 w-24" />
-            <Skeleton className="mt-2 h-3 w-32" />
+            <div className="absolute inset-0 bg-linear-to-br from-slate-500/5 to-transparent" />
+            <Skeleton className="relative mb-2 h-3 w-20" />
+            <Skeleton className="relative h-9 w-24" />
+            <Skeleton className="relative mt-2 h-3 w-32" />
           </div>
         ))}
       </div>
@@ -83,24 +105,47 @@ export function MetricCards({
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: idx * 0.05 }}
+          whileHover={{
+            y: -4,
+            transition: { duration: 0.2 },
+          }}
           className={cn(
-            "bg-surface-container relative overflow-hidden rounded-xl border-l-2 p-6",
-            item.border
+            "group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-md backdrop-blur-xl transition-all duration-300",
+            "hover:border-white/20 hover:shadow-lg hover:shadow-indigo-500/10 dark:bg-slate-900/30 dark:shadow-none",
+            glowColors[idx]
           )}
         >
-          <div className="absolute top-0 right-0 p-4 opacity-10">
-            <MaterialIcon name={item.mat} className="!text-5xl text-on-surface" />
+          <div
+            className={cn(
+              "absolute inset-0 bg-linear-to-br opacity-0 transition-opacity duration-300 group-hover:opacity-100",
+              gradients[idx]
+            )}
+          />
+          <div className="absolute top-0 right-0 p-4 opacity-5 transition-all duration-300 group-hover:opacity-10 group-hover:scale-110">
+            <MaterialIcon name={item.mat} className="text-6xl! text-white" />
           </div>
-          <p className="text-slate-500 mb-1 font-mono text-xs tracking-widest uppercase">
+          <div
+            className={cn(
+              "mb-3 inline-flex rounded-xl p-2.5 transition-colors duration-300",
+              "bg-white/10 group-hover:bg-white/20",
+              iconColors[idx]
+            )}
+          >
+            <MaterialIcon name={item.mat} className="text-xl!" />
+          </div>
+          <p className="relative mb-1 font-mono text-xs tracking-widest uppercase text-slate-500">
             {item.label}
           </p>
-          <h3 className="font-heading text-on-surface text-3xl font-bold tracking-tight font-mono tabular-nums">
+          <h3 className="relative font-heading text-3xl font-bold tracking-tight tabular-nums text-foreground">
             {formatNumber(item.value)}
           </h3>
           <p
-            className={`mt-2 flex items-center gap-1 text-xs font-medium ${item.hintClass}`}
+            className={cn(
+              "relative mt-2 flex items-center gap-1 text-xs font-medium transition-colors",
+              item.hintClass
+            )}
           >
-            <MaterialIcon name={item.hintIcon} className="!text-sm" />
+            <MaterialIcon name={item.hintIcon} className="text-sm!" />
             <span>{item.hint}</span>
           </p>
         </motion.div>

@@ -10,6 +10,7 @@ import { formatDistanceToNow, format } from "date-fns";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { MaterialIcon } from "@/components/material-icon";
+import { Card } from "@/components/ui/card";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -378,7 +379,7 @@ export default async function ReleasesPage() {
           {/* Right: sidebar */}
           <div className="space-y-4">
             {/* Aggregate stats */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <Card className="rounded-3xl border border-border p-5 shadow-sm">
               <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
                 Summary
               </h3>
@@ -418,10 +419,10 @@ export default async function ReleasesPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* Per-repo release counts */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <Card className="rounded-3xl border border-border p-5 shadow-sm">
               <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
                 By Repository
               </h3>
@@ -465,11 +466,11 @@ export default async function ReleasesPage() {
                   </div>
                 ))}
               </div>
-            </div>
+            </Card>
 
             {/* Token info */}
             {!token && (
-              <div className="rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5">
+              <Card className="rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5">
                 <div className="flex items-start gap-3">
                   <MaterialIcon name="warning" size={16} className="text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
@@ -488,7 +489,7 @@ export default async function ReleasesPage() {
                     </Link>
                   </div>
                 </div>
-              </div>
+              </Card>
             )}
 
             {/* Quick nav */}

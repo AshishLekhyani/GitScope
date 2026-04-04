@@ -10,6 +10,7 @@
 !.yarn/plugins
 !.yarn/releases
 !.yarn/versions
+.claude/
 
 # testing
 /coverage
@@ -47,7 +48,6 @@ next-env.d.ts
 .claude/worktrees/
 
 
-.claude/
 AGENTS.md
 CLAUDE.md
 GITSCOPE_SPEC.md
