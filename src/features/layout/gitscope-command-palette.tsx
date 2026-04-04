@@ -273,7 +273,7 @@ export function GitScopeCommandPalette() {
             <span>↑↓ navigate</span>
             <span>↵ select</span>
           </div>
-          <span className="font-bold text-indigo-500/60">GitScope v2.4</span>
+          <span className="font-bold text-indigo-500/60">GITSCOPE V1.0</span>
         </div>
       </motion.div>
     </div>

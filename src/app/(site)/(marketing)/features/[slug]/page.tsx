@@ -88,7 +88,7 @@ const FEATURE_CONTENT: Record<string, {
     exampleLabel: "Predictive Analytics",
     exampleData: [
       { label: "Confidence Interval", value: "92%" },
-      { label: "Forecast Model", value: "v2.4-AI" },
+      { label: "Forecast Model", value: "v1.0-AI" },
       { label: "Reliability score", value: "High" }
     ],
     demoTarget: "/demo/release-forecasting"

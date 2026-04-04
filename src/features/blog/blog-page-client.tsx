@@ -73,8 +73,8 @@ const POSTS: Post[] = [
     readTime: 10,
   },
   {
-    slug: "gitscope-v2-launch",
-    title: "GitScope v2.0: Pro Tiers, Enterprise SSO, and a New Intelligence Layer",
+    slug: "gitscope-v1-launch",
+    title: "GitScope v1.0: Pro Tiers, Enterprise SSO, and a New Intelligence Layer",
     excerpt:
       "Today we ship GitScope v2.0 — the biggest release since launch. Pro unlocks unlimited repo tracking and the PR Risk Predictor. Enterprise adds SAML SSO and audit logs. And underpinning it all, a new AI intelligence layer powered by Claude that turns raw GitHub data into actionable narrative summaries.",
     author: "GitScope Team",

@@ -16,7 +16,7 @@ function parseRepo(pathname: string): { owner?: string; repo?: string } {
   return { owner: m[1], repo: m[2] };
 }
 
-const PKG_VERSION = "2.4.0-stable";
+const PKG_VERSION = "1.0.0-stable";
 
 type NavDef = {
   href: string;

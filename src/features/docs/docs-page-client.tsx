@@ -18,7 +18,8 @@ type Section =
   | "api-rate-limits"
   | "keyboard-shortcuts"
   | "troubleshooting"
-  | "privacy-data";
+  | "privacy-data"
+  | "security-features";
 
 const sections: { id: Section; label: string; icon: string }[] = [
   { id: "getting-started",        label: "Getting Started",            icon: "rocket_launch"    },
@@ -26,11 +27,12 @@ const sections: { id: Section; label: string; icon: string }[] = [
   { id: "repository-analysis",    label: "Repository Analysis",        icon: "source"           },
   { id: "intelligence-hub",       label: "Intelligence Hub",           icon: "psychology"       },
   { id: "organization-analytics", label: "Organization Analytics",     icon: "corporate_fare"   },
-  { id: "activity-notifications", label: "Activity & Notifications",   icon: "notifications"    },
+  { id: "activity-notifications", label: "Activity & Notifications",   icon: "notifications"  },
   { id: "api-rate-limits",        label: "API & Rate Limits",          icon: "api"              },
   { id: "keyboard-shortcuts",     label: "Keyboard Shortcuts",         icon: "keyboard"         },
   { id: "troubleshooting",        label: "Troubleshooting",            icon: "build"            },
   { id: "privacy-data",           label: "Privacy & Data",             icon: "shield"           },
+  { id: "security-features",      label: "Security Features",          icon: "security"         },
 ];
 
 // ---------------------------------------------------------------------------
@@ -657,6 +659,101 @@ X-RateLimit-Resource:  core`,
     ],
     links: [
       { label: "Account Settings", href: "/settings" },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  // SECURITY FEATURES
+  // -------------------------------------------------------------------------
+  "security-features": {
+    title:    "Security Features",
+    subtitle: "Enterprise-grade security measures protecting your data and platform access.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "GitScope implements comprehensive security measures to protect user data and platform integrity. All security features are active by default and require no additional configuration for standard usage.",
+      },
+      {
+        type: "bullets",
+        heading: "Authentication Security",
+        items: [
+          "bcrypt password hashing with 12 salt rounds — industry standard for secure password storage",
+          "GitHub OAuth with email verification via GitHub API — ensures email ownership before account linking",
+          "Google OAuth with verified email enforcement — only accepts emails verified by Google",
+          "Automatic account linking with audit logging — tracks when OAuth accounts connect to existing users",
+          "Instant session invalidation — deleted users are immediately logged out across all sessions",
+          "Brute-force protection — 10 login attempts per 15 minutes per email address",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "CSRF Protection",
+        items: [
+          "Double Submit Cookie pattern — prevents cross-site request forgery attacks",
+          "HMAC-SHA256 token validation — cryptographically secure token hashing",
+          "Constant-time comparison — prevents timing attacks on token validation",
+          "__Host- prefix cookies — browser-enforced secure cookie settings",
+          "SameSite=Strict — cookies only sent for same-origin requests",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Rate Limiting & Abuse Prevention",
+        items: [
+          "IP-based rate limiting with reputation tracking — tracks repeat violators",
+          "Exponential backoff — increasing block durations for repeat offenders (up to 1 hour)",
+          "Multiple rate limit presets — auth (5/min), sensitive (10/min), standard (60/min), AI (10/min)",
+          "Rate limit headers — X-RateLimit-Remaining, X-RateLimit-Reset exposed to clients",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Data Protection",
+        items: [
+          "AES-256-GCM encryption for GitHub PATs at rest — includes random IV and authentication tag",
+          "TLS 1.3 for data in transit — latest transport security standard",
+          "No source code storage — GitScope never stores repository contents",
+          "Secure session cookies — httpOnly, secure, SameSite=Strict with configurable expiration",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Audit & Monitoring",
+        items: [
+          "34 security event types logged — authentication, authorization, CSRF, rate limiting",
+          "Batched writes with immediate flush — critical events saved immediately",
+          "IP, user agent, and metadata captured — comprehensive audit trail",
+          "Database persistence with retry logic — reliable audit log storage",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Input Validation & SSRF Protection",
+        items: [
+          "Strict validation on all API endpoints — email format, password complexity, length limits",
+          "GitHub repo format validation — owner/name pattern enforcement",
+          "Avatar URL allowlist — only trusted image hosts permitted",
+          "SSRF protection — GitHub proxy blocks http:// and path traversal attempts",
+        ],
+      },
+      {
+        type: "table",
+        heading: "Security Headers",
+        headers: ["Header", "Purpose"],
+        rows: [
+          ["Cache-Control", "Prevents caching of authenticated content"],
+          ["X-RateLimit-*", "Informs clients of rate limit status"],
+          ["Secure Cookie Attributes", "httpOnly, secure, SameSite=Strict"],
+        ],
+      },
+      {
+        type: "note",
+        text: "For production deployments, ensure GITHUB_PAT_ENCRYPTION_KEY and NEXTAUTH_SECRET are set with cryptographically secure random values (openssl rand -base64 32).",
+      },
+    ],
+    links: [
+      { label: "Security Policy", href: "/security" },
+      { label: "Privacy Policy", href: "/privacy" },
     ],
   },
 };

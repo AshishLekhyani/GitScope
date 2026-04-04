@@ -27,7 +27,7 @@ export default function StatusPage() {
         </div>
         <div className="text-right font-mono text-[10px] text-slate-500 uppercase tracking-[0.2em] space-y-1">
            <p>Last Pulse: Just Now</p>
-           <p>Version: 2.4.0-Stable</p>
+           <p>Version: 1.0.0-Stable</p>
         </div>
       </div>
 

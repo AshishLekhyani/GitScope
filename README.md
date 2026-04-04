@@ -62,11 +62,13 @@ GitScope is a full-stack GitHub analytics platform that turns raw GitHub data in
 - 🏆 **Trending Projects** — Real-time trending repos by language, time window, and region
 - ⚖️ **Repo Comparison** — Side-by-side analysis of multiple repositories
 - 🏢 **Organization Pulse** — Team-level analytics for GitHub organizations
+- 🤖 **AI-Powered Analysis** — Repository summaries, health scores, and risk predictions via Claude API
 - ⌨️ **Keyboard-Native** — Full keyboard shortcut palette (⌘K / Ctrl+K)
 - 🔔 **Notification Feed** — GitHub notification integration with unread badge
 - 📡 **API Rate Limit Monitor** — Live GitHub API usage tracker in the sidebar
 - 🌙 **Dark Mode First** — System-aware theming with smooth toggle
-- 🔐 **GitHub OAuth** — Sign in with GitHub, session-aware personalized experience
+- 🔐 **Multi-Provider Auth** — GitHub OAuth, Google OAuth, or email/password with email verification
+- 🛡️ **Enterprise Security** — CSRF protection, rate limiting, audit logging, AES-256 encryption for tokens
 
 ---
 
@@ -184,6 +186,10 @@ NEXTAUTH_SECRET=your_super_secret_key_here   # openssl rand -base64 32
 GITHUB_ID=your_github_oauth_client_id
 GITHUB_SECRET=your_github_oauth_client_secret
 
+# --- Google OAuth (optional) ---
+GOOGLE_ID=your_google_oauth_client_id
+GOOGLE_SECRET=your_google_oauth_client_secret
+
 # --- Database ---
 DATABASE_URL=postgresql://user:password@localhost:5432/gitscope
 
@@ -196,9 +202,23 @@ GITHUB_SHARED_FALLBACK=false
 # openssl rand -base64 32
 GITHUB_PAT_ENCRYPTION_KEY=your_32_byte_base64_key
 
+# --- CSRF Protection (uses NEXTAUTH_SECRET as fallback if not set) ---
+CSRF_SECRET=your_csrf_secret_here   # openssl rand -base64 32
+
+# --- Request Signing for Webhooks (uses NEXTAUTH_SECRET as fallback) ---
+REQUEST_SIGNING_SECRET=your_signing_secret_here   # openssl rand -base64 32
+
+# --- Email (SMTP) ---
+SMTP_USER=your_email@gmail.com
+SMTP_PASS=your_gmail_app_password   # 16-char app password, NOT your actual password
+EMAIL_FROM=GitScope <your_email@gmail.com>
+
+# --- AI: Anthropic Claude ---
+ANTHROPIC_API_KEY=sk-ant-your_api_key_here
+
 # --- AI tiering and provider ---
 AI_PROVIDER=anthropic
-# Format: email:plan,email2:plan where plan is professional|team|enterprise
+# Format: email:plan,email2:plan where plan is free|professional|team|enterprise
 AI_TIER_OVERRIDES=
 AI_TEAM_DOMAINS=
 AI_ENTERPRISE_DOMAINS=
@@ -212,6 +232,9 @@ AI_JOBS_CRON_SECRET=
 CRON_SECRET=
 # Jobs processed per cron run
 AI_JOBS_CRON_BATCH=2
+
+# --- Trusted Proxies (for IP rate limiting behind load balancers) ---
+TRUSTED_PROXIES=  # Comma-separated list of trusted proxy IPs
 ```
 
 **Setting up GitHub OAuth:**
@@ -250,7 +273,44 @@ npx prisma studio        # optional: visual DB browser
 
 ---
 
-## 💡 Usage
+## �️ Security
+
+GitScope implements enterprise-grade security measures to protect user data and platform integrity:
+
+| Feature | Implementation |
+|---|---|
+| **Authentication** | NextAuth.js with JWT sessions, bcrypt password hashing (12 rounds) |
+| **OAuth Providers** | GitHub OAuth with email verification, Google OAuth with verified email check |
+| **CSRF Protection** | Double Submit Cookie pattern with HMAC-SHA256 tokens, `__Host-` prefix cookies |
+| **Rate Limiting** | IP-based with reputation tracking, exponential backoff for violators |
+| **Token Encryption** | AES-256-GCM for GitHub PATs with random IV and auth tag |
+| **Audit Logging** | 34 security event types, batched writes, database persistence |
+| **Request Signing** | HMAC-SHA256 for webhooks with 5-minute expiration |
+| **Input Validation** | Strict validation on all API endpoints with length limits |
+| **SSRF Protection** | Path validation on GitHub proxy, blocks `http` and `..` patterns |
+| **Headers** | HSTS, secure cookie settings, cache-control for protected routes |
+
+### Security Best Practices
+
+1. **Always set `GITHUB_PAT_ENCRYPTION_KEY`** in production (32-byte base64)
+2. **Use strong `NEXTAUTH_SECRET`** (generated with `openssl rand -base64 32`)
+3. **Enable CSRF protection** by setting `CSRF_SECRET` or using `NEXTAUTH_SECRET`
+4. **Configure `TRUSTED_PROXIES`** if running behind a load balancer
+5. **Set up `SMTP_USER` and `SMTP_PASS`** for email verification and password reset
+6. **Enable request signing** with `REQUEST_SIGNING_SECRET` for webhook endpoints
+
+### Responsible Disclosure
+
+If you discover a security vulnerability, please email **security@gitscope.dev** with:
+- Description of the vulnerability
+- Steps to reproduce
+- Potential impact assessment
+
+We will acknowledge within 2 business days and provide updates as we work on a fix.
+
+---
+
+## � Usage
 
 ### Searching a Repository
 
@@ -313,6 +373,47 @@ Contributions are welcome and appreciated! Here's how to get started:
 
 ---
 
+
+## 📄 License
+
+GitScope is open-source software licensed under the [MIT License](LICENSE).
+
+### What the MIT License Means for You
+
+| Permission | Description |
+|------------|-------------|
+| **Commercial Use** | You can use GitScope for commercial projects |
+| **Modification** | You can modify the code to suit your needs |
+| **Distribution** | You can distribute copies of the software |
+| **Private Use** | You can use and modify GitScope privately |
+| **Sublicensing** | You can incorporate GitScope into proprietary software |
+
+### Requirements
+
+- **Include Copyright Notice** — You must include the original copyright notice in any copy or substantial portion of the software
+- **Include License Text** — You must include a copy of the MIT License in any distribution
+
+### Limitations
+
+- **No Warranty** — The software is provided "as is", without warranty of any kind
+- **No Liability** — The authors are not liable for any claims, damages, or other liability
+
+### Third-Party Licenses
+
+GitScope uses several open-source packages, each with their own licenses:
+
+| Package | License |
+|---------|---------|
+| Next.js | MIT |
+| React | MIT |
+| Prisma | Apache-2.0 |
+| NextAuth.js | ISC |
+| Tailwind CSS | MIT |
+| shadcn/ui | MIT |
+
+For a complete list of dependencies and their licenses, see the `package.json` file or run `npm list`.
+
+---
 
 ## 🙏 Acknowledgements
 

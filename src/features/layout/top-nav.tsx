@@ -10,6 +10,8 @@ import { useAppDispatch } from "@/store/hooks";
 import { setCommandPaletteOpen, setShortcutsOpen } from "@/store/slices/uiSlice";
 import { useRecentHistory } from "@/hooks/use-recent-history";
 import { useNotifications, NotificationItem } from "@/hooks/use-notifications";
+import { useVersionTracking } from "@/hooks/use-version-tracking";
+import { RadiatingDot } from "@/components/radiating-dot";
 import { formatDistanceToNow } from "date-fns";
 import {
   Menu,
@@ -61,7 +63,7 @@ const RECOMMENDATIONS = {
   ]
 };
 
-const PKG_VERSION = "2.4.0-stable";
+const PKG_VERSION = "1.0.0-stable";
 
 type SearchUserResult = {
   name: string;
@@ -101,6 +103,9 @@ export function TopNav({
   const fetchTimeout = useRef<NodeJS.Timeout | null>(null);
   const { data: clientSession, status: clientStatus } = useSession(); // Still hook into session for status changes (logs outs, etc.)
   const [os, setOs] = useState<"mac" | "win">("win");
+  
+  // Version tracking for "What's New" notifications
+  const { hasNewUpdate, markAsSeen, lastUpdateTimestamp } = useVersionTracking();
 
   // Prefer server-seeded session for the initial mount/hydration to avoid skeletons
   const effectiveSession = session || clientSession;
@@ -697,15 +702,16 @@ export function TopNav({
               <div className="relative flex items-center justify-center size-8">
                 <MaterialIcon name="help_outline" size={22} className="text-muted-foreground group-hover:text-foreground" />
 
-                {/* 
-                  Indicator for new support/changelog updates.
-                  Set hasNewUpdate to true when there is a new version or manual support notification.
-                */}
-                {false && (
-                  <div className="absolute top-0 right-0 size-2.5 flex items-center justify-center">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]"></span>
-                  </div>
+                {/* Radiating dot indicator for new updates - closer to the ? icon */}
+                {hasNewUpdate && (
+                  <RadiatingDot 
+                    key={lastUpdateTimestamp}
+                    size={7} 
+                    color="bg-amber-400" 
+                    position="top-right"
+                    intensity="normal"
+                    className="!-top-0.5 !-right-0.5"
+                  />
                 )}
               </div>
             </button>
@@ -718,7 +724,26 @@ export function TopNav({
               <DropdownMenuItem render={<Link href={ROUTES.docs}><MaterialIcon name="menu_book" size={16} className="mr-3 text-indigo-400" />Documentation</Link>} />
               <DropdownMenuItem render={<Link href={ROUTES.api}><MaterialIcon name="code" size={16} className="mr-3 text-purple-400" />API Reference</Link>} />
               <DropdownMenuItem render={<Link href={ROUTES.status}><MaterialIcon name="monitor_heart" size={16} className="mr-3 text-emerald-400" />System Status</Link>} />
-              <DropdownMenuItem render={<Link href={ROUTES.changelog}><MaterialIcon name="rocket_launch" size={16} className="mr-3 text-amber-400" />What&apos;s New</Link>} />
+              <DropdownMenuItem render={
+                <Link 
+                  href={ROUTES.changelog} 
+                  className="relative"
+                  onClick={() => markAsSeen()}
+                >
+                  <MaterialIcon name="rocket_launch" size={16} className="mr-3 text-amber-400" />
+                  What&apos;s New
+                  {hasNewUpdate && (
+                    <RadiatingDot 
+                      key={lastUpdateTimestamp}
+                      size={6} 
+                      color="bg-amber-400" 
+                      position="top-right" 
+                      intensity="normal"
+                      className="!-top-1 !-right-1"
+                    />
+                  )}
+                </Link>
+              } />
             </DropdownMenuGroup>
             <DropdownMenuSeparator className="bg-outline-variant/10" />
             <DropdownMenuItem

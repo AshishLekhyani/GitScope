@@ -29,11 +29,11 @@ function VersionBadge() {
       <TooltipTrigger>
         <span className="inline-flex cursor-default items-center gap-2 rounded-full border border-tertiary/30 bg-tertiary/10 px-3 py-1 font-mono text-[10px] tracking-widest text-tertiary uppercase">
           <span className="size-1.5 rounded-full bg-tertiary" />
-          v2.4.0 · Engineering Compass Active
+          v1.0.0 · Engineering Compass Active
         </span>
       </TooltipTrigger>
       <TooltipContent>
-        <p>GitScope v2.4.0 — all systems operational</p>
+        <p>GitScope v1.0.0 — all systems operational</p>
       </TooltipContent>
     </Tooltip>
   );
@@ -210,7 +210,7 @@ export function LandingPage() {
   return (
     <div ref={containerRef} className="relative z-10 mx-auto max-w-7xl px-6">
       {/* ambient glow */}
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(192,193,255,0.12),transparent)]" />
+      <div className="pointer-events-none absolute inset-0 touch-pan-y bg-[radial-gradient(ellipse_80%_50%_at_50%_-20%,rgba(192,193,255,0.12),transparent)]" />
 
       {/* ───── HERO ───── */}
           <motion.section

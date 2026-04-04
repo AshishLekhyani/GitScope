@@ -33,6 +33,7 @@ const ALIASES: Record<string, string> = {
   history: "material-symbols:history",
   close: "material-symbols:close",
   keyboard: "material-symbols:keyboard",
+  source: "material-symbols:code",
 };
 
 function toIconify(name: string): string {

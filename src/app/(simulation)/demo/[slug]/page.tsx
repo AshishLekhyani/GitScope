@@ -256,7 +256,7 @@ function ForecastingMock() {
             <div className="flex gap-10">
                <div>
                   <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Forecast Model</p>
-                  <p className="font-heading text-xl font-bold text-foreground">v2.4 Orion AI</p>
+                  <p className="font-heading text-xl font-bold text-foreground">v1.0 Orion AI</p>
                </div>
                <div>
                   <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Target Window</p>

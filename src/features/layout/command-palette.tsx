@@ -159,7 +159,7 @@ export function CommandPalette() {
             <span className="flex items-center gap-1">↑↓ to navigate</span>
             <span className="flex items-center gap-1">↵ to perform action</span>
           </div>
-          <div className="font-bold text-indigo-500">v2.4.0-Discovery</div>
+          <div className="font-bold text-indigo-500">v1.0.0-Discovery</div>
         </div>
       </motion.div>
     </div>
