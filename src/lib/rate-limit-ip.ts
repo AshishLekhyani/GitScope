@@ -77,18 +77,18 @@ export function getClientIp(req: Request): string {
 /**
  * Check IP reputation and rate limit
  */
-export function checkIpRateLimit(
+export async function checkIpRateLimit(
   req: Request,
   prefix: string,
   options: RateLimitOptions
-): IpRateLimitResult {
+): Promise<IpRateLimitResult> {
   const ip = getClientIp(req);
   const key = `${prefix}:${ip}`;
-  
+
   // Check if IP is currently blocked due to violations
   const reputation = ipReputation.get(ip);
   const now = Date.now();
-  
+
   if (reputation && reputation.blockedUntil > now) {
     return {
       allowed: false,
@@ -98,15 +98,15 @@ export function checkIpRateLimit(
       blockDuration: reputation.blockedUntil - now,
     };
   }
-  
+
   // Check standard rate limit
-  const result = checkRateLimit(key, options);
-  
+  const result = await checkRateLimit(key, options);
+
   // Record violation if rate limit exceeded
   if (!result.allowed) {
     recordViolation(ip);
   }
-  
+
   return result;
 }
 

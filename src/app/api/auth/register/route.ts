@@ -8,7 +8,7 @@ import crypto from "crypto";
 const VERIFY_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function POST(request: Request) {
-  const { allowed } = checkRateLimit(getRateLimitKey(request, "register"), {
+  const { allowed } = await checkRateLimit(getRateLimitKey(request, "register"), {
     limit: 5,
     windowMs: 15 * 60 * 1000,
   });

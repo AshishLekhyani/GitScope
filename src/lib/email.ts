@@ -53,6 +53,10 @@ const transporter = nodemailer.createTransport({
 });
 
 const FROM = process.env.EMAIL_FROM ?? process.env.SMTP_USER ?? "GitScope";
+
+if (process.env.NODE_ENV === "production" && !process.env.NEXTAUTH_URL) {
+  console.error("[email] NEXTAUTH_URL is not set — all email links will point to localhost");
+}
 const APP_URL = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
 
 interface SendEmailOptions {
@@ -63,7 +67,10 @@ interface SendEmailOptions {
 
 export async function sendEmail({ to, subject, html }: SendEmailOptions) {
   if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-    console.warn("[email] SMTP_USER / SMTP_PASS not set — email skipped");
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("SMTP_USER / SMTP_PASS are not configured — cannot send email");
+    }
+    console.warn("[email] SMTP_USER / SMTP_PASS not set — email skipped (dev mode)");
     return;
   }
   await transporter.sendMail({ from: FROM, to, subject, html });

@@ -13,7 +13,7 @@ async function postHandler(req: NextRequest) {
   });
 
   // 3 reset requests per email per 15 min
-  const { allowed } = checkRateLimit(getRateLimitKey(req, "forgot-password"), {
+  const { allowed } = await checkRateLimit(getRateLimitKey(req, "forgot-password"), {
     limit: 3,
     windowMs: 15 * 60 * 1000,
   });

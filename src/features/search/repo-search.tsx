@@ -3,7 +3,6 @@
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { MaterialIcon } from "@/components/material-icon";
 import { ROUTES } from "@/constants/routes";
@@ -28,7 +27,6 @@ import { signIn } from "next-auth/react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Search,
-  Zap,
   Star,
   GitFork,
   Clock,
@@ -42,12 +40,8 @@ import {
   Box,
   Cpu,
   Globe,
-  ArrowRight,
-  X,
-  History,
   Flame,
   Bookmark,
-  ExternalLink,
 } from "lucide-react";
 
 function RepoNameHighlight({ fullName }: { fullName: string }) {
@@ -85,7 +79,8 @@ export function RepoSearchPanel() {
     if (initial !== q && initial !== debounced) {
       setQ(initial);
     }
-  }, [initial]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initial]); // intentionally omits q/debounced — including them would cause an infinite sync loop
 
   const searchQ = useQuery({
     queryKey: ["search", debounced],
@@ -149,14 +144,6 @@ export function RepoSearchPanel() {
   }, [trendingQ.data?.items]);
 
   // Get trending topic from first trending repo
-  const trendingTopic = useMemo(() => {
-    const all = trendingQ.data?.items ?? [];
-    if (all.length > 0) {
-      const firstRepo = all[0];
-      return firstRepo.language || "trending";
-    }
-    return "trending";
-  }, [trendingQ.data?.items]);
 
   const openRepo = useCallback(
     (r: GitHubRepo) => {
@@ -209,7 +196,7 @@ export function RepoSearchPanel() {
       <div className="pointer-events-none absolute top-1/4 left-1/2 -z-10 h-[min(800px,90vw)] w-[min(800px,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
 
       <div className="spotlight-glow glass-panel relative overflow-hidden rounded-2xl border border-outline-variant/20 shadow-2xl">
-        <div className="border-border relative flex flex-wrap items-center gap-2 border-b border-white/5 py-2 pr-3 pl-2 sm:flex-nowrap sm:py-0 sm:pr-6 sm:pl-4">
+        <div className="relative flex flex-wrap items-center gap-2 border-b border-white/5 py-2 pr-3 pl-2 sm:flex-nowrap sm:py-0 sm:pr-6 sm:pl-4">
           <div className="text-primary shrink-0 pl-2 sm:pl-4">
             <MaterialIcon name="search" size={28} />
           </div>
@@ -239,7 +226,7 @@ export function RepoSearchPanel() {
           </div>
         </div>
 
-        <div className="flex h-[600px] flex-col overflow-hidden md:flex-row">
+        <div className="flex h-150 flex-col overflow-hidden md:flex-row">
           <div className="flex-1 overflow-hidden border-b border-outline-variant/10 md:border-r md:border-b-0">
             {showResults ? (
               <div className="p-4 sm:p-6">
@@ -304,7 +291,7 @@ export function RepoSearchPanel() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.02 }}
                       onClick={() => openRepo(r)}
-                      className="border-border hover:bg-muted/60 group flex w-full items-center justify-between rounded-lg border border-transparent p-3 text-left transition-all hover:border-outline-variant/20"
+                      className="hover:bg-muted/60 group flex w-full items-center justify-between rounded-lg border border-transparent p-3 text-left transition-all hover:border-outline-variant/20"
                     >
                       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                         <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded border border-outline-variant/20">
@@ -317,7 +304,7 @@ export function RepoSearchPanel() {
                         <div className="min-w-0 flex-1 flex flex-col gap-0.5 overflow-hidden">
                           <RepoNameHighlight fullName={r.full_name} />
                           {r.description && (
-                            <span className="text-muted-foreground line-clamp-1 max-w-full break-words text-[10px]">
+                            <span className="text-muted-foreground line-clamp-1 max-w-full wrap-break-word text-[10px]">
                               {r.description}
                             </span>
                           )}
@@ -378,7 +365,7 @@ export function RepoSearchPanel() {
             )}
           </div>
 
-          <aside className="bg-muted/20 w-full shrink-0 space-y-6 p-4 sm:p-6 md:w-72 md:max-h-[600px] md:overflow-y-auto">
+          <aside className="bg-muted/20 w-full shrink-0 space-y-6 p-4 sm:p-6 md:w-72 md:max-h-150 md:overflow-y-auto">
             <div>
               <div className="mb-4 flex items-center justify-between">
                 <h3 className="text-muted-foreground font-mono text-[10px] font-bold tracking-[0.25em] uppercase">
@@ -446,7 +433,7 @@ export function RepoSearchPanel() {
               </p>
             </div>
 
-            <div className="border-border border-t border-outline-variant/10 pt-4">
+            <div className="border-t border-outline-variant/10 pt-4">
               <div className="flex items-center gap-2">
                 <span className="relative flex h-2 w-2">
                   <span className="bg-tertiary absolute inline-flex h-full w-full animate-ping rounded-full opacity-75" />
@@ -746,7 +733,6 @@ function TrendingPagination({
 // Trending Repos Grid Component
 function TrendingReposGrid({
   items,
-  page,
 }: {
   items: GitHubRepo[];
   page: number;
@@ -755,7 +741,7 @@ function TrendingReposGrid({
 
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <AnimatePresence mode="wait">
+      <AnimatePresence>
         {items.map((r, idx) => {
           const [owner, name] = r.full_name.split("/");
           const dotClass =
@@ -886,7 +872,7 @@ function SmartPagination({
             <button
               key={page}
               onClick={() => onPageChange(page as number)}
-              className={`min-w-[28px] h-7 px-2 rounded-md text-xs font-medium transition-colors ${
+              className={`min-w-7 h-7 px-2 rounded-md text-xs font-medium transition-colors ${
                 currentPage === page
                   ? 'bg-primary text-primary-foreground'
                   : 'hover:bg-muted text-muted-foreground'

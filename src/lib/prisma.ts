@@ -7,7 +7,6 @@ const globalForPrisma = globalThis as unknown as {
 // Lazy initialization logic
 const getPrisma = (): PrismaClient => {
   if (!globalForPrisma.prisma) {
-    console.log("▲ [Prisma] Lazily initializing Client...");
     globalForPrisma.prisma = new PrismaClient();
   }
   return globalForPrisma.prisma;

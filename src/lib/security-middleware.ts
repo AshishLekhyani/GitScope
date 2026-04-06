@@ -13,13 +13,11 @@ import { getToken } from "next-auth/jwt";
 import {
   validateCsrfForRequest,
   getCsrfCookieOptions,
-  CSRF_COOKIE_NAME,
 } from "./csrf";
 import {
   checkIpRateLimit,
   RateLimitPresets,
   getRateLimitHeaders,
-  getClientIp,
 } from "./rate-limit-ip";
 import { validateSignedRequest } from "./request-signing";
 import { logCsrfViolation, logRateLimit, logAuth } from "./audit-log";
@@ -83,21 +81,21 @@ export function withSecurity(
       }
     }
 
-    // 2. IP-based Rate Limiting
+    // 2. IP-based Rate Limiting (check only — handler is called after all checks)
+    let rateLimitHeaders: Record<string, string> = {};
     if (opts.rateLimit) {
       const rateLimitConfig = RateLimitPresets[opts.rateLimit];
-      const rateLimitResult = checkIpRateLimit(
+      const rateLimitResult = await checkIpRateLimit(
         req,
         `api:${opts.rateLimit}`,
         rateLimitConfig
       );
 
-      const headers = getRateLimitHeaders(rateLimitResult);
+      rateLimitHeaders = getRateLimitHeaders(rateLimitResult);
 
       if (!rateLimitResult.allowed) {
-        // Get user info for audit log
         const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
-        
+
         await logRateLimit(req, {
           userId: token?.sub,
           endpoint: req.nextUrl.pathname,
@@ -114,24 +112,10 @@ export function withSecurity(
           },
           {
             status: rateLimitResult.blocked ? 403 : 429,
-            headers,
+            headers: rateLimitHeaders,
           }
         );
       }
-
-      // Add rate limit headers to successful responses
-      const originalHandler = await handler(req);
-      const response = new NextResponse(originalHandler.body, {
-        status: originalHandler.status,
-        statusText: originalHandler.statusText,
-        headers: originalHandler.headers,
-      });
-      
-      Object.entries(headers).forEach(([key, value]) => {
-        response.headers.set(key, value);
-      });
-      
-      return response;
     }
 
     // 3. Request Signature Validation for sensitive endpoints
@@ -145,7 +129,19 @@ export function withSecurity(
       }
     }
 
-    return handler(req);
+    // 4. Call handler and attach rate limit headers to successful responses
+    const originalHandler = await handler(req);
+    if (Object.keys(rateLimitHeaders).length === 0) return originalHandler;
+
+    const response = new NextResponse(originalHandler.body, {
+      status: originalHandler.status,
+      statusText: originalHandler.statusText,
+      headers: originalHandler.headers,
+    });
+    Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+      response.headers.set(key, value);
+    });
+    return response;
   };
 }
 
@@ -186,7 +182,7 @@ export async function securityMiddleware(
   // Rate limiting
   if (opts.rateLimit) {
     const rateLimitConfig = RateLimitPresets[opts.rateLimit];
-    const rateLimitResult = checkIpRateLimit(
+    const rateLimitResult = await checkIpRateLimit(
       req,
       `edge:${pathname}`,
       rateLimitConfig
@@ -225,7 +221,7 @@ export function setCsrfCookie(response: NextResponse): NextResponse {
  * Refresh CSRF token endpoint handler
  * Call this to get a fresh CSRF token
  */
-export async function handleCsrfToken(req: NextRequest): Promise<NextResponse> {
+export async function handleCsrfToken(): Promise<NextResponse> {
   const response = NextResponse.json({ success: true });
   return setCsrfCookie(response);
 }
@@ -238,7 +234,6 @@ export function withAudit(
   eventType: Parameters<typeof logAuth>[0]
 ) {
   return async (req: NextRequest): Promise<Response> => {
-    const startTime = Date.now();
     let success = false;
     let error: string | undefined;
 

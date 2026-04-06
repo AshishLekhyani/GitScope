@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { DependencyRadar } from "@/features/intelligence/dependency-radar";
 import { VelocityChart } from "@/features/intelligence/velocity-chart";

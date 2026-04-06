@@ -5,6 +5,22 @@ import { useParams } from "next/navigation";
 import { Network, Zap, ShieldCheck, Code2, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+/* ---------- Deterministic seeded PRNG (avoids SSR/client hydration mismatch) ---------- */
+function seeded(i: number): number {
+  const x = Math.sin(i + 1) * 10000;
+  return x - Math.floor(x);
+}
+
+// Precomputed so the same values render on server and client
+const HEATMAP_CELLS = Array.from({ length: 24 * 7 }, (_, i) => {
+  const r = seeded(i);
+  return r > 0.7 ? "bg-primary" : r > 0.5 ? "bg-primary/40" : r > 0.3 ? "bg-primary/10" : "bg-muted";
+});
+
+const FORECAST_BARS = Array.from({ length: 40 }, (_, i) => ({
+  h: 20 + Math.sin(i * 0.5) * 40 + seeded(i + 200) * 20,
+}));
+
 /* ---------- Mock Visual Fragments ---------- */
 
 function ComparisonMock() {
@@ -143,7 +159,7 @@ function HeatmapMock() {
           <span>Fri</span>
         </div>
         <div className="grid grid-cols-24 gap-1.5 auto-rows-fr h-[200px]">
-          {Array.from({ length: 24 * 7 }).map((_, i) => (
+          {HEATMAP_CELLS.map((cls, i) => (
             <motion.div
               key={i}
               initial={{ scale: 0.8, opacity: 0 }}
@@ -151,9 +167,7 @@ function HeatmapMock() {
               transition={{ delay: i * 0.005 }}
               className={cn(
                 "rounded-sm border border-border shadow-inner transition-colors hover:border-primary/50 cursor-default",
-                Math.random() > 0.7 ? "bg-primary" : 
-                Math.random() > 0.5 ? "bg-primary/40" : 
-                Math.random() > 0.3 ? "bg-primary/10" : "bg-muted"
+                cls
               )}
             />
           ))}
@@ -235,18 +249,15 @@ function ForecastingMock() {
          <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-primary/5 to-transparent" />
          
          <div className="relative z-10 flex items-end gap-1 h-[240px] border-b border-border">
-            {Array.from({ length: 40 }).map((_, i) => {
-              const h = 20 + Math.sin(i * 0.5) * 40 + Math.random() * 20;
-              return (
-                <motion.div
-                  key={i}
-                  initial={{ height: 0 }}
-                  animate={{ height: `${h}%` }}
-                  transition={{ duration: 1, delay: i * 0.02 }}
-                  className={cn("flex-1", i > 30 ? "bg-amber-400/40 opacity-50" : "bg-primary/40")}
-                />
-              )
-            })}
+            {FORECAST_BARS.map(({ h }, i) => (
+              <motion.div
+                key={i}
+                initial={{ height: 0 }}
+                animate={{ height: `${h}%` }}
+                transition={{ duration: 1, delay: i * 0.02 }}
+                className={cn("flex-1", i > 30 ? "bg-amber-400/40 opacity-50" : "bg-primary/40")}
+              />
+            ))}
             <div className="absolute left-[75%] top-0 bottom-0 w-px bg-amber-400/50 dashed-line flex flex-col items-center">
                <div className="bg-amber-400 text-background px-2 py-0.5 rounded text-[8px] font-bold font-mono tracking-tighter uppercase mb-2">Predicted drift</div>
             </div>

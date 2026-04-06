@@ -86,7 +86,7 @@ export async function consumeUsageBudget(input: ConsumeUsageInput): Promise<Usag
       used: nextUsed,
     };
   } catch {
-    const fallback = checkRateLimit(`usage:${input.feature}:${input.userId}`, {
+    const fallback = await checkRateLimit(`usage:${input.feature}:${input.userId}`, {
       limit: input.limit,
       windowMs,
     });

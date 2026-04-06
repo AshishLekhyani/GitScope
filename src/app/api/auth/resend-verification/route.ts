@@ -7,7 +7,7 @@ import crypto from "crypto";
 const VERIFY_EXPIRY_MS = 30 * 60 * 1000; // 30 minutes
 
 export async function POST(req: NextRequest) {
-  const { allowed } = checkRateLimit(getRateLimitKey(req, "resend-verify"), {
+  const { allowed } = await checkRateLimit(getRateLimitKey(req, "resend-verify"), {
     limit: 3,
     windowMs: 15 * 60 * 1000,
   });

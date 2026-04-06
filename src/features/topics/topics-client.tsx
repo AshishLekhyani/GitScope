@@ -110,8 +110,6 @@ export function TopicsPageClient({
   trendingTopics = [],
   popularTopics = []
 }: TopicsPageClientProps) {
-  const router = useRouter();
-  
   // Load saved state on mount
   const savedState = loadSavedState();
   
@@ -123,7 +121,7 @@ export function TopicsPageClient({
   const [showFilters, setShowFilters] = useState(savedState.showFilters);
   const [currentPage, setCurrentPage] = useState(savedState.currentPage);
   const [minCount, setMinCount] = useState(savedState.minCount);
-  const [bookmarks, setBookmarks] = useState<string[]>(savedState.bookmarks);
+  const [bookmarks] = useState<string[]>(savedState.bookmarks ?? []);
   const itemsPerPage = 20;
 
   // Save state whenever it changes
@@ -165,7 +163,13 @@ export function TopicsPageClient({
         topics.sort((a, b) => b.count - a.count);
         break;
       case "trending":
-        topics.sort(() => Math.random() - 0.5);
+        // Stable deterministic shuffle seeded per topic name — avoids
+        // non-deterministic re-renders and SSR/client hydration mismatches.
+        topics.sort((a, b) => {
+          const sa = Math.sin(a.name.length * 127 + a.name.charCodeAt(0)) * 10000;
+          const sb = Math.sin(b.name.length * 127 + b.name.charCodeAt(0)) * 10000;
+          return (sa - Math.floor(sa)) - (sb - Math.floor(sb));
+        });
         break;
     }
     
@@ -180,7 +184,7 @@ export function TopicsPageClient({
   );
 
   // Reset to page 1 when filters change
-  useMemo(() => {
+  useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sortMode, minCount]);
 
@@ -351,6 +355,8 @@ export function TopicsPageClient({
             />
             {searchQuery && (
               <button
+                type="button"
+                aria-label="Clear search"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
@@ -363,6 +369,8 @@ export function TopicsPageClient({
             {/* View Toggle */}
             <div className="flex items-center border rounded-lg p-1 bg-muted/50">
               <button
+                type="button"
+                aria-label="Cloud view"
                 onClick={() => setViewMode("cloud")}
                 className={cn(
                   "p-2 rounded-md transition-all",
@@ -372,6 +380,8 @@ export function TopicsPageClient({
                 <Cloud size={16} />
               </button>
               <button
+                type="button"
+                aria-label="Grid view"
                 onClick={() => setViewMode("grid")}
                 className={cn(
                   "p-2 rounded-md transition-all",
@@ -381,6 +391,8 @@ export function TopicsPageClient({
                 <Grid3X3 size={16} />
               </button>
               <button
+                type="button"
+                aria-label="List view"
                 onClick={() => setViewMode("list")}
                 className={cn(
                   "p-2 rounded-md transition-all",
@@ -390,12 +402,13 @@ export function TopicsPageClient({
                 <List size={16} />
               </button>
               <button
+                type="button"
+                aria-label="Discover view"
                 onClick={() => setViewMode("discover")}
                 className={cn(
                   "p-2 rounded-md transition-all",
                   viewMode === "discover" && "bg-white dark:bg-slate-800 shadow-sm"
                 )}
-                title="Discover"
               >
                 <Sparkles size={16} />
               </button>
@@ -404,7 +417,7 @@ export function TopicsPageClient({
             {/* Sort Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <button className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-background hover:bg-muted text-sm font-medium transition-colors">
+                <button type="button" className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-background hover:bg-muted text-sm font-medium transition-colors">
                   <ArrowUpDown size={14} />
                   Sort
                   <ChevronDown size={12} />
@@ -457,6 +470,7 @@ export function TopicsPageClient({
                   <div className="flex items-center gap-2">
                     {[1, 2, 3, 5].map(n => (
                       <button
+                        type="button"
                         key={n}
                         onClick={() => setMinCount(n)}
                         className={cn(
@@ -525,7 +539,7 @@ export function TopicsPageClient({
         </div>
 
         {/* Topics View */}
-        <AnimatePresence mode="wait">
+        <AnimatePresence>
           {viewMode === "cloud" && (
             <motion.section
               key="cloud"
@@ -543,7 +557,7 @@ export function TopicsPageClient({
                   Click a topic to view details
                 </span>
               </div>
-              <div className="flex flex-wrap gap-3 items-center justify-center min-h-[200px]">
+              <div className="flex flex-wrap gap-3 items-center justify-center min-h-50">
                 {filteredTopics.map(({ name, count }) => (
                   <Tooltip key={name}>
                     <TooltipTrigger>
@@ -677,6 +691,8 @@ export function TopicsPageClient({
                               {count > 0 ? `${count} repo${count !== 1 ? "s" : ""}` : "—"}
                             </span>
                             <button
+                              type="button"
+                              aria-label="Copy topic"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 copyTopic(name);
@@ -692,8 +708,9 @@ export function TopicsPageClient({
                           </div>
                         </div>
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                          {/* dynamic width requires inline style — cannot express runtime % in Tailwind */}
                           <div
-                            className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all"
+                            className="h-full rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500 transition-all"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -707,6 +724,7 @@ export function TopicsPageClient({
               {totalPages > 1 && (
                 <div className="px-6 py-4 border-t border-border flex items-center justify-between bg-muted/30">
                   <button
+                    type="button"
                     onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
@@ -730,6 +748,7 @@ export function TopicsPageClient({
                       
                       return (
                         <button
+                          type="button"
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={cn(
@@ -746,6 +765,7 @@ export function TopicsPageClient({
                   </div>
                   
                   <button
+                    type="button"
                     onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
                     className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
@@ -769,7 +789,7 @@ export function TopicsPageClient({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/20"
+                  className="p-4 rounded-2xl bg-linear-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp size={18} className="text-rose-500" />
@@ -781,7 +801,7 @@ export function TopicsPageClient({
                 
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20"
+                  className="p-4 rounded-2xl bg-linear-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Tag size={18} className="text-violet-500" />
@@ -795,7 +815,7 @@ export function TopicsPageClient({
                 
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20"
+                  className="p-4 rounded-2xl bg-linear-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles size={18} className="text-amber-500" />
@@ -807,7 +827,7 @@ export function TopicsPageClient({
                 
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-gradient-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20"
+                  className="p-4 rounded-2xl bg-linear-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Folder size={18} className="text-emerald-500" />
@@ -832,8 +852,8 @@ export function TopicsPageClient({
                   </div>
                   
                   {/* Bar Chart */}
-                  <div className="h-[200px] mb-6">
-                    <ResponsiveContainer width="100%" height="100%">
+                  <div className="h-50 mb-6">
+                    <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
                       <BarChart data={trendingTopics.slice(0, 10)} layout="vertical" margin={{ left: 80, right: 20, top: 10, bottom: 10 }}>
                         <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="var(--border)" />
                         <XAxis type="number" hide />
@@ -1116,6 +1136,7 @@ export function TopicsPageClient({
                   <div className="flex flex-wrap gap-2">
                     {selectedTopicData.related.map(([topic, count]) => (
                       <button
+                        type="button"
                         key={topic}
                         onClick={() => setSelectedTopic(topic)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted hover:bg-violet-500/10 border border-border hover:border-violet-500/30 transition-all text-sm"

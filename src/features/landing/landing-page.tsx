@@ -91,7 +91,7 @@ function TerminalPreview() {
                 </p>
               </div>
             </div>
-            <div className="flex items-end gap-1 bg-[#0d1117] px-4 pb-4 pt-3 h-[60px]">
+            <div className="flex items-end gap-1 bg-[#0d1117] px-4 pb-4 pt-3 h-15">
               {[30, 45, 25, 60, 50, 70, 80, 55, 90, 75, 40, 85, 65, 35, 95].map((h, i) => (
                 <div
                   key={i}
@@ -214,6 +214,7 @@ export function LandingPage() {
 
       {/* ───── HERO ───── */}
           <motion.section
+            initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, amount: 0.1 }}
             transition={{ duration: 0.5 }}
@@ -286,6 +287,7 @@ export function LandingPage() {
             </div>
 
             <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.97 }}
               whileInView={{ opacity: 1, y: 0, scale: 1 }}
               viewport={{ once: true, amount: 0.1 }}
               transition={{ duration: 0.6, delay: 0.15 }}
@@ -302,7 +304,7 @@ export function LandingPage() {
             </h2>
             <div className="mt-1 h-1 w-10 rounded-full bg-primary" />
 
-            <div className="mt-8 sm:mt-10 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 touch-pan-x overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 snap-x snap-mandatory scrollbar-hide">
+            <div className="mt-8 sm:mt-10 grid gap-3 sm:gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 touch-pan-y touch-pan-x overflow-x-auto sm:overflow-visible pb-4 sm:pb-0 snap-x snap-mandatory scrollbar-hide">
               {/* Repo Comparison — tall left */}
               <div className="feature-card row-span-1 sm:row-span-2 snap-start shrink-0 sm:shrink w-[85vw] sm:w-auto">
                 <Tooltip>
@@ -310,7 +312,7 @@ export function LandingPage() {
                     render={
                       <Link
                         href={features[0].href}
-                        className="card-royal flex flex-col justify-between p-4 sm:p-6 h-full min-h-[200px] sm:min-h-0"
+                        className="card-royal flex flex-col justify-between p-4 sm:p-6 h-full min-h-50 sm:min-h-0"
                       />
                     }
                   >
@@ -368,7 +370,7 @@ export function LandingPage() {
                     render={
                       <Link
                         href={ROUTES.feature("contributor-heatmap")}
-                        className="card-royal flex items-center justify-center p-4 sm:p-6 h-full min-h-[140px] sm:min-h-0"
+                        className="card-royal flex items-center justify-center p-4 sm:p-6 h-full min-h-35 sm:min-h-0"
                       />
                     }
                   >
@@ -462,7 +464,7 @@ export function LandingPage() {
               How It Works
             </h2>
             <div className="mt-1 h-1 w-10 rounded-full bg-primary" />
-            <div className="mt-8 sm:mt-10 flex gap-4 sm:gap-8 overflow-x-auto sm:grid sm:grid-cols-3 touch-pan-x snap-x snap-mandatory scrollbar-hide pb-4 sm:pb-0">
+            <div className="mt-8 sm:mt-10 flex gap-4 sm:gap-8 overflow-x-auto sm:grid sm:grid-cols-3 touch-pan-y touch-pan-x snap-x snap-mandatory scrollbar-hide pb-4 sm:pb-0">
               {[
                 {
                   step: "01",

@@ -9,14 +9,20 @@ function getCronSecret(): string | null {
 function isCronAuthorized(req: Request): boolean {
   const secret = getCronSecret();
   const auth = req.headers.get("authorization");
-  const vercelCronHeader = req.headers.get("x-vercel-cron");
 
-  if (secret) {
+  // Dev: allow without secret
+  if (process.env.NODE_ENV !== "production") {
+    if (!secret) return true;
     return auth === `Bearer ${secret}`;
   }
 
-  if (process.env.NODE_ENV !== "production") return true;
-  return Boolean(vercelCronHeader);
+  // Production: secret is mandatory. x-vercel-cron alone is NOT sufficient
+  // because the header can be spoofed by any HTTP client.
+  if (!secret) {
+    console.error("[cron] AI_JOBS_CRON_SECRET / CRON_SECRET is not set in production — cron endpoint locked");
+    return false;
+  }
+  return auth === `Bearer ${secret}`;
 }
 
 function getBatchSize(): number {

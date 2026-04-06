@@ -10,6 +10,10 @@ import { checkRateLimit } from "@/lib/rate-limit";
 import { sendEmail, buildVerificationEmail } from "@/lib/email";
 import { logSecurityEvent } from "@/lib/audit-log";
 
+if (!process.env.GITHUB_ID || !process.env.GITHUB_SECRET) {
+  throw new Error("GITHUB_ID and GITHUB_SECRET must be set");
+}
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
   session: {
@@ -21,8 +25,8 @@ export const authOptions: NextAuthOptions = {
   },
   providers: [
     GitHubProvider({
-      clientId: process.env.GITHUB_ID as string,
-      clientSecret: process.env.GITHUB_SECRET as string,
+      clientId: process.env.GITHUB_ID,
+      clientSecret: process.env.GITHUB_SECRET,
       // SECURITY: allowDangerousEmailAccountLinking enables automatic account linking when OAuth
       // provider email matches existing user email. We mitigate risks by:
       // 1. Checking email is verified by the OAuth provider
@@ -34,48 +38,55 @@ export const authOptions: NextAuthOptions = {
           scope: "read:user user:email notifications",
         },
       },
-      // SECURITY: Extra verification - call GitHub API to check email is verified
+      // SECURITY: Extra verification - call GitHub API to check email is verified.
+      // Fail-closed: any failure (API down, unverified email, missing token) blocks
+      // sign-in to prevent account takeover via allowDangerousEmailAccountLinking.
       async profile(profile, tokens) {
-        let emailVerified: Date | null = null;
-        
-        // Only check verification if we have an email and access token
-        if (profile.email && tokens.access_token) {
-          try {
-            // Fetch user's emails from GitHub API to check verification status
-            const emailsRes = await fetch("https://api.github.com/user/emails", {
-              headers: {
-                Authorization: `Bearer ${tokens.access_token}`,
-                Accept: "application/vnd.github.v3+json",
-              },
-            });
-            
-            if (emailsRes.ok) {
-              const emails: Array<{ email: string; verified: boolean; primary: boolean }> = await emailsRes.json();
-              
-              // Find the matching email and check if it's verified
-              const matchingEmail = emails.find(e => e.email === profile.email);
-              if (matchingEmail?.verified) {
-                emailVerified = new Date();
-              } else if (!matchingEmail) {
-                // Email not found in user's emails - might be public email they don't own
-                console.warn(`[Security] GitHub email ${profile.email} not found in user's verified emails list`);
-              }
-            } else {
-              console.error("[Auth] Failed to fetch GitHub emails:", emailsRes.status);
-            }
-          } catch (error) {
-            console.error("[Auth] Error fetching GitHub email verification:", error);
-            // Fail safe: don't mark as verified if we can't check
-          }
+        // No email means no linking risk — proceed without verification.
+        if (!profile.email) {
+          return {
+            id: profile.id.toString(),
+            name: profile.name || profile.login,
+            email: profile.email,
+            image: profile.avatar_url,
+            emailVerified: null,
+          };
         }
-        
+
+        // Email is present but no access token — can't verify, block sign-in.
+        if (!tokens.access_token) {
+          throw new Error("Cannot verify GitHub email: missing access token");
+        }
+
+        // Verify the email is actually owned and confirmed by this GitHub account.
+        const emailsRes = await fetch("https://api.github.com/user/emails", {
+          headers: {
+            Authorization: `Bearer ${tokens.access_token}`,
+            Accept: "application/vnd.github.v3+json",
+          },
+        });
+
+        if (!emailsRes.ok) {
+          throw new Error("Unable to verify your GitHub email right now. Please try signing in again.");
+        }
+
+        const emails: Array<{ email: string; verified: boolean; primary: boolean }> = await emailsRes.json();
+        const matchingEmail = emails.find(e => e.email === profile.email);
+
+        if (!matchingEmail) {
+          throw new Error("GitHub email is not associated with this account");
+        }
+
+        if (!matchingEmail.verified) {
+          throw new Error("GitHub email is not verified. Please verify your email on GitHub first.");
+        }
+
         return {
           id: profile.id.toString(),
           name: profile.name || profile.login,
           email: profile.email,
           image: profile.avatar_url,
-          // Only trust GitHub email if it's verified via API
-          emailVerified,
+          emailVerified: new Date(),
         };
       },
     }),
@@ -83,10 +94,14 @@ export const authOptions: NextAuthOptions = {
       ? [GoogleProvider({
           clientId: process.env.GOOGLE_ID,
           clientSecret: process.env.GOOGLE_SECRET,
-          // SECURITY: Google verifies emails - see GitHubProvider for additional safety measures
+          // SECURITY: Google verifies emails - see GitHubProvider for additional safety measures.
+          // Fail-closed: if Google signals email is unverified, block sign-in to prevent
+          // account takeover via allowDangerousEmailAccountLinking.
           allowDangerousEmailAccountLinking: true,
-          // Google always returns verified emails
           profile(profile) {
+            if (profile.email && !profile.email_verified) {
+              throw new Error("Google email is not verified. Please verify your email with Google first.");
+            }
             return {
               id: profile.sub,
               name: profile.name,
@@ -131,7 +146,7 @@ export const authOptions: NextAuthOptions = {
 
         // Brute-force protection: 10 attempts per email per 15 minutes
         const key = `login:${credentials.email.toLowerCase()}`;
-        const { allowed } = checkRateLimit(key, { limit: 10, windowMs: 15 * 60 * 1000 });
+        const { allowed } = await checkRateLimit(key, { limit: 10, windowMs: 15 * 60 * 1000 });
         if (!allowed) {
           throw new Error("Too many login attempts. Please wait 15 minutes.");
         }
@@ -190,7 +205,8 @@ export const authOptions: NextAuthOptions = {
           // Otherwise allow login - OAuth providers already verified the email
         }
 
-        const userWithoutPassword = { ...user, password: undefined };
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        const { password: _, ...userWithoutPassword } = user;
         return userWithoutPassword;
       },
     }),

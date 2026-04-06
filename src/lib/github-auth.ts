@@ -18,18 +18,6 @@ function defaultAllowEnvFallback(): boolean {
   return process.env.GITHUB_SHARED_FALLBACK === "1" || process.env.GITHUB_SHARED_FALLBACK === "true";
 }
 
-async function hasGitHubConnected(userId: string): Promise<boolean> {
-  try {
-    const account = await prisma.account.findFirst({
-      where: { userId, provider: "github" },
-      select: { id: true },
-    });
-    return !!account;
-  } catch {
-    return false;
-  }
-}
-
 async function getGitHubTokenFromDb(userId: string): Promise<string | null> {
   try {
     const account = await prisma.account.findFirst({
@@ -39,8 +27,6 @@ async function getGitHubTokenFromDb(userId: string): Promise<string | null> {
         refresh_token: true,
       },
     });
-    // Debug log to help troubleshoot
-    console.log("[GitHub Auth] DB lookup for user", userId, "found:", account ? "yes" : "no", "token exists:", account?.access_token ? "yes" : "no");
     return account?.access_token ?? null;
   } catch (err) {
     console.error("[GitHub Auth] Error fetching token from DB:", err);

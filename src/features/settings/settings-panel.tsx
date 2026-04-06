@@ -245,14 +245,16 @@ export function SettingsPanel() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      await fetch("/api/user/profile", {
+      const res = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ displayName, bio, gitHandle, avatarUrl: avatarUrl || undefined }),
       });
+      if (!res.ok) throw new Error(`Server error: ${res.status}`);
       setDirty(false);
     } catch (e) {
       console.error("Failed to save profile", e);
+      // dirty flag intentionally kept so user knows save failed
     } finally {
       setSaving(false);
     }
