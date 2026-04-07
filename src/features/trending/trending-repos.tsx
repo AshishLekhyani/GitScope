@@ -13,7 +13,8 @@ import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import Image from "next/image";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { addBookmark, removeBookmark, fetchBookmarks } from "@/lib/bookmarks";
 import { cn } from "@/lib/utils";
 import {
   BarChart,
@@ -100,8 +101,41 @@ export function TrendingReposPanel() {
   const [sortMode, setSortMode] = useState<SortMode>("stars");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedLang, setSelectedLang] = useState<string | null>(null);
-  const [bookmarkedRepos, setBookmarkedRepos] = useState<Set<number>>(new Set());
+  // Bookmark state keyed by "owner/repo" — backed by the API, persists across devices
+  const [bookmarkedKeys, setBookmarkedKeys] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
+
+  // Load existing bookmarks once on mount
+  useEffect(() => {
+    fetchBookmarks().then((bms) => {
+      setBookmarkedKeys(new Set(bms.map((b) => `${b.owner}/${b.repo}`)));
+    });
+  }, []);
+
+  const toggleBookmarkRepo = useCallback(async (repo: RepoItem) => {
+    const [owner, name] = repo.full_name.split("/");
+    const key = repo.full_name;
+    const isBookmarked = bookmarkedKeys.has(key);
+
+    // Optimistic update
+    setBookmarkedKeys((prev) => {
+      const next = new Set(prev);
+      if (isBookmarked) next.delete(key); else next.add(key);
+      return next;
+    });
+
+    if (isBookmarked) {
+      await removeBookmark(owner, name);
+    } else {
+      await addBookmark({
+        owner,
+        repo: name,
+        avatar: repo.owner.avatar_url,
+        stars: repo.stargazers_count,
+        description: repo.description ?? "",
+      });
+    }
+  }, [bookmarkedKeys]);
 
   const q = useQuery({
     queryKey: ["trending", timeRange],
@@ -189,17 +223,6 @@ export function TrendingReposPanel() {
   const otherRepos = filteredRepos.slice(1);
   const topRepos = filteredRepos.slice(0, 10);
 
-  const toggleBookmark = (id: number) => {
-    setBookmarkedRepos((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) {
-        next.delete(id);
-      } else {
-        next.add(id);
-      }
-      return next;
-    });
-  };
 
   // Chart data
   const chartData = useMemo(() => {
@@ -283,7 +306,7 @@ export function TrendingReposPanel() {
           { label: "Total Repos", value: items.length, icon: Flame, color: "text-violet-500", bg: "bg-violet-500/10", border: "border-violet-500/20" },
           { label: "Languages", value: languages.length, icon: Code2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
           { label: "Total Stars", value: formatNumber(items.reduce((acc, r) => acc + r.stargazers_count, 0)), icon: Star, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
-          { label: "Bookmarked", value: bookmarkedRepos.size, icon: Bookmark, color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
+          { label: "Bookmarked", value: bookmarkedKeys.size, icon: Bookmark, color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
         ].map(({ label, value, icon: Icon, color, bg, border }) => (
           <motion.div
             key={label}
@@ -324,6 +347,8 @@ export function TrendingReposPanel() {
             />
             {searchQuery && (
               <button
+                type="button"
+                aria-label="Clear search"
                 onClick={() => setSearchQuery("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2"
               >
@@ -336,6 +361,7 @@ export function TrendingReposPanel() {
             {(["today", "week", "month"] as const).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => setTimeRange(t)}
                 className={cn(
                   "px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize",
@@ -351,6 +377,7 @@ export function TrendingReposPanel() {
 
           <div className="relative">
             <select
+              aria-label="Sort repositories by"
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
               className="appearance-none px-3 py-1.5 pr-8 rounded-lg border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted transition-colors"
@@ -365,6 +392,8 @@ export function TrendingReposPanel() {
 
           <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
             <button
+              type="button"
+              aria-label="Grid view"
               onClick={() => setViewMode("grid")}
               className={cn(
                 "p-1.5 rounded-md transition-all",
@@ -374,6 +403,8 @@ export function TrendingReposPanel() {
               <Grid3X3 size={16} />
             </button>
             <button
+              type="button"
+              aria-label="List view"
               onClick={() => setViewMode("list")}
               className={cn(
                 "p-1.5 rounded-md transition-all",
@@ -410,6 +441,7 @@ export function TrendingReposPanel() {
                 <span className="text-sm font-medium mb-2 block">Filter by Language</span>
                 <div className="flex flex-wrap gap-2">
                   <button
+                    type="button"
                     onClick={() => setSelectedLang(null)}
                     className={cn(
                       "px-3 py-1 rounded-full text-xs font-medium transition-all",
@@ -423,6 +455,7 @@ export function TrendingReposPanel() {
                   {languages.slice(0, 10).map(([lang, count]) => (
                     <button
                       key={lang}
+                      type="button"
                       onClick={() => setSelectedLang(lang === selectedLang ? null : lang)}
                       className={cn(
                         "px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5",
@@ -432,8 +465,9 @@ export function TrendingReposPanel() {
                       )}
                     >
                       <span
-                        className="w-2 h-2 rounded-full"
-                        style={{ backgroundColor: getLangColor(lang) }}
+                        className="w-2 h-2 rounded-full lang-dot"
+                        // eslint-disable-next-line react/forbid-component-props
+                        style={{ "--lang-color": getLangColor(lang) } as React.CSSProperties}
                       />
                       {lang}
                       <span className="text-[10px] opacity-70">({count})</span>
@@ -518,17 +552,19 @@ export function TrendingReposPanel() {
 
                         {/* Bookmark */}
                         <button
+                          type="button"
+                          aria-label={bookmarkedKeys.has(r.full_name) ? "Remove bookmark" : "Bookmark this repo"}
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            toggleBookmark(r.id);
+                            void toggleBookmarkRepo(r);
                           }}
                           className={cn(
                             "p-2 rounded-lg transition-colors shrink-0",
-                            bookmarkedRepos.has(r.id) ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:bg-muted"
+                            bookmarkedKeys.has(r.full_name) ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:bg-muted"
                           )}
                         >
-                          <Bookmark size={16} className={bookmarkedRepos.has(r.id) ? "fill-current" : ""} />
+                          <Bookmark size={16} className={bookmarkedKeys.has(r.full_name) ? "fill-current" : ""} />
                         </button>
                       </div>
                     </Link>
@@ -538,12 +574,13 @@ export function TrendingReposPanel() {
                       <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                         <div
                           className={cn(
-                            "h-full rounded-full",
+                            "h-full rounded-full lang-bar",
                             idx === 0 ? "bg-amber-500" :
                             idx === 1 ? "bg-slate-400" :
                             "bg-orange-600"
                           )}
-                          style={{ width: `${Math.min(100, (r.stargazers_count / (filteredRepos[0]?.stargazers_count || 1)) * 100)}%` }}
+                          // eslint-disable-next-line react/forbid-component-props
+                          style={{ "--w": `${Math.min(100, (r.stargazers_count / (filteredRepos[0]?.stargazers_count || 1)) * 100)}%` } as React.CSSProperties}
                         />
                       </div>
                     </div>
@@ -580,8 +617,8 @@ export function TrendingReposPanel() {
                     >
                       <RepoCard
                         repo={repo}
-                        bookmarked={bookmarkedRepos.has(repo.id)}
-                        onBookmark={() => toggleBookmark(repo.id)}
+                        bookmarked={bookmarkedKeys.has(repo.full_name)}
+                        onBookmark={() => void toggleBookmarkRepo(repo)}
                       />
                     </motion.div>
                   ))}
@@ -603,8 +640,8 @@ export function TrendingReposPanel() {
                     >
                       <RepoListItem
                         repo={repo}
-                        bookmarked={bookmarkedRepos.has(repo.id)}
-                        onBookmark={() => toggleBookmark(repo.id)}
+                        bookmarked={bookmarkedKeys.has(repo.full_name)}
+                        onBookmark={() => void toggleBookmarkRepo(repo)}
                       />
                     </motion.div>
                   ))}
@@ -639,6 +676,7 @@ export function TrendingReposPanel() {
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
+                    {/* contentStyle is a Recharts API prop — not an HTML inline style */}
                     <Tooltip
                       contentStyle={{
                         backgroundColor: "var(--background)",
@@ -660,8 +698,9 @@ export function TrendingReposPanel() {
                 <div key={item.name} className="flex items-center justify-between text-sm">
                   <div className="flex items-center gap-2">
                     <span
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: item.color }}
+                      className="w-2 h-2 rounded-full lang-dot"
+                      // eslint-disable-next-line react/forbid-component-props
+                      style={{ "--lang-color": item.color } as React.CSSProperties}
                     />
                     <span className="text-muted-foreground">{item.name}</span>
                   </div>
@@ -688,6 +727,7 @@ export function TrendingReposPanel() {
                     tick={{ fontSize: 10, fill: "var(--foreground)" }}
                     width={55}
                   />
+                  {/* contentStyle is a Recharts API prop — not an HTML inline style */}
                   <Tooltip
                     contentStyle={{
                       backgroundColor: "var(--background)",
@@ -714,6 +754,7 @@ export function TrendingReposPanel() {
                 {allTopics.map(([topic, count]) => (
                   <button
                     key={topic}
+                    type="button"
                     onClick={() => setSearchQuery(topic)}
                     className="px-2.5 py-1 rounded-full bg-muted hover:bg-violet-500/10 hover:text-violet-600 text-xs font-medium transition-colors"
                   >
@@ -783,14 +824,17 @@ function RepoCard({
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
           <div
-            className="size-2.5 rounded-full shrink-0"
-            style={{ backgroundColor: getLangColor(repo.language) }}
+            className="size-2.5 rounded-full shrink-0 lang-dot"
+            // eslint-disable-next-line react/forbid-component-props
+            style={{ "--lang-color": getLangColor(repo.language) } as React.CSSProperties}
           />
           <span className="text-[10px] text-muted-foreground uppercase tracking-wider shrink-0">
             {repo.language ?? "—"}
           </span>
         </div>
         <button
+          type="button"
+          aria-label={bookmarked ? "Remove bookmark" : "Bookmark this repo"}
           onClick={onBookmark}
           className={cn(
             "p-1 rounded-md transition-colors",
@@ -862,8 +906,9 @@ function RepoListItem({
   return (
     <div className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors">
       <div
-        className="size-3 rounded-full shrink-0"
-        style={{ backgroundColor: getLangColor(repo.language) }}
+        className="size-3 rounded-full shrink-0 lang-dot"
+        // eslint-disable-next-line react/forbid-component-props
+        style={{ "--lang-color": getLangColor(repo.language) } as React.CSSProperties}
       />
 
       <div className="flex-1 min-w-0">
@@ -897,6 +942,8 @@ function RepoListItem({
 
       <div className="flex items-center gap-1 shrink-0">
         <button
+          type="button"
+          aria-label={bookmarked ? "Remove bookmark" : "Bookmark this repo"}
           onClick={onBookmark}
           className={cn(
             "p-2 rounded-lg transition-colors",
@@ -909,6 +956,7 @@ function RepoListItem({
           href={`https://github.com/${repo.full_name}`}
           target="_blank"
           rel="noopener noreferrer"
+          aria-label={`Open ${repo.full_name} on GitHub`}
         >
           <Button variant="ghost" size="icon" className="size-8">
             <ExternalLink size={14} />

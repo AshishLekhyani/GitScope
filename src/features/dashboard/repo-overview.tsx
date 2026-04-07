@@ -12,7 +12,7 @@ import {
   getRepoDetails,
 } from "@/services/githubClient";
 import { useAppDispatch } from "@/store/hooks";
-import { BOOKMARKS_KEY, BookmarkedRepo } from "@/lib/bookmarks";
+import { addBookmark, removeBookmark } from "@/lib/bookmarks";
 import { addRecentSearch } from "@/store/slices/dashboardSlice";
 import { useRecentHistory } from "@/hooks/use-recent-history";
 import type { CommitActivityWeek } from "@/types/github";
@@ -423,44 +423,31 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
   const { addToHistory } = useRecentHistory();
   const [isBookmarked, setIsBookmarked] = useState(false);
 
+  // Check bookmark status from API on mount
   useEffect(() => {
-    try {
-      const stored: BookmarkedRepo[] = JSON.parse(
-        localStorage.getItem(BOOKMARKS_KEY) ?? "[]"
-      );
-      setIsBookmarked(stored.some((b) => b.owner === owner && b.repo === repo));
-    } catch {
-      /* ignore */
-    }
+    fetch("/api/user/bookmarks", { credentials: "include" })
+      .then((r) => r.ok ? r.json() : { bookmarks: [] })
+      .then((data) => {
+        const list = Array.isArray(data.bookmarks) ? data.bookmarks : [];
+        setIsBookmarked(list.some((b: { owner: string; repo: string }) => b.owner === owner && b.repo === repo));
+      })
+      .catch(() => { /* ignore */ });
   }, [owner, repo]);
 
-  const toggleBookmark = () => {
-    try {
-      const stored: BookmarkedRepo[] = JSON.parse(
-        localStorage.getItem(BOOKMARKS_KEY) ?? "[]"
-      );
-      let next: BookmarkedRepo[];
-      if (isBookmarked) {
-        next = stored.filter((b) => !(b.owner === owner && b.repo === repo));
-      } else {
-        const data = repoQ.data;
-        next = [
-          ...stored,
-          {
-            owner,
-            repo,
-            avatar:
-              data?.owner?.avatar_url ?? `https://github.com/${owner}.png`,
-            stars: data?.stargazers_count ?? 0,
-            description: data?.description ?? "",
-            bookmarkedAt: new Date().toISOString(),
-          },
-        ];
-      }
-      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(next));
-      setIsBookmarked(!isBookmarked);
-    } catch {
-      /* ignore */
+  const toggleBookmark = async () => {
+    if (isBookmarked) {
+      const ok = await removeBookmark(owner, repo);
+      if (ok) setIsBookmarked(false);
+    } else {
+      const data = repoQ.data;
+      const ok = await addBookmark({
+        owner,
+        repo,
+        avatar: data?.owner?.avatar_url ?? `https://github.com/${owner}.png`,
+        stars: data?.stargazers_count ?? 0,
+        description: data?.description ?? "",
+      });
+      if (ok) setIsBookmarked(true);
     }
   };
 

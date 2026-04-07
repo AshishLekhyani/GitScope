@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 import { githubFetch } from "@/lib/github";
 import { getGitHubToken } from "@/lib/github-auth";
+import { requireApiAuth } from "@/lib/api-auth";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ owner: string; repo: string; sha: string }> }
 ) {
+  const auth = await requireApiAuth();
+  if (auth instanceof NextResponse) return auth;
+
   const { owner, repo, sha } = await params;
   try {
     const userToken = await getGitHubToken();

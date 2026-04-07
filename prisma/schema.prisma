@@ -78,15 +78,13 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   
-  accounts      Account[]
-  sessions      Session[]
+  accounts        Account[]
+  sessions        Session[]
   searchHistories SearchHistory[]
-  notifications Notification[]
-  aiUsageEvents AiUsageEvent[]
-  aiAnalysisJobs AiAnalysisJob[]
-  
-  // Custom GitScope relations can be added here
-  // e.g., Profile, Organizations, Projects
+  notifications   Notification[]
+  aiUsageEvents   AiUsageEvent[]
+  aiAnalysisJobs  AiAnalysisJob[]
+  bookmarks       Bookmark[]
 
   @@map("users")
 }
@@ -197,7 +195,23 @@ model AuditLog {
   @@index([ip])
   @@map("audit_logs")
 }
+model Bookmark {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  owner       String
+  repo        String
+  avatar      String   @default("")
+  stars       Int      @default(0)
+  description String   @default("")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, owner, repo])
+  @@index([userId])
+  @@map("bookmarks")
+}
+
 // identifier prefixes:
 //   "verify:{email}"  — email address verification (expires 24h)
 //   "reset:{email}"   — password reset (expires 1h)
-// Prisma schema v1 - User + Session
+// Prisma schema v2 - Bookmark model added

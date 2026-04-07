@@ -14,6 +14,13 @@ const PROTECTED_PREFIXES = [
   "/compare",
   "/trending",
   "/intelligence",
+  "/notifications",
+  "/bookmarks",
+  "/leaderboard",
+  "/releases",
+  "/languages",
+  "/topics",
+  "/docs-reference",
 ];
 
 /** Routes that require GitHub OAuth (provider === "github") */
@@ -55,8 +62,13 @@ export async function middleware(req: NextRequest) {
   }
 
   // ── Redirect already-authed users away from login/signup ──
+  // Use the `from` param so the back button goes back to where they were, not /login.
   if (isAuthed && AUTH_PAGES.includes(pathname)) {
-    return NextResponse.redirect(new URL("/overview", req.url));
+    const from = req.nextUrl.searchParams.get("from");
+    const dest = from && from.startsWith("/") && !AUTH_PAGES.includes(from)
+      ? from
+      : "/overview";
+    return NextResponse.redirect(new URL(dest, req.url));
   }
 
   const response = NextResponse.next();
@@ -66,6 +78,12 @@ export async function middleware(req: NextRequest) {
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
     response.headers.set("Vary", "Cookie");
+  }
+  // Auth pages must never be served from bfcache — prevents back-button showing login
+  if (AUTH_PAGES.includes(pathname)) {
+    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    response.headers.set("Pragma", "no-cache");
+    response.headers.set("Expires", "0");
   }
   return response;
 }
@@ -85,6 +103,20 @@ export const config = {
     "/intelligence/:path*",
     "/intelligence",
     "/organizations",
+    "/notifications/:path*",
+    "/notifications",
+    "/bookmarks/:path*",
+    "/bookmarks",
+    "/leaderboard/:path*",
+    "/leaderboard",
+    "/releases/:path*",
+    "/releases",
+    "/languages/:path*",
+    "/languages",
+    "/topics/:path*",
+    "/topics",
+    "/docs-reference/:path*",
+    "/docs-reference",
     "/login",
     "/signup",
   ],

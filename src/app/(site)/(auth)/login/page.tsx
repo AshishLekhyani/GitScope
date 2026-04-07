@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Mail, Lock, User, ArrowRight, Github as GithubIcon } from "lucide-react";
+import { Mail, Lock, User, ArrowRight, Github as GithubIcon, Eye, EyeOff } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,10 +27,23 @@ function AuthForm() {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null);
   const [resendStatus, setResendStatus] = useState<"idle" | "sending" | "sent">("idle");
   const [justVerified, setJustVerified] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isMounted, setIsMounted] = useState(false);
+
+  const fromParam = isMounted ? (searchParams.get("from") ?? "") : "";
+  // Sanitise: must be a relative path starting with exactly one "/" — prevents open redirects to //evil.com
+  const redirectAfterLogin =
+    fromParam &&
+    fromParam.startsWith("/") &&
+    !fromParam.startsWith("//") &&
+    !fromParam.startsWith("/login") &&
+    !fromParam.startsWith("/signup")
+      ? fromParam
+      : ROUTES.overview;
 
   useEffect(() => {
     setIsMounted(true);
@@ -135,7 +148,7 @@ function AuthForm() {
         if (loginRes?.ok) {
           setAuthStatus("success");
           setTimeout(() => {
-            router.replace(`${ROUTES.overview}?welcome=true`);
+            router.replace(redirectAfterLogin === ROUTES.overview ? `${ROUTES.overview}?welcome=true` : redirectAfterLogin);
             router.refresh();
           }, 800);
         }
@@ -174,8 +187,10 @@ function AuthForm() {
   const handleOAuth = (provider: string) => {
     setLoading(true);
     setAuthStatus("idle");
-    // Redirect to provider immediately — success is determined by NextAuth callback
-    signIn(provider, { callbackUrl: `${ROUTES.overview}?welcome=true` });
+    const callbackUrl = redirectAfterLogin === ROUTES.overview
+      ? `${ROUTES.overview}?welcome=true`
+      : redirectAfterLogin;
+    signIn(provider, { callbackUrl });
   };
 
   return (
@@ -224,7 +239,8 @@ function AuthForm() {
                   {(["login", "signup"] as const).map((m) => (
                     <button
                       key={m}
-                      onClick={() => { setMode(m); setError(null); }}
+                      type="button"
+                      onClick={() => { setMode(m); setError(null); setShowPassword(false); setShowConfirmPassword(false); }}
                       className={cn(
                         "flex-1 rounded-md py-2 text-xs font-bold uppercase tracking-widest transition-all",
                         mode === m 
@@ -294,13 +310,21 @@ function AuthForm() {
                       <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                       <Input
                         id="pass"
-                        type="password"
+                        type={showPassword ? "text" : "password"}
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
-                        className="bg-background border-border pl-10 focus:ring-primary/50"
+                        className="bg-background border-border pl-10 pr-10 focus:ring-primary/50"
                         required
                         placeholder="••••••••"
                       />
+                      <button
+                        type="button"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                        onClick={() => setShowPassword((v) => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                      </button>
                     </div>
                   </div>
 
@@ -321,8 +345,11 @@ function AuthForm() {
                         </div>
                         <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
                           <div
-                            className={cn("h-full transition-all duration-500", getPasswordStrength(password).color)}
-                            style={{ width: getPasswordStrength(password).width.replace("w-1/3", "33.33%").replace("w-2/3", "66.66%").replace("w-full", "100%") }}
+                            className={cn(
+                              "h-full transition-all duration-500",
+                              getPasswordStrength(password).color,
+                              getPasswordStrength(password).width
+                            )}
                           />
                         </div>
                         <p className="text-[9px] text-muted-foreground leading-tight italic">
@@ -346,13 +373,21 @@ function AuthForm() {
                           <Lock className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
                           <Input
                             id="confirm-pass"
-                            type="password"
+                            type={showConfirmPassword ? "text" : "password"}
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
-                            className="bg-background border-border pl-10 focus:ring-primary/50"
+                            className="bg-background border-border pl-10 pr-10 focus:ring-primary/50"
                             required={mode === "signup"}
                             placeholder="••••••••"
                           />
+                          <button
+                            type="button"
+                            aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+                            onClick={() => setShowConfirmPassword((v) => !v)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                          >
+                            {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                          </button>
                         </div>
                       </motion.div>
                     )}
@@ -455,9 +490,9 @@ function AuthForm() {
         </div>
 
         <p className="mt-8 text-center text-xs text-muted-foreground font-medium">
-          By engaging, you agree to our{" "}
-          <Link href={ROUTES.docs} className="text-primary hover:underline">Tactical Protocols</Link> and{" "}
-          <Link href={ROUTES.docs} className="text-primary hover:underline">Data Secrecy</Link>.
+          By continuing, you agree to our{" "}
+          <Link href={ROUTES.terms} className="text-primary hover:underline">Terms of Service</Link> and{" "}
+          <Link href={ROUTES.privacy} className="text-primary hover:underline">Privacy Policy</Link>.
         </p>
       </motion.div>
     </div>

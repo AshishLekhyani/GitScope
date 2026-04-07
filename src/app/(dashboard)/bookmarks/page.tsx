@@ -1,11 +1,12 @@
 "use client";
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 import { cn } from "@/lib/utils";
 import { MaterialIcon } from "@/components/material-icon";
-import { BOOKMARKS_KEY, BookmarkedRepo } from "@/lib/bookmarks";
+import { BookmarkedRepo, fetchBookmarks, removeBookmark } from "@/lib/bookmarks";
+
 type SortMode = "recent" | "alpha";
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
@@ -26,12 +27,18 @@ function BookmarkCard({
   onRemove,
 }: {
   bookmark: BookmarkedRepo;
-  onRemove: (key: string) => void;
+  onRemove: (owner: string, repo: string) => void;
 }) {
-  const key = `${bookmark.owner}/${bookmark.repo}`;
+  const [removing, setRemoving] = useState(false);
   const timeAgo = formatDistanceToNow(new Date(bookmark.bookmarkedAt), {
     addSuffix: true,
   });
+
+  const handleRemove = async () => {
+    setRemoving(true);
+    await onRemove(bookmark.owner, bookmark.repo);
+    setRemoving(false);
+  };
 
   return (
     <div className="group flex flex-col gap-4 rounded-3xl border border-border bg-card p-5 shadow-sm transition-all hover:border-indigo-500/30 hover:shadow-md">
@@ -63,16 +70,18 @@ function BookmarkCard({
         </div>
 
         <button
-          onClick={() => onRemove(key)}
-          aria-label={`Remove ${key} from bookmarks`}
-          className="shrink-0 flex size-8 items-center justify-center rounded-lg text-muted-foreground/50 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus-visible:opacity-100"
+          type="button"
+          onClick={handleRemove}
+          disabled={removing}
+          aria-label={`Remove ${bookmark.owner}/${bookmark.repo} from bookmarks`}
+          className="shrink-0 flex size-8 items-center justify-center rounded-lg text-muted-foreground/50 opacity-0 transition-all hover:bg-red-500/10 hover:text-red-500 group-hover:opacity-100 focus-visible:opacity-100 disabled:opacity-50"
         >
-          <MaterialIcon name="delete_outline" size={16} />
+          <MaterialIcon name={removing ? "hourglass_empty" : "delete_outline"} size={16} />
         </button>
       </div>
 
       {/* Description */}
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 flex-1 min-h-[2.5rem]">
+      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-2 flex-1 min-h-10">
         {bookmark.description || (
           <span className="italic text-muted-foreground/50">
             No description provided.
@@ -86,7 +95,7 @@ function BookmarkCard({
 
         <div className="flex items-center gap-2">
           <a
-            href={`https://github.com/${key}`}
+            href={`https://github.com/${bookmark.owner}/${bookmark.repo}`}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition-colors hover:border-border/80 hover:bg-muted/60 hover:text-foreground"
@@ -111,40 +120,24 @@ function BookmarkCard({
 
 export default function BookmarksPage() {
   const [bookmarks, setBookmarks] = useState<BookmarkedRepo[]>([]);
-  const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortMode>("recent");
   const [search, setSearch] = useState("");
 
-  // Read from localStorage after hydration
+  // Load bookmarks from API on mount
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(BOOKMARKS_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw) as BookmarkedRepo[];
-        if (Array.isArray(parsed)) setBookmarks(parsed);
-      }
-    } catch {
-      // corrupt storage — ignore
-    }
-    setMounted(true);
+    fetchBookmarks().then((data) => {
+      setBookmarks(data);
+      setLoading(false);
+    });
   }, []);
 
-  // Persist to localStorage whenever bookmarks change (after mount)
-  useEffect(() => {
-    if (!mounted) return;
-    try {
-      localStorage.setItem(BOOKMARKS_KEY, JSON.stringify(bookmarks));
-    } catch {
-      // quota exceeded — ignore
+  const handleRemove = useCallback(async (owner: string, repo: string) => {
+    const ok = await removeBookmark(owner, repo);
+    if (ok) {
+      setBookmarks((prev) => prev.filter((b) => !(b.owner === owner && b.repo === repo)));
     }
-  }, [bookmarks, mounted]);
-
-  const handleRemove = (key: string) => {
-    const [owner, repo] = key.split("/");
-    setBookmarks((prev) =>
-      prev.filter((b) => !(b.owner === owner && b.repo === repo))
-    );
-  };
+  }, []);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -163,7 +156,6 @@ export default function BookmarksPage() {
       if (sort === "alpha") {
         return `${a.owner}/${a.repo}`.localeCompare(`${b.owner}/${b.repo}`);
       }
-      // recent
       return (
         new Date(b.bookmarkedAt).getTime() - new Date(a.bookmarkedAt).getTime()
       );
@@ -182,19 +174,19 @@ export default function BookmarksPage() {
             <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
               Bookmarks
             </span>
-            {mounted && bookmarks.length > 0 && (
+            {!loading && bookmarks.length > 0 && (
               <span className="inline-flex items-center justify-center rounded-full bg-indigo-500 px-2.5 py-0.5 text-xs font-black text-white">
                 {bookmarks.length}
               </span>
             )}
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Your saved repositories, stored locally in this browser.
+            Your saved repositories — synced to your account across all devices.
           </p>
         </div>
 
         {/* Sort controls */}
-        {mounted && bookmarks.length > 0 && (
+        {!loading && bookmarks.length > 0 && (
           <div className="flex items-center gap-2 rounded-xl border border-border bg-card p-1">
             {(
               [
@@ -204,6 +196,7 @@ export default function BookmarksPage() {
             ).map((opt) => (
               <button
                 key={opt.value}
+                type="button"
                 onClick={() => setSort(opt.value)}
                 className={cn(
                   "inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-bold transition-all",
@@ -225,7 +218,7 @@ export default function BookmarksPage() {
       </div>
 
       {/* ── Loading skeleton ────────────────────────────────────────────────── */}
-      {!mounted && (
+      {loading && (
         <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((i) => (
             <div
@@ -237,7 +230,7 @@ export default function BookmarksPage() {
       )}
 
       {/* ── Empty state ─────────────────────────────────────────────────────── */}
-      {mounted && bookmarks.length === 0 && (
+      {!loading && bookmarks.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-6 rounded-3xl border-2 border-dashed border-border/50 py-24 text-center">
           <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/10">
             <MaterialIcon name="bookmark_border" size={32} className="text-indigo-400" />
@@ -246,7 +239,7 @@ export default function BookmarksPage() {
             <h3 className="text-xl font-black">No bookmarks yet</h3>
             <p className="text-sm text-muted-foreground">
               Search a repository and bookmark it from the repo overview page to
-              save it here for quick access.
+              save it here for quick access — synced to your account.
             </p>
           </div>
           <Link
@@ -260,7 +253,7 @@ export default function BookmarksPage() {
       )}
 
       {/* ── Search + grid ────────────────────────────────────────────────────── */}
-      {mounted && bookmarks.length > 0 && (
+      {!loading && bookmarks.length > 0 && (
         <div className="space-y-5">
           {/* Search filter */}
           <div className="relative max-w-sm">
@@ -278,6 +271,8 @@ export default function BookmarksPage() {
             />
             {search && (
               <button
+                type="button"
+                aria-label="Clear search filter"
                 onClick={() => setSearch("")}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
@@ -294,6 +289,7 @@ export default function BookmarksPage() {
                 No bookmarks match &ldquo;{search}&rdquo;
               </p>
               <button
+                type="button"
                 onClick={() => setSearch("")}
                 className="text-xs font-bold text-indigo-500 hover:underline"
               >
