@@ -15,10 +15,6 @@ psycopg2-binary>=2.9.9
 pgvector>=0.2.5
 fastembed>=0.2.7
 
-# Static analysis
-tree-sitter>=0.21.3
-tree-sitter-languages>=1.10.2
-
 # Utilities
 semver>=3.0.0
 packaging>=24.0
