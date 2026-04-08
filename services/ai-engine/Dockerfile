@@ -4,23 +4,28 @@ WORKDIR /app
 
 # System deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    gcc g++ make git \
+    gcc g++ make git curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Python deps — torch CPU only for lean image
-COPY requirements.txt .
-RUN pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu \
- && pip install --no-cache-dir -r requirements.txt
+# Install Python deps — torch excluded for lean free-tier image
+# The engine does full pattern analysis without torch.
+# Semantic RAG (sentence-transformers) loads lazily if torch is available.
+COPY requirements.prod.txt .
+RUN pip install --no-cache-dir -r requirements.prod.txt
 
-# Pre-download embedding model at build time so first request is instant
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('all-MiniLM-L6-v2')"
-
+# Copy source
 COPY . .
+
+# Data directory — mounted as a persistent Fly.io volume
+RUN mkdir -p /app/data/chromadb
 
 ENV PORT=8765
 ENV WORKERS=1
 ENV LOG_LEVEL=info
+# Point HuggingFace cache to the persistent volume so model survives restarts
+ENV TRANSFORMERS_CACHE=/app/data/hf_cache
+ENV HF_HOME=/app/data/hf_cache
 
 EXPOSE 8765
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8765", "--workers", "1"]
+CMD sh -c "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8765} --workers 1"
