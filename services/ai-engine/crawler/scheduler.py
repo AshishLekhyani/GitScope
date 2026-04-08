@@ -99,17 +99,14 @@ async def _run_synthesis():
 
 def _synthesis_worker() -> str:
     """
-    Runs in a thread. Queries ChromaDB, finds clusters, logs meta-patterns.
-    Returns a summary string.
+    Runs in a thread. Queries the pgvector knowledge base, finds clusters,
+    logs meta-patterns. Returns a summary string.
     """
     try:
-        from memory.vector_store import _get_collection, _get_embed_model
+        from memory.vector_store import query_similar_patterns, get_stats, _get_embed_model
 
-        col = _get_collection("code_patterns")
-        if col is None:
-            return "Vector store not available"
-
-        total = col.count()
+        stats = get_stats()
+        total = stats.get("total_patterns", 0)
         if total < 10:
             return f"Not enough data yet ({total} patterns) — need more analyses to self-synthesize"
 
@@ -133,16 +130,28 @@ def _synthesis_worker() -> str:
         if model is None:
             return f"Embedding model unavailable (total patterns: {total})"
 
+        def _embed(text: str) -> list[float] | None:
+            """Embed using either fastembed (.embed generator) or sentence-transformers (.encode)."""
+            try:
+                if hasattr(model, "embed"):
+                    # fastembed: returns a generator of numpy arrays
+                    vecs = list(model.embed([text]))
+                    return vecs[0].tolist() if vecs else None
+                elif hasattr(model, "encode"):
+                    # sentence-transformers
+                    return model.encode(text, normalize_embeddings=True).tolist()
+            except Exception:
+                pass
+            return None
+
         coverage_report = []
         for domain_name, query in domains:
             try:
-                embedding = model.encode(query, normalize_embeddings=True).tolist()
-                results = col.query(
-                    query_embeddings=[embedding],
-                    n_results=min(5, max(1, total)),
-                    include=["distances"],
-                )
-                hits = sum(1 for d in results.get("distances", [[]])[0] if d < 0.5)  # similarity > 0.5
+                embedding = _embed(query)
+                if embedding is None:
+                    continue
+                results = query_similar_patterns(embedding, n_results=5)
+                hits = len(results)
                 coverage_report.append(f"{domain_name}: {hits} patterns")
             except Exception:
                 pass

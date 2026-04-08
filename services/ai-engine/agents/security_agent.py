@@ -258,32 +258,47 @@ class SecurityAgent(BaseAgent):
         return findings, positives
 
     def _scan_repo(self, context: dict) -> tuple[list[Finding], list[str]]:
+        """
+        Evidence-based repo scan: every finding must have actual code evidence
+        in the submitted file contents. We do NOT flag things we can't observe
+        in the actual files provided — no speculative advice.
+        """
         findings: list[Finding] = []
         positives: list[str] = []
         file_tree = context.get("file_tree", [])
         contents = context.get("key_file_contents", {})
 
-        # Check security fundamentals
+        # Merge all content into a single searchable blob for global checks
+        all_content = "\n".join(
+            f"# FILE: {fname}\n{content}"
+            for fname, content in contents.items()
+            if content
+        )
+
+        # ── File-tree checks (presence/absence is observable) ──────────────
         has_env_example = any(f == ".env.example" or f.endswith("/.env.example") for f in file_tree)
         has_gitignore = any(f == ".gitignore" for f in file_tree)
         has_security_md = any(f.lower() == "security.md" for f in file_tree)
-        has_csp = any("content-security-policy" in (contents.get(f, "") or "").lower() for f in file_tree)
-        has_ci = any(f.startswith(".github/workflows") or ".gitlab-ci" in f or ".circleci" in f for f in file_tree)
+        has_ci = any(
+            f.startswith(".github/workflows") or ".gitlab-ci" in f or ".circleci" in f
+            for f in file_tree
+        )
 
-        if not has_env_example:
+        if not has_env_example and any(".env" in f for f in file_tree):
+            # Only flag if there's evidence of .env usage but no .env.example
             findings.append(Finding(
                 severity="medium", category="security",
-                description="No .env.example — developers may share .env files, risking credential leakage.",
-                suggestion="Create .env.example with all required variable names (no values). Document secret rotation policy.",
-                rule_id="missing-env-example", confidence=0.95,
+                description="Repository uses .env files but has no .env.example template — developers risk committing real credentials.",
+                suggestion="Create .env.example with all required variable names but no values. Add .env to .gitignore.",
+                rule_id="missing-env-example", confidence=0.90,
             ))
-        else:
+        elif has_env_example:
             positives.append("Environment variable template documented (.env.example)")
 
         if not has_gitignore:
             findings.append(Finding(
                 severity="high", category="security",
-                description="No .gitignore — sensitive files (.env, credentials, keys) may be committed accidentally.",
+                description="No .gitignore found — sensitive files (.env, credentials, keys) may be committed accidentally.",
                 suggestion="Add a comprehensive .gitignore. Use gitignore.io to generate one for your stack.",
                 rule_id="missing-gitignore", confidence=0.95,
             ))
@@ -293,8 +308,8 @@ class SecurityAgent(BaseAgent):
         if not has_ci:
             findings.append(Finding(
                 severity="medium", category="config",
-                description="No CI/CD pipeline — automated security scanning not enforced on pull requests.",
-                suggestion="Add GitHub Actions with: npm audit, CodeQL analysis, Snyk scanning, and Dependabot.",
+                description="No CI/CD pipeline detected — automated security scanning not enforced on pull requests.",
+                suggestion="Add GitHub Actions with npm audit, CodeQL analysis, Snyk scanning, and Dependabot.",
                 rule_id="no-ci-pipeline", confidence=0.90,
             ))
         else:
@@ -303,18 +318,99 @@ class SecurityAgent(BaseAgent):
         if has_security_md:
             positives.append("SECURITY.md documents responsible disclosure policy")
 
-        # Scan key file contents for secrets
+        # ── Pattern scan: only against actual submitted code ───────────────
+        # Scan each file individually so we can attribute findings correctly
+        seen_rules_global: set[str] = set()
+
         for fname, content in contents.items():
             if not content:
                 continue
-            for vuln in VULN_PATTERNS:
-                if vuln.get("category") == "secrets":
-                    if re.search(vuln["pattern"], content, re.IGNORECASE):
-                        findings.append(Finding(
-                            severity="critical", category="secrets",
-                            description=f"Potential hardcoded secret in {fname}: {vuln['description'].format(file=fname, match='')}",
-                            suggestion=vuln["suggestion"],
-                            file=fname, rule_id=vuln["id"], confidence=0.80,
-                        ))
+
+            # Strip non-executable contexts (comments, pattern definitions)
+            clean = self._strip_non_executable(content)
+            seen_rules_in_file: set[str] = set()
+
+            for vuln in _ALL_VULN_PATTERNS:
+                rule_id = vuln["id"]
+                # One finding per rule per file, and deduplicate across files for generic rules
+                if rule_id in seen_rules_in_file:
+                    continue
+                if rule_id in seen_rules_global and vuln.get("confidence", 1.0) < 0.75:
+                    continue  # skip low-confidence duplicates across files
+
+                try:
+                    matches = re.findall(vuln["pattern"], clean, re.IGNORECASE | re.MULTILINE)
+                except re.error:
+                    continue
+
+                if not matches:
+                    continue
+
+                seen_rules_in_file.add(rule_id)
+                if vuln.get("confidence", 1.0) >= 0.75:
+                    seen_rules_global.add(rule_id)
+
+                snippet = str(matches[0])[:100]
+                conf = vuln.get("confidence", 0.85)
+                severity = vuln["severity"]
+                if conf < 0.50:
+                    severity = "low"
+                elif conf < 0.65:
+                    severity = "medium" if severity in ("critical", "high") else severity
+
+                findings.append(Finding(
+                    severity=severity,
+                    category=vuln.get("category", "security"),
+                    description=vuln["description"].format(file=fname.split("/")[-1], match=snippet),
+                    suggestion=vuln["suggestion"],
+                    file=fname,
+                    code_snippet=snippet,
+                    confidence=conf,
+                    rule_id=rule_id,
+                    cve_id=vuln.get("cve_id"),
+                ))
+
+        # ── CORS misconfiguration in actual code ──────────────────────────
+        if all_content and _CORS_WILDCARD_RE.search(all_content):
+            findings.append(Finding(
+                severity="high", category="security",
+                description="CORS wildcard origin (Access-Control-Allow-Origin: *) detected in source code — allows any domain to make authenticated requests.",
+                suggestion="Replace wildcard with explicit allowed origins list. Use environment variables for per-environment config.",
+                rule_id="cors-wildcard", confidence=0.88,
+            ))
+
+        # ── Sensitive file detection in tree ──────────────────────────────
+        for path in file_tree:
+            for pattern, label, severity in SENSITIVE_FILE_PATTERNS:
+                if re.search(pattern, path, re.IGNORECASE):
+                    findings.append(Finding(
+                        severity=severity, category="secrets",
+                        description=f"{label} detected in repository: {path}",
+                        suggestion="Remove this file from git history immediately. Use git-filter-repo or BFG Repo Cleaner. Rotate any credentials it contained.",
+                        file=path,
+                        rule_id="sensitive-file-committed", confidence=0.95,
+                    ))
+                    break
+
+        # ── Security header check — only if HTTP server code is present ───
+        has_http_server = bool(re.search(
+            r"""express\(|fastapi|Flask|app\.listen|createServer|http\.createServer|Koa|Hapi""",
+            all_content, re.IGNORECASE,
+        ))
+        if has_http_server:
+            for header in REQUIRED_SECURITY_HEADERS:
+                if header.lower() not in all_content.lower():
+                    findings.append(Finding(
+                        severity="low", category="security",
+                        description=f"Security header `{header}` not found in any scanned source file. If this app serves HTTP, add it.",
+                        suggestion=f"Set the `{header}` response header in your middleware. Use the helmet.js package for Node.js.",
+                        rule_id=f"missing-header-{header.replace('-', '_')}", confidence=0.60,
+                    ))
+                else:
+                    positives.append(f"`{header}` security header configured")
+                    break  # Only report one positive for headers
+
+        if not findings:
+            positives.append("No security issues detected in the provided source files")
 
         return findings, positives

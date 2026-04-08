@@ -482,50 +482,68 @@ export async function POST(req: NextRequest) {
         const contributors = (contributorsData ?? []).length;
         const openPRCount = (pullsData ?? []).length;
 
-        // Fetch key files for context
-        emit({ type: "progress", step: "Reading key configuration files…", percent: 38 });
+        // Fetch key files for context — config files + actual source code
+        emit({ type: "progress", step: "Reading codebase files…", percent: 38 });
 
-        const keyFilesToFetch = [
-          "package.json",
-          "tsconfig.json",
-          "README.md",
-          ".eslintrc.json",
-          ".eslintrc.js",
-          "jest.config.ts",
-          "jest.config.js",
-          "next.config.ts",
-          "next.config.js",
-          "Dockerfile",
+        // Config/root files that always give useful context
+        const configFiles = [
+          "package.json", "tsconfig.json", "README.md", "CHANGELOG.md",
+          ".eslintrc.json", ".eslintrc.js", "biome.json",
+          "jest.config.ts", "jest.config.js", "vitest.config.ts",
+          "next.config.ts", "next.config.js",
+          "Dockerfile", "docker-compose.yml",
+          ".github/workflows/ci.yml", ".github/workflows/deploy.yml",
+          "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml",
+          "middleware.ts", "middleware.js",
         ].filter((f) => fileTree.some((t) => t === f || t.endsWith(`/${f}`)));
+
+        // Source files — pick the most important ones from the actual file tree
+        const sourceExtensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java"];
+        const importantSourceFiles = fileTree.filter((f) => {
+          const lower = f.toLowerCase();
+          return (
+            sourceExtensions.some((ext) => f.endsWith(ext)) &&
+            // Prioritise: auth, API routes, lib, middleware, main entry points
+            (lower.includes("auth") || lower.includes("api/") || lower.includes("/lib/") ||
+             lower.includes("middleware") || lower.includes("main.") || lower.includes("index.") ||
+             lower.includes("server.") || lower.includes("app.") || lower.includes("router") ||
+             lower.includes("database") || lower.includes("db/") || lower.includes("prisma") ||
+             lower.includes("model") || lower.includes("service") || lower.includes("controller") ||
+             lower.includes("store") || lower.includes("schema") || lower.includes("util"))
+          );
+        }).slice(0, scanMode === "deep" ? 20 : 8);
 
         const keyFileContents: Record<string, string> = {};
 
-        if (scanMode === "deep") {
-          await Promise.all(
-            keyFilesToFetch.slice(0, 6).map(async (f) => {
-              const content = await ghFetchText(
-                `/repos/${repo}/contents/${f}`,
-                ghToken
-              );
-              if (content) keyFileContents[f] = content;
-            })
-          );
-        } else {
-          // Quick mode: just package.json
-          const pkgContent = await ghFetchText(`/repos/${repo}/contents/package.json`, ghToken);
-          if (pkgContent) {
-            try {
-              const pkg = JSON.parse(pkgContent);
-              keyFileContents["package.json"] = JSON.stringify(
-                { dependencies: pkg.dependencies, devDependencies: pkg.devDependencies },
-                null,
-                2
-              );
-            } catch {
-              keyFileContents["package.json"] = pkgContent.slice(0, 1000);
+        // Fetch config files
+        const configToFetch = scanMode === "deep" ? configFiles : configFiles.slice(0, 4);
+        await Promise.all(
+          configToFetch.map(async (f) => {
+            const actualPath = fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f;
+            const content = await ghFetchText(`/repos/${repo}/contents/${actualPath}`, ghToken);
+            if (content) {
+              // For package.json in quick mode, only keep deps to save space
+              if (f === "package.json" && scanMode !== "deep") {
+                try {
+                  const pkg = JSON.parse(content);
+                  keyFileContents[f] = JSON.stringify(
+                    { dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2
+                  );
+                } catch { keyFileContents[f] = content.slice(0, 2000); }
+              } else {
+                keyFileContents[f] = content.slice(0, 4000); // cap per file
+              }
             }
-          }
-        }
+          })
+        );
+
+        // Fetch actual source files so the AI reads real code, not just config
+        await Promise.all(
+          importantSourceFiles.map(async (f) => {
+            const content = await ghFetchText(`/repos/${repo}/contents/${f}`, ghToken);
+            if (content) keyFileContents[f] = content.slice(0, 3000);
+          })
+        );
 
         emit({ type: "progress", step: "Running internal static analysis…", percent: 58 });
 

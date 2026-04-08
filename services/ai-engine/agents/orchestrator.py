@@ -39,6 +39,7 @@ class Orchestrator:
         from agents.compliance_agent import ComplianceAgent
         from agents.supply_chain_agent import SupplyChainAgent
         from agents.secrets_agent import SecretsAgent
+        from agents.documentation_agent import DocumentationAgent
         # Phase 1 agents — run concurrently
         self._agent_classes = [
             SecurityAgent,
@@ -50,6 +51,7 @@ class Orchestrator:
             LearnerAgent,
             ComplianceAgent,
             SupplyChainAgent,
+            DocumentationAgent,
         ]
         # Phase 2 — runs after Phase 1 with all results as context
         from agents.debate_agent import DebateAgent
@@ -376,7 +378,7 @@ class Orchestrator:
                     unique_findings.append(f)
 
         # Weighted consensus score (debate agent excluded from scoring — it's a meta-layer)
-        weights = {"security": 0.20, "secrets": 0.12, "quality": 0.15, "architecture": 0.11, "performance": 0.10, "dependency": 0.09, "learner": 0.07, "compliance": 0.09, "supply_chain": 0.07}
+        weights = {"security": 0.18, "secrets": 0.11, "quality": 0.14, "architecture": 0.10, "performance": 0.09, "dependency": 0.08, "learner": 0.06, "compliance": 0.08, "supply_chain": 0.07, "documentation": 0.09}
         total_weight = 0.0
         weighted_score = 0.0
         for r in results:
