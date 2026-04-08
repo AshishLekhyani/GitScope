@@ -109,6 +109,8 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
   const [result, setResult] = useState<RepoScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeSection, setActiveSection] = useState<string>("overview");
+  const [secFilter, setSecFilter] = useState<"all" | "critical" | "high" | "medium" | "low">("all");
+  const [recsPage, setRecsPage] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const targetRepo = selectedRepo ?? repoInput;
@@ -356,7 +358,20 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
         )}
 
         {/* ── Security section ── */}
-        {activeSection === "security" && (
+        {activeSection === "security" && (() => {
+          const SEC_SEVERITIES = ["all", "critical", "high", "medium", "low"] as const;
+          const SEC_SEV_STYLE: Record<string, string> = {
+            all:      "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
+            critical: "bg-red-500/20 text-red-400 border-red-500/30",
+            high:     "bg-orange-500/20 text-orange-400 border-orange-500/30",
+            medium:   "bg-amber-500/20 text-amber-400 border-amber-500/30",
+            low:      "bg-surface-container text-muted-foreground border-outline-variant/30",
+          };
+          const filteredSecIssues = secFilter === "all"
+            ? result.security.issues
+            : result.security.issues.filter((f) => f.severity === secFilter);
+
+          return (
           <div className="space-y-4 animate-in fade-in duration-300">
             <div className="flex items-center gap-4 p-5 rounded-2xl bg-surface-container/20 border border-outline-variant/10">
               <div className="flex flex-col items-center gap-1">
@@ -390,14 +405,41 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
 
             {result.security.issues.length > 0 && (
               <div className="space-y-2">
-                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">
-                  Issues ({result.security.issues.length})
-                </p>
-                {result.security.issues.map((f, i) => <FindingItem key={i} finding={f} />)}
+                {/* Severity filter chips */}
+                <div className="flex flex-wrap gap-1.5 px-1">
+                  {SEC_SEVERITIES.map((sev) => {
+                    const count = sev === "all"
+                      ? result.security.issues.length
+                      : result.security.issues.filter((f) => f.severity === sev).length;
+                    if (count === 0 && sev !== "all") return null;
+                    return (
+                      <button
+                        key={sev}
+                        type="button"
+                        aria-label={`Filter by ${sev}`}
+                        onClick={() => setSecFilter(sev)}
+                        className={cn(
+                          "flex items-center gap-1 px-2.5 py-0.5 rounded-xl text-[9px] font-black uppercase tracking-wider border transition-all",
+                          secFilter === sev
+                            ? SEC_SEV_STYLE[sev]
+                            : "bg-surface-container/40 text-muted-foreground/50 border-outline-variant/10 hover:border-outline-variant/25"
+                        )}
+                      >
+                        {sev === "all" ? "All" : sev} <span className="opacity-60">({count})</span>
+                      </button>
+                    );
+                  })}
+                </div>
+                {filteredSecIssues.length === 0 ? (
+                  <p className="text-center text-xs text-muted-foreground/40 py-4">No {secFilter} issues</p>
+                ) : (
+                  filteredSecIssues.map((f, i) => <FindingItem key={i} finding={f} />)
+                )}
               </div>
             )}
           </div>
-        )}
+          );
+        })()}
 
         {/* ── Quality section ── */}
         {activeSection === "quality" && (
@@ -488,13 +530,27 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
         )}
 
         {/* ── Recommendations section ── */}
-        {activeSection === "recs" && (
+        {activeSection === "recs" && (() => {
+          const RECS_PER_PAGE = 4;
+          const recsTotal = result.recommendations.length;
+          const recsPageCount = Math.max(1, Math.ceil(recsTotal / RECS_PER_PAGE));
+          const rPage = Math.min(recsPage, recsPageCount - 1);
+          const visibleRecs = result.recommendations.slice(rPage * RECS_PER_PAGE, (rPage + 1) * RECS_PER_PAGE);
+
+          return (
           <div className="space-y-3 animate-in fade-in duration-300">
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">
-              {result.recommendations.length} prioritized actions
-            </p>
-            {result.recommendations.map((rec, i) => (
-              <div key={i} className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
+            <div className="flex items-center justify-between px-1">
+              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">
+                {recsTotal} prioritized actions
+              </p>
+              {recsPageCount > 1 && (
+                <span className="text-[9px] font-mono text-muted-foreground/40">
+                  {rPage * RECS_PER_PAGE + 1}–{Math.min((rPage + 1) * RECS_PER_PAGE, recsTotal)} of {recsTotal}
+                </span>
+              )}
+            </div>
+            {visibleRecs.map((rec, i) => (
+              <div key={`${rPage}-${i}`} className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
                 <div className="flex items-start gap-3 p-4">
                   <span className={cn("text-[8px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0 mt-0.5",
                     PRIORITY_STYLE[rec.priority])}>
@@ -514,8 +570,47 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
                 </div>
               </div>
             ))}
+
+            {/* Pagination controls */}
+            {recsPageCount > 1 && (
+              <div className="flex items-center justify-center gap-1 pt-1">
+                <button
+                  type="button"
+                  aria-label="Previous recommendations page"
+                  onClick={() => setRecsPage((p) => Math.max(0, p - 1))}
+                  disabled={rPage === 0}
+                  className="p-1.5 rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30"
+                >
+                  <MaterialIcon name="chevron_left" size={14} className="text-muted-foreground" />
+                </button>
+                {Array.from({ length: recsPageCount }, (_, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    aria-label={`Recommendations page ${i + 1}`}
+                    onClick={() => setRecsPage(i)}
+                    className={cn(
+                      "size-6 rounded-lg text-[9px] font-black transition-all",
+                      rPage === i ? "bg-indigo-500 text-white" : "text-muted-foreground hover:bg-surface-container"
+                    )}
+                  >
+                    {i + 1}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  aria-label="Next recommendations page"
+                  onClick={() => setRecsPage((p) => Math.min(recsPageCount - 1, p + 1))}
+                  disabled={rPage === recsPageCount - 1}
+                  className="p-1.5 rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30"
+                >
+                  <MaterialIcon name="chevron_right" size={14} className="text-muted-foreground" />
+                </button>
+              </div>
+            )}
           </div>
-        )}
+          );
+        })()}
 
         {/* Footer */}
         <div className="flex items-center justify-between pt-2 border-t border-outline-variant/10">

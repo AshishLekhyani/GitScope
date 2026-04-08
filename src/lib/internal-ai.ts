@@ -41,6 +41,8 @@ interface SecurityRule {
   description: (match: string, file: string) => string;
   suggestion: string;
   category: string;
+  /** 0–1 confidence. Rules below 0.65 are downgraded to "medium"; below 0.50 to "low". */
+  confidence?: number;
 }
 
 const SECURITY_RULES: SecurityRule[] = [
@@ -53,6 +55,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Remove immediately. Rotate the key in AWS IAM. Store in environment variables or a secrets manager (AWS Secrets Manager, HashiCorp Vault).",
     category: "security",
+    confidence: 0.98,
   },
   {
     id: "hardcoded-secret-generic",
@@ -64,6 +67,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Use environment variables (process.env.SECRET_NAME) or a secrets manager. Never commit credentials to version control.",
     category: "security",
+    confidence: 0.82,
   },
   {
     id: "sql-injection",
@@ -74,6 +78,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Use parameterized queries or a query builder. Example: db.query('SELECT * FROM users WHERE id = $1', [userId])",
     category: "security",
+    confidence: 0.90,
   },
   {
     id: "eval-usage",
@@ -84,6 +89,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Replace eval() with safer alternatives. For JSON: use JSON.parse(). For dynamic functions: use a proper AST parser.",
     category: "security",
+    confidence: 0.90,
   },
   {
     id: "dangerous-innerhtml",
@@ -94,6 +100,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Sanitize content with DOMPurify before injecting: { __html: DOMPurify.sanitize(content) }. Or use a safe rendering library.",
     category: "security",
+    confidence: 0.88,
   },
   {
     id: "prototype-pollution",
@@ -104,6 +111,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Use Object.create(null) for plain data stores. Avoid mutating prototypes. Validate untrusted input before merging into objects.",
     category: "security",
+    confidence: 0.92,
   },
   {
     id: "path-traversal",
@@ -114,6 +122,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Validate and sanitize file paths. Use path.resolve() and verify the result starts with your allowed base directory.",
     category: "security",
+    confidence: 0.85,
   },
   {
     id: "insecure-random",
@@ -124,6 +133,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Use crypto.randomUUID() or crypto.getRandomValues() for security-sensitive randomness.",
     category: "security",
+    confidence: 0.55,
   },
   {
     id: "console-log-in-prod",
@@ -133,15 +143,17 @@ const SECURITY_RULES: SecurityRule[] = [
       `Sensitive data logged to console in ${file}. Log statements containing credentials create exposure risk in production.`,
     suggestion: "Remove or redact sensitive values from logs. Use structured logging with explicit field masking.",
     category: "security",
+    confidence: 0.80,
   },
   {
     id: "jwt-no-verify",
     pattern: /jwt\.decode\s*\(/g,
     severity: "high",
     description: (_, file) =>
-      `JWT decoded without verification in ${file}. jwt.decode() does NOT verify the signature — accept untrusted data.`,
+      `JWT decoded without verification in ${file}. jwt.decode() does NOT verify the signature — trusting unverified claims.`,
     suggestion: "Use jwt.verify(token, secret) instead of jwt.decode(). Always verify the signature before trusting JWT claims.",
     category: "security",
+    confidence: 0.92,
   },
   {
     id: "open-redirect",
@@ -152,6 +164,7 @@ const SECURITY_RULES: SecurityRule[] = [
     suggestion:
       "Validate redirect targets against an allowlist of trusted domains before redirecting.",
     category: "security",
+    confidence: 0.88,
   },
   {
     id: "xxe-injection",
@@ -161,6 +174,7 @@ const SECURITY_RULES: SecurityRule[] = [
       `XML parsing detected in ${file}. Ensure external entity processing (XXE) is disabled.`,
     suggestion: "Disable external entity processing: set { explicitCharkey: true, ignoreAttrs: false } and validate XML inputs.",
     category: "security",
+    confidence: 0.60,
   },
 ];
 
@@ -216,6 +230,49 @@ const QUALITY_RULES: QualityRule[] = [
     suggestion: "Extract magic numbers as named constants: const MAX_RETRY_COUNT = 5; const TIMEOUT_MS = 30000;",
   },
 ];
+
+// ── False-positive suppressor ─────────────────────────────────────────────────
+
+/**
+ * Strip non-executable contexts from a code string before pattern scanning.
+ *
+ * Prevents false positives when a PR diff touches files that *define* detection
+ * rules (e.g. vuln_patterns.py, internal-ai.ts itself) — those files contain
+ * strings like `pattern: /eval\s*\(/g` which would otherwise trigger the very
+ * rules they define.
+ *
+ * Removes / neutralises:
+ *   - Comment-only lines  (// ... / # ... / * ...)
+ *   - Lines that ARE a regex pattern definition  (pattern: /.../)
+ *   - Rule metadata fields: description, suggestion, id, cve_id prose lines
+ *   - Inline regex literals replaced with a neutral placeholder string
+ */
+function stripNonExecutable(code: string): string {
+  return code
+    .split("\n")
+    .map((line) => {
+      const t = line.trim();
+      if (!t) return line;
+
+      // Skip comment-only lines
+      if (/^(?:\/\/|\/\*|\*(?!\/)|#)/.test(t)) return "";
+
+      // Skip lines that ARE a regex/pattern literal rule definition
+      // e.g.  pattern: /eval\s*\(/g,        (TS rule object)
+      // e.g.  "pattern": r"eval\s*\(",       (Python rule dict)
+      // e.g.  pattern=/eval/,               (assignment form)
+      if (/\bpattern\s*[=:]\s*(?:r['"\/]|\/)/.test(t)) return "";
+
+      // Skip description / suggestion / id / cve prose fields
+      // (prose text often contains the very keywords we're scanning for)
+      if (/^\s*(?:"description"|description|"suggestion"|suggestion|"id"|id|"cve_id"|cve_id)\s*[:(]/.test(t)) return "";
+
+      // Replace inline regex literals so their raw source can't match rules
+      // e.g.  const re = /jwt\.decode\s*\(/;   →   const re = "REGEX_LITERAL";
+      return line.replace(/\/(?:[^/\\\n]|\\.)+\/[gimsuy]*/g, '"REGEX_LITERAL"');
+    })
+    .join("\n");
+}
 
 // ── Breaking change detectors ─────────────────────────────────────────────────
 
@@ -340,7 +397,7 @@ function scoreQuality(
     (f.patch ?? "").split("\n").filter((l) => l.startsWith("+") && !l.startsWith("+++"))
   );
 
-  const patchText = linesAdded.join("\n");
+  const patchText = stripNonExecutable(linesAdded.join("\n"));
 
   for (const rule of QUALITY_RULES) {
     const matches = patchText.match(rule.pattern);
@@ -376,34 +433,50 @@ function scoreSecurity(
   const issues: string[] = [];
 
   for (const file of files) {
-    const addedLines = (file.patch ?? "")
-      .split("\n")
-      .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
-      .join("\n");
+    // Strip non-executable contexts (pattern definitions, comments, regex literals)
+    // before scanning — prevents false positives when a PR touches detection rule files.
+    const addedLines = stripNonExecutable(
+      (file.patch ?? "")
+        .split("\n")
+        .filter((l) => l.startsWith("+") && !l.startsWith("+++"))
+        .join("\n")
+    );
+
+    const seenRules = new Set<string>(); // deduplicate: one finding per rule per file
 
     for (const rule of SECURITY_RULES) {
+      if (seenRules.has(rule.id)) continue;
       const matches = addedLines.match(rule.pattern);
-      if (matches) {
-        const firstMatch = matches[0].slice(0, 80);
-        const deduction =
-          rule.severity === "critical" ? 30 :
-          rule.severity === "high" ? 20 :
-          rule.severity === "medium" ? 10 : 4;
-        score -= deduction;
+      if (!matches) continue;
 
-        if (findings.length < 8) {
-          findings.push({
-            severity: rule.severity,
-            category: "security",
-            file: file.filename,
-            description: rule.description(firstMatch, file.filename.split("/").slice(-2).join("/")),
-            suggestion: rule.suggestion,
-            codeSnippet: firstMatch.slice(0, 100),
-          });
-        }
+      seenRules.add(rule.id);
+      const firstMatch = matches[0].slice(0, 80);
 
-        issues.push(rule.description(firstMatch, file.filename.split("/").slice(-1)[0]).split(".")[0]);
+      // Confidence-based severity downgrade
+      const conf = rule.confidence ?? 0.85;
+      const effectiveSeverity: CodeReviewFinding["severity"] =
+        conf < 0.50 ? "low" :
+        conf < 0.65 ? "medium" :
+        rule.severity;
+
+      const deduction =
+        effectiveSeverity === "critical" ? 30 :
+        effectiveSeverity === "high" ? 20 :
+        effectiveSeverity === "medium" ? 10 : 4;
+      score -= deduction;
+
+      if (findings.length < 8) {
+        findings.push({
+          severity: effectiveSeverity,
+          category: "security",
+          file: file.filename,
+          description: rule.description(firstMatch, file.filename.split("/").slice(-2).join("/")),
+          suggestion: rule.suggestion,
+          codeSnippet: firstMatch.slice(0, 100),
+        });
       }
+
+      issues.push(rule.description(firstMatch, file.filename.split("/").slice(-1)[0]).split(".")[0]);
     }
   }
 

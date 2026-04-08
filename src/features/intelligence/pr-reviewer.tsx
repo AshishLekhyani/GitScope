@@ -167,6 +167,8 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
   const [result, setResult] = useState<CodeReviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [expandedSection, setExpandedSection] = useState<string | null>("findings");
+  const [severityFilter, setSeverityFilter] = useState<"all" | "critical" | "high" | "medium" | "low">("all");
+  const [findingsPage, setFindingsPage] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
 
   const parsePRInput = (input: string): { repo: string; prNumber: number } | null => {
@@ -508,23 +510,118 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
 
         {/* ── Collapsible sections ── */}
         {/* Findings */}
-        {result.findings.length > 0 && (
-          <Section
-            id="findings"
-            title={`Findings (${result.findings.length})`}
-            subtitle={`${criticalCount} critical · ${highCount} high`}
-            icon="bug_report"
-            badgeColor={criticalCount > 0 ? "text-red-400 bg-red-500/10 border-red-500/15" : "text-amber-400 bg-amber-500/10 border-amber-500/15"}
-            expanded={expandedSection === "findings"}
-            onToggle={() => setExpandedSection((s) => s === "findings" ? null : "findings")}
-          >
-            <div className="space-y-2">
-              {result.findings.map((f, i) => (
-                <FindingCard key={i} finding={f} defaultOpen={f.severity === "critical"} />
-              ))}
-            </div>
-          </Section>
-        )}
+        {result.findings.length > 0 && (() => {
+          const SEVERITIES = ["all", "critical", "high", "medium", "low"] as const;
+          const SEV_STYLE: Record<string, string> = {
+            all:      "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
+            critical: "bg-red-500/20 text-red-400 border-red-500/30",
+            high:     "bg-orange-500/20 text-orange-400 border-orange-500/30",
+            medium:   "bg-amber-500/20 text-amber-400 border-amber-500/30",
+            low:      "bg-surface-container text-muted-foreground border-outline-variant/30",
+          };
+          const filtered = severityFilter === "all"
+            ? result.findings
+            : result.findings.filter((f) => f.severity === severityFilter);
+          const PAGE_SIZE = 5;
+          const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+          const page = Math.min(findingsPage, pageCount - 1);
+          const visible = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+
+          return (
+            <Section
+              id="findings"
+              title={`Findings (${result.findings.length})`}
+              subtitle={`${criticalCount} critical · ${highCount} high`}
+              icon="bug_report"
+              badgeColor={criticalCount > 0 ? "text-red-400 bg-red-500/10 border-red-500/15" : "text-amber-400 bg-amber-500/10 border-amber-500/15"}
+              expanded={expandedSection === "findings"}
+              onToggle={() => setExpandedSection((s) => s === "findings" ? null : "findings")}
+            >
+              {/* Severity filter chips */}
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {SEVERITIES.map((sev) => {
+                  const count = sev === "all"
+                    ? result.findings.length
+                    : result.findings.filter((f) => f.severity === sev).length;
+                  if (count === 0 && sev !== "all") return null;
+                  return (
+                    <button
+                      key={sev}
+                      type="button"
+                      aria-label={`Filter by ${sev}`}
+                      onClick={() => { setSeverityFilter(sev); setFindingsPage(0); }}
+                      className={cn(
+                        "flex items-center gap-1 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider border transition-all",
+                        severityFilter === sev
+                          ? SEV_STYLE[sev]
+                          : "bg-surface-container/40 text-muted-foreground/50 border-outline-variant/10 hover:border-outline-variant/25"
+                      )}
+                    >
+                      {sev === "all" ? "All" : sev}
+                      <span className="opacity-60">({count})</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Findings list */}
+              {filtered.length === 0 ? (
+                <p className="text-center text-xs text-muted-foreground/40 py-6">
+                  No {severityFilter} findings
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {visible.map((f, i) => (
+                    <FindingCard key={`${page}-${i}`} finding={f} defaultOpen={f.severity === "critical"} />
+                  ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {pageCount > 1 && (
+                <div className="flex items-center justify-between pt-3 mt-1 border-t border-outline-variant/10">
+                  <span className="text-[9px] font-mono text-muted-foreground/40">
+                    {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} of {filtered.length}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      aria-label="Previous page"
+                      onClick={() => setFindingsPage((p) => Math.max(0, p - 1))}
+                      disabled={page === 0}
+                      className="p-1.5 rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30"
+                    >
+                      <MaterialIcon name="chevron_left" size={14} className="text-muted-foreground" />
+                    </button>
+                    {Array.from({ length: pageCount }, (_, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        aria-label={`Page ${i + 1}`}
+                        onClick={() => setFindingsPage(i)}
+                        className={cn(
+                          "size-6 rounded-lg text-[9px] font-black transition-all",
+                          page === i ? "bg-indigo-500 text-white" : "text-muted-foreground hover:bg-surface-container"
+                        )}
+                      >
+                        {i + 1}
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      aria-label="Next page"
+                      onClick={() => setFindingsPage((p) => Math.min(pageCount - 1, p + 1))}
+                      disabled={page === pageCount - 1}
+                      className="p-1.5 rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30"
+                    >
+                      <MaterialIcon name="chevron_right" size={14} className="text-muted-foreground" />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Section>
+          );
+        })()}
 
         {/* Security issues */}
         {result.securityIssues.length > 0 && (

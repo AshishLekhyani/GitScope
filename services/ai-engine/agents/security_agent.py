@@ -74,6 +74,47 @@ class SecurityAgent(BaseAgent):
             positives=positives[:4],
         ))
 
+    @staticmethod
+    def _strip_non_executable(code: str) -> str:
+        """
+        Remove non-executable contexts before pattern scanning.
+
+        Prevents false positives when a PR diff touches files that *define*
+        detection rules (vuln_patterns.py, security_agent.py, etc.) — those
+        files contain strings like  "pattern": r"eval\\("  which would
+        otherwise trigger the very rules they define.
+
+        Strips / neutralises:
+          - Comment-only lines  (# ... / // ... / * ...)
+          - Lines that ARE a pattern/regex rule definition
+          - Description / suggestion / id prose fields
+          - Inline JS/TS regex literals (replaced with placeholder)
+        """
+        cleaned = []
+        for line in code.splitlines():
+            t = line.strip()
+            if not t:
+                cleaned.append("")
+                continue
+            # Skip comment-only lines
+            if t.startswith("#") or t.startswith("//") or re.match(r"^\*(?!/)", t):
+                cleaned.append("")
+                continue
+            # Skip pattern rule definition lines
+            # e.g.  "pattern": r"eval\s*\(",
+            # e.g.  pattern: /eval\s*\(/g,
+            if re.search(r'\bpattern\s*[=:]\s*(?:r["\'/]|/)', t):
+                cleaned.append("")
+                continue
+            # Skip description / suggestion / id / cve prose fields
+            if re.search(r'^\s*"(?:description|suggestion|id|cve_id|tags)"\s*:', t):
+                cleaned.append("")
+                continue
+            # Neutralise inline JS/TS regex literals
+            line = re.sub(r"/(?:[^/\\\n]|\\.)+/[gimsuy]*", '"REGEX_LITERAL"', line)
+            cleaned.append(line)
+        return "\n".join(cleaned)
+
     def _scan_diff(self, files: list[dict]) -> tuple[list[Finding], list[str]]:
         findings: list[Finding] = []
         positives: list[str] = []
@@ -85,24 +126,43 @@ class SecurityAgent(BaseAgent):
                 line[1:] for line in patch.splitlines()
                 if line.startswith("+") and not line.startswith("+++")
             ]
-            code = "\n".join(added_lines)
+            # Strip non-executable contexts to eliminate false positives
+            # when scanning detection-rule files (pattern definitions, comments, etc.)
+            code = self._strip_non_executable("\n".join(added_lines))
 
-            # Run all vulnerability patterns
+            seen_rules: set[str] = set()  # one finding per rule per file
+
             for vuln in VULN_PATTERNS:
+                rule_id = vuln["id"]
+                if rule_id in seen_rules:
+                    continue
+
                 matches = re.findall(vuln["pattern"], code, re.IGNORECASE | re.MULTILINE)
-                if matches:
-                    snippet = str(matches[0])[:100] if matches else None
-                    findings.append(Finding(
-                        severity=vuln["severity"],
-                        category=vuln.get("category", "security"),
-                        description=vuln["description"].format(file=filename.split("/")[-1], match=snippet or ""),
-                        suggestion=vuln["suggestion"],
-                        file=filename,
-                        code_snippet=snippet,
-                        confidence=vuln.get("confidence", 0.85),
-                        rule_id=vuln["id"],
-                        cve_id=vuln.get("cve_id"),
-                    ))
+                if not matches:
+                    continue
+
+                seen_rules.add(rule_id)
+                snippet = str(matches[0])[:100]
+
+                # Confidence-based severity downgrade — broad patterns report lower
+                conf = vuln.get("confidence", 0.85)
+                severity = vuln["severity"]
+                if conf < 0.50:
+                    severity = "low"
+                elif conf < 0.65:
+                    severity = "medium" if severity in ("critical", "high") else severity
+
+                findings.append(Finding(
+                    severity=severity,
+                    category=vuln.get("category", "security"),
+                    description=vuln["description"].format(file=filename.split("/")[-1], match=snippet),
+                    suggestion=vuln["suggestion"],
+                    file=filename,
+                    code_snippet=snippet,
+                    confidence=conf,
+                    rule_id=rule_id,
+                    cve_id=vuln.get("cve_id"),
+                ))
 
         return findings, positives
 
