@@ -54,19 +54,21 @@ def _get_pool():
     if _pool is not None:
         return _pool
     if not DATABASE_URL:
-        logger.warning("DATABASE_URL not set — vector store disabled")
+        logger.warning("DATABASE_URL not set — vector store disabled. Set DATABASE_URL in environment.")
         return None
     try:
         import psycopg2.pool
+        logger.info(f"Connecting to Neon PostgreSQL... (host: {DATABASE_URL.split('@')[-1].split('/')[0] if '@' in DATABASE_URL else 'unknown'})")
         _pool = psycopg2.pool.ThreadedConnectionPool(
             minconn=1,
             maxconn=5,
             dsn=_clean_dsn(DATABASE_URL),
         )
-        logger.info("PostgreSQL (Neon) connection pool ready")
+        logger.info("PostgreSQL (Neon) connection pool ready ✓")
         _ensure_schema()
     except Exception as e:
-        logger.error(f"PostgreSQL connection failed: {e}")
+        logger.error(f"PostgreSQL connection FAILED: {e}")
+        logger.error("Check: 1) DATABASE_URL is correct  2) Neon DB is active  3) sslmode=require is in the URL")
         _pool = None
     return _pool
 
@@ -366,15 +368,25 @@ def store_repo_profile(repo: str, profile: dict[str, Any]) -> bool:
         }
 
         with conn.cursor() as cur:
-            cur.execute("""
-                INSERT INTO gitscope_repo_profiles (repo, embedding, profile_text, meta)
-                VALUES (%s, %s::vector, %s, %s)
-                ON CONFLICT (repo) DO UPDATE SET
-                    embedding    = EXCLUDED.embedding,
-                    profile_text = EXCLUDED.profile_text,
-                    meta         = EXCLUDED.meta,
-                    updated_at   = NOW()
-            """, (repo, vec_str, profile_text, json.dumps(safe_profile)))
+            if vec_str:
+                cur.execute("""
+                    INSERT INTO gitscope_repo_profiles (repo, embedding, profile_text, meta)
+                    VALUES (%s, %s::vector, %s, %s)
+                    ON CONFLICT (repo) DO UPDATE SET
+                        embedding    = EXCLUDED.embedding,
+                        profile_text = EXCLUDED.profile_text,
+                        meta         = EXCLUDED.meta,
+                        updated_at   = NOW()
+                """, (repo, vec_str, profile_text, json.dumps(safe_profile)))
+            else:
+                cur.execute("""
+                    INSERT INTO gitscope_repo_profiles (repo, profile_text, meta)
+                    VALUES (%s, %s, %s)
+                    ON CONFLICT (repo) DO UPDATE SET
+                        profile_text = EXCLUDED.profile_text,
+                        meta         = EXCLUDED.meta,
+                        updated_at   = NOW()
+                """, (repo, profile_text, json.dumps(safe_profile)))
             conn.commit()
         return True
     except Exception as e:
