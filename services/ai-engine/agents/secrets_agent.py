@@ -826,7 +826,7 @@ _SECRET_RULES: list[dict] = [
         "category": "docker",
         "rule_id": "docker-auth-base64",
         "pattern": re.compile(
-            r""""auth"\s*:\s*"([A-Za-z0-9+/=]{20,})"""",
+            r'''"auth"\s*:\s*"([A-Za-z0-9+/=]{20,})"''',
         ),
         "severity": "high",
         "description": "Docker registry base64 auth credential detected.",
