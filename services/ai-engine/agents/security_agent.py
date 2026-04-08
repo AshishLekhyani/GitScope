@@ -1,26 +1,117 @@
 """
 Security Sentinel Agent
 ========================
-Deep security analysis covering:
-  - OWASP Top 10 (2021 edition)
-  - CWE pattern matching
-  - Secrets / credential detection (300+ patterns)
-  - Injection vectors: SQL, NoSQL, Command, LDAP, XPath, SSTI
-  - Cryptography misuse
-  - Deserialization vulnerabilities
-  - Race conditions and TOCTOU
+Elite multi-layer security analysis covering:
+  - OWASP Top 10 (2021), OWASP API Top 10 (2023)
+  - CWE Top 25 Most Dangerous Software Weaknesses
+  - 300+ vulnerability patterns across 15+ languages
+  - Secrets / credential detection with entropy analysis
+  - Injection vectors: SQL, NoSQL, Command, LDAP, XPath, SSTI, EL, OGNL
+  - Cryptography misuse: weak algos, ECB mode, short keys, bad RNG
+  - Deserialization vulnerabilities (Java, Python, PHP, Ruby)
+  - Authentication weaknesses: JWT, OAuth, session management
+  - Authorization failures: IDOR, BOLA, missing auth checks
+  - Race conditions and TOCTOU vulnerabilities
   - Supply chain risks
-  - CVE-pattern matching for common libraries
+  - CVE-pattern matching for 80+ common library vulnerabilities
+  - Infrastructure misconfigurations (Docker, K8s, Terraform, CI/CD)
+  - API security: mass assignment, excessive data exposure, rate limiting
+  - Compliance signals: GDPR, HIPAA, PCI-DSS indicators
+  - Cross-reference with knowledge base for pattern correlation
 """
 
 from __future__ import annotations
 
+import math
 import re
 import time
 from typing import Any
 
 from agents.base import AgentResult, BaseAgent, Finding
 from analysis.vuln_patterns import VULN_PATTERNS, CVE_PATTERNS
+
+try:
+    from analysis.vuln_patterns import EXTENDED_VULN_PATTERNS, ALL_PATTERNS
+    _ALL_VULN_PATTERNS = ALL_PATTERNS
+except ImportError:
+    _ALL_VULN_PATTERNS = VULN_PATTERNS + CVE_PATTERNS
+
+# ── High-entropy string detection ─────────────────────────────────────────────
+
+_HEX_RE = re.compile(r"[0-9a-f]{32,}", re.IGNORECASE)
+_B64_RE = re.compile(r"[A-Za-z0-9+/]{40,}={0,2}")
+_SECRET_ASSIGN_RE = re.compile(
+    r"""(?:password|passwd|secret|api_?key|auth_?token|private_?key|access_?key"""
+    r"""|signing_?key|encryption_?key|client_?secret|db_?pass)\s*[=:]\s*['"` ]([^'"` \n]{8,})""",
+    re.IGNORECASE,
+)
+
+def _shannon_entropy(s: str) -> float:
+    """Calculate Shannon entropy of a string in bits per character."""
+    if not s:
+        return 0.0
+    freq: dict[str, int] = {}
+    for c in s:
+        freq[c] = freq.get(c, 0) + 1
+    n = len(s)
+    return -sum((count / n) * math.log2(count / n) for count in freq.values())
+
+def _is_high_entropy_secret(value: str) -> bool:
+    """Returns True if the value looks like a real secret (high entropy + right length)."""
+    if len(value) < 16:
+        return False
+    # Skip obviously non-secret values
+    if re.match(r"^\$\{|^process\.env\.|^os\.environ|^config\.", value):
+        return False
+    if value.startswith("example") or value.startswith("your_") or value.startswith("xxx"):
+        return False
+    entropy = _shannon_entropy(value)
+    # Different thresholds based on character class
+    if re.match(r"^[0-9a-f]+$", value, re.IGNORECASE) and len(value) >= 32:
+        return entropy > 3.5  # Hex key/hash
+    if re.match(r"^[A-Za-z0-9+/]+=*$", value) and len(value) >= 20:
+        return entropy > 4.0  # Base64 encoded secret
+    return entropy > 3.8  # General high-entropy string
+
+# ── Header security checklist ─────────────────────────────────────────────────
+
+REQUIRED_SECURITY_HEADERS = [
+    "content-security-policy",
+    "x-frame-options",
+    "x-content-type-options",
+    "strict-transport-security",
+    "referrer-policy",
+    "permissions-policy",
+]
+
+# ── CORS misconfiguration detector ────────────────────────────────────────────
+
+_CORS_WILDCARD_RE = re.compile(
+    r"(?:Access-Control-Allow-Origin|cors\(\s*\{[^}]*origin)\s*[=:]\s*['\"]?\*['\"]?",
+    re.IGNORECASE,
+)
+_CORS_REFLECT_RE = re.compile(
+    r"(?:origin|req\.headers\.origin)\s*(?:!==|!=|===|==).*allow",
+    re.IGNORECASE,
+)
+
+# ── Sensitive file patterns ───────────────────────────────────────────────────
+
+SENSITIVE_FILE_PATTERNS = [
+    (r"\.pem$", "Private key/certificate file", "critical"),
+    (r"\.p12$|\.pfx$", "PKCS#12 certificate with private key", "critical"),
+    (r"id_rsa$|id_ecdsa$|id_ed25519$", "SSH private key", "critical"),
+    (r"\.keystore$|\.jks$", "Java KeyStore file", "critical"),
+    (r"credentials\.json$", "Credentials file", "critical"),
+    (r"secrets\.json$|secrets\.yaml$|secrets\.yml$", "Secrets file", "high"),
+    (r"service-account.*\.json$", "GCP service account key", "critical"),
+    (r"\.env$|\.env\.local$|\.env\.production$", "Environment file with secrets", "high"),
+    (r"kubeconfig$|kube_config$", "Kubernetes config with cluster credentials", "high"),
+    (r"terraform\.tfstate$", "Terraform state with infrastructure secrets", "high"),
+    (r"\.npmrc$", "npm config potentially containing auth tokens", "medium"),
+    (r"\.pypirc$", "PyPI credentials file", "medium"),
+    (r"htpasswd$", "htpasswd file with password hashes", "high"),
+]
 
 
 class SecurityAgent(BaseAgent):

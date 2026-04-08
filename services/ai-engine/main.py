@@ -14,10 +14,13 @@ Endpoints:
 
 import asyncio
 import json
+import logging
 import os
 import time
 import traceback
 from typing import AsyncGenerator
+
+logger = logging.getLogger(__name__)
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
@@ -32,15 +35,31 @@ from contextlib import asynccontextmanager
 
 @asynccontextmanager
 async def lifespan(app):
-    # Startup: warm up singletons and start background learning
-    try:
-        get_knowledge_base()
-    except Exception:
-        pass
-    from crawler.scheduler import start_background_learning
-    start_background_learning()
+    # Startup: kick off heavy init in the background so the health probe
+    # can respond immediately.  Render marks the service healthy as soon as
+    # /health returns 200; we don't need the model to be loaded by then.
+    async def _deferred_init():
+        import asyncio
+        await asyncio.sleep(2)          # let the server bind its port first
+        try:
+            get_orchestrator()           # initialises KB + loads agents
+        except Exception:
+            pass
+        try:
+            from crawler.scheduler import start_background_learning
+            start_background_learning()
+        except Exception:
+            pass
+        try:
+            # Pre-download the embedding model in the background
+            from memory.vector_store import _get_embed_model
+            await asyncio.to_thread(_get_embed_model)
+        except Exception:
+            pass
+
+    asyncio.create_task(_deferred_init())
     yield
-    # Shutdown: nothing to clean up (ChromaDB persists automatically)
+    # Shutdown: nothing to clean up (Neon persists automatically)
 
 app = FastAPI(
     lifespan=lifespan,
@@ -186,13 +205,44 @@ async def global_exception_handler(request: Request, exc: Exception):
 @app.get("/health")
 async def health():
     """
+    Liveness probe — always returns 200 quickly so Render marks the service
+    healthy while heavy init (DB, embedding model) finishes in the background.
+
+    For a detailed subsystem check, use GET /health/deep.
+    """
+    # Report whether the heavy singletons have already initialised,
+    # but never block waiting for them.
+    orch_ready = _orchestrator is not None
+    kb_ready = _knowledge_base is not None
+
+    return {
+        "status": "ok",
+        "version": "2.0.0",
+        "engine": "gitscope-neural-v2",
+        "ready": orch_ready,
+        "orchestrator": "ready" if orch_ready else "initialising",
+        "knowledge_base": "ready" if kb_ready else "initialising",
+        "capabilities": [
+            "multi-agent-orchestration",
+            "debate-peer-review",
+            "self-learning",
+            "semantic-embeddings",
+            "cve-pattern-matching",
+            "cross-language-analysis",
+        ],
+        "learning_enabled": os.getenv("GITSCOPE_AUTO_LEARN", "0") == "1",
+    }
+
+
+@app.get("/health/deep")
+async def health_deep():
+    """
     Deep health check — verifies all subsystems are operational.
-    Returns 200 if all systems healthy, 206 if degraded but usable.
+    May take a few seconds. Do not use as the Render health probe.
     """
     checks: dict[str, str] = {}
     overall_ok = True
 
-    # Check orchestrator
     try:
         orch = get_orchestrator()
         checks["orchestrator"] = f"ok ({len(orch._agent_classes)} agents)"
@@ -200,20 +250,16 @@ async def health():
         checks["orchestrator"] = f"error: {str(e)[:80]}"
         overall_ok = False
 
-    # Check knowledge base / ChromaDB
     try:
         kb = get_knowledge_base()
         stats = kb.get_stats()
         checks["knowledge_base"] = f"ok ({stats.get('total_patterns', 0)} patterns)"
     except Exception as e:
         checks["knowledge_base"] = f"degraded: {str(e)[:80]}"
-        # KB failure = degraded, not fatal
 
-    # Check embedding model
     try:
-        from memory.vector_store import _get_embed_model
-        model = _get_embed_model()
-        checks["embeddings"] = "ok" if model else "disabled (model not loaded)"
+        from memory.vector_store import _embed_model
+        checks["embeddings"] = "ok" if _embed_model else "loading (first request may be slower)"
     except Exception as e:
         checks["embeddings"] = f"degraded: {str(e)[:80]}"
 
@@ -222,18 +268,6 @@ async def health():
         "version": "2.0.0",
         "engine": "gitscope-neural-v2",
         "checks": checks,
-        "capabilities": [
-            "multi-agent-orchestration",
-            "debate-peer-review",
-            "self-learning",
-            "self-synthesis",
-            "ast-analysis",
-            "cyclomatic-complexity",
-            "semantic-embeddings",
-            "cve-pattern-matching",
-            "cross-language-analysis",
-            "auto-error-recovery",
-        ],
         "knowledge": checks.get("knowledge_base", "unknown"),
         "learning_enabled": os.getenv("GITSCOPE_AUTO_LEARN", "0") == "1",
     }

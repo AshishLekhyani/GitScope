@@ -36,14 +36,20 @@ class Orchestrator:
         from agents.performance_agent import PerformanceAgent
         from agents.dependency_agent import DependencyAgent
         from agents.learner_agent import LearnerAgent
+        from agents.compliance_agent import ComplianceAgent
+        from agents.supply_chain_agent import SupplyChainAgent
+        from agents.secrets_agent import SecretsAgent
         # Phase 1 agents — run concurrently
         self._agent_classes = [
             SecurityAgent,
+            SecretsAgent,
             QualityAgent,
             ArchitectureAgent,
             PerformanceAgent,
             DependencyAgent,
             LearnerAgent,
+            ComplianceAgent,
+            SupplyChainAgent,
         ]
         # Phase 2 — runs after Phase 1 with all results as context
         from agents.debate_agent import DebateAgent
@@ -370,7 +376,7 @@ class Orchestrator:
                     unique_findings.append(f)
 
         # Weighted consensus score (debate agent excluded from scoring — it's a meta-layer)
-        weights = {"security": 0.30, "quality": 0.20, "architecture": 0.15, "performance": 0.15, "dependency": 0.10, "learner": 0.10}
+        weights = {"security": 0.20, "secrets": 0.12, "quality": 0.15, "architecture": 0.11, "performance": 0.10, "dependency": 0.09, "learner": 0.07, "compliance": 0.09, "supply_chain": 0.07}
         total_weight = 0.0
         weighted_score = 0.0
         for r in results:
@@ -472,7 +478,7 @@ class Orchestrator:
         for r in results:
             all_findings.extend(r.findings)
 
-        weights = {"security": 0.30, "quality": 0.20, "architecture": 0.15, "performance": 0.10, "dependency": 0.15, "learner": 0.10}
+        weights = {"security": 0.25, "quality": 0.18, "architecture": 0.13, "performance": 0.10, "dependency": 0.12, "learner": 0.08, "compliance": 0.08, "supply_chain": 0.06}
         weighted_score = sum(r.score * weights.get(r.agent_id, 0.10) for r in results)
         total_weight = sum(weights.get(r.agent_id, 0.10) for r in results)
         health_score = int(weighted_score / total_weight) if total_weight > 0 else 60

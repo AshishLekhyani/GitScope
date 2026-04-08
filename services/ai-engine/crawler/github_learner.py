@@ -141,6 +141,151 @@ LEARNING_TARGETS: list[dict] = [
     {"q": "topic:flutter stars:>2000 sort:stars", "label": "flutter-projects"},
     {"q": "topic:android-security stars:>200 sort:stars", "label": "android-security"},
     {"q": "topic:ios-security stars:>200 sort:stars", "label": "ios-security"},
+
+    # ── Elixir / Erlang ──────────────────────────────────────────────────────
+    {"q": "language:elixir stars:>2000 sort:stars", "label": "elixir-top"},
+    {"q": "language:elixir topic:phoenix stars:>500 sort:stars", "label": "phoenix-framework"},
+    {"q": "language:erlang stars:>1000 topic:otp sort:stars", "label": "erlang-otp"},
+
+    # ── Haskell / Functional ─────────────────────────────────────────────────
+    {"q": "language:haskell stars:>1000 sort:stars", "label": "haskell-top"},
+    {"q": "language:haskell topic:security stars:>100 sort:stars", "label": "haskell-security"},
+
+    # ── Dart / Flutter ───────────────────────────────────────────────────────
+    {"q": "language:dart topic:flutter stars:>2000 sort:stars", "label": "dart-flutter"},
+    {"q": "language:dart topic:firebase stars:>500 sort:stars", "label": "dart-firebase"},
+
+    # ── TypeScript Advanced Patterns ─────────────────────────────────────────
+    {"q": "language:typescript topic:monorepo stars:>500 sort:stars", "label": "ts-monorepo"},
+    {"q": "language:typescript topic:prisma stars:>500 sort:stars", "label": "ts-prisma"},
+    {"q": "language:typescript topic:trpc stars:>500 sort:stars", "label": "ts-trpc"},
+    {"q": "language:typescript topic:zod stars:>300 sort:stars", "label": "ts-zod-validation"},
+    {"q": "language:typescript topic:drizzle stars:>200 sort:stars", "label": "ts-drizzle"},
+    {"q": "language:typescript topic:vitest stars:>300 sort:stars", "label": "ts-vitest"},
+    {"q": "language:typescript topic:bun stars:>500 sort:stars", "label": "bun-runtime"},
+    {"q": "language:typescript topic:deno stars:>1000 sort:stars", "label": "deno-projects"},
+    {"q": "language:typescript topic:hono stars:>300 sort:stars", "label": "hono-framework"},
+    {"q": "language:typescript topic:astro stars:>500 sort:stars", "label": "astro-framework"},
+    {"q": "language:typescript topic:remix stars:>500 sort:stars", "label": "remix-framework"},
+
+    # ── Python Advanced ───────────────────────────────────────────────────────
+    {"q": "language:python topic:pydantic stars:>1000 sort:stars", "label": "py-pydantic"},
+    {"q": "language:python topic:sqlalchemy stars:>1000 sort:stars", "label": "py-sqlalchemy"},
+    {"q": "language:python topic:celery stars:>500 sort:stars", "label": "py-celery"},
+    {"q": "language:python topic:pytest stars:>500 sort:stars", "label": "py-pytest"},
+    {"q": "language:python topic:langchain stars:>2000 sort:stars", "label": "py-langchain"},
+    {"q": "language:python topic:airflow stars:>1000 sort:stars", "label": "py-airflow"},
+    {"q": "language:python topic:scrapy stars:>500 sort:stars", "label": "py-scrapy"},
+    {"q": "language:python topic:cryptography stars:>500 sort:stars", "label": "py-crypto"},
+    {"q": "language:python topic:grpc stars:>500 sort:stars", "label": "py-grpc"},
+
+    # ── Go Advanced ──────────────────────────────────────────────────────────
+    {"q": "language:go topic:grpc stars:>500 sort:stars", "label": "go-grpc"},
+    {"q": "language:go topic:cobra stars:>500 sort:stars", "label": "go-cobra-cli"},
+    {"q": "language:go topic:prometheus stars:>500 sort:stars", "label": "go-prometheus"},
+    {"q": "language:go topic:pgx stars:>300 sort:stars", "label": "go-pgx"},
+    {"q": "language:go topic:zerolog stars:>200 sort:stars", "label": "go-zerolog"},
+    {"q": "language:go topic:air stars:>300 sort:stars", "label": "go-air"},
+
+    # ── Rust Advanced ────────────────────────────────────────────────────────
+    {"q": "language:rust topic:axum stars:>1000 sort:stars", "label": "rust-axum"},
+    {"q": "language:rust topic:tokio stars:>1000 sort:stars", "label": "rust-tokio"},
+    {"q": "language:rust topic:actix-web stars:>1000 sort:stars", "label": "rust-actix"},
+    {"q": "language:rust topic:sqlx stars:>500 sort:stars", "label": "rust-sqlx"},
+    {"q": "language:rust topic:serde stars:>500 sort:stars", "label": "rust-serde"},
+    {"q": "language:rust topic:clap stars:>500 sort:stars", "label": "rust-clap"},
+
+    # ── Java Advanced ─────────────────────────────────────────────────────────
+    {"q": "language:java topic:quarkus stars:>1000 sort:stars", "label": "java-quarkus"},
+    {"q": "language:java topic:micronaut stars:>500 sort:stars", "label": "java-micronaut"},
+    {"q": "language:java topic:vertx stars:>500 sort:stars", "label": "java-vertx"},
+    {"q": "language:java topic:grpc stars:>300 sort:stars", "label": "java-grpc"},
+    {"q": "language:java topic:jwt stars:>300 sort:stars", "label": "java-jwt"},
+    {"q": "language:java topic:reactive stars:>500 sort:stars", "label": "java-reactive"},
+
+    # ── Security Research & Tools ─────────────────────────────────────────────
+    {"q": "topic:exploit stars:>500 sort:stars", "label": "exploit-research"},
+    {"q": "topic:vulnerability-scanner stars:>300 sort:stars", "label": "vuln-scanners"},
+    {"q": "topic:fuzzing stars:>300 sort:stars", "label": "fuzzing-tools"},
+    {"q": "topic:static-analysis stars:>500 sort:stars", "label": "static-analysis-tools"},
+    {"q": "topic:sast stars:>200 sort:stars", "label": "sast-tools"},
+    {"q": "topic:dast stars:>200 sort:stars", "label": "dast-tools"},
+    {"q": "topic:semgrep stars:>500 sort:stars", "label": "semgrep-rules"},
+    {"q": "topic:codeql stars:>300 sort:stars", "label": "codeql-queries"},
+    {"q": "topic:burp-suite stars:>200 sort:stars", "label": "burp-extensions"},
+    {"q": "topic:jwt-attacks stars:>100 sort:stars", "label": "jwt-security"},
+    {"q": "topic:supply-chain-attacks stars:>100 sort:stars", "label": "supply-chain-attacks"},
+    {"q": "topic:typosquatting stars:>50 sort:stars", "label": "typosquatting"},
+
+    # ── Cloud Native & Observability ──────────────────────────────────────────
+    {"q": "topic:opentelemetry stars:>500 sort:stars", "label": "opentelemetry"},
+    {"q": "topic:prometheus stars:>500 sort:stars", "label": "prometheus"},
+    {"q": "topic:grafana stars:>500 sort:stars", "label": "grafana"},
+    {"q": "topic:istio stars:>500 sort:stars", "label": "istio-service-mesh"},
+    {"q": "topic:envoy stars:>500 sort:stars", "label": "envoy-proxy"},
+    {"q": "topic:argocd stars:>500 sort:stars", "label": "argocd-gitops"},
+    {"q": "topic:helm stars:>500 sort:stars", "label": "helm-charts"},
+    {"q": "topic:kustomize stars:>300 sort:stars", "label": "kustomize"},
+    {"q": "topic:crossplane stars:>300 sort:stars", "label": "crossplane"},
+    {"q": "topic:vault stars:>500 sort:stars", "label": "hashicorp-vault"},
+    {"q": "topic:consul stars:>300 sort:stars", "label": "hashicorp-consul"},
+
+    # ── GraphQL / gRPC ────────────────────────────────────────────────────────
+    {"q": "topic:graphql-security stars:>100 sort:stars", "label": "graphql-security"},
+    {"q": "topic:graphql-api stars:>500 sort:stars", "label": "graphql-apis"},
+    {"q": "topic:grpc stars:>500 sort:stars", "label": "grpc-projects"},
+    {"q": "topic:protobuf stars:>500 sort:stars", "label": "protobuf-definitions"},
+
+    # ── Zero Trust / Identity ─────────────────────────────────────────────────
+    {"q": "topic:zero-trust stars:>200 sort:stars", "label": "zero-trust"},
+    {"q": "topic:oidc stars:>300 sort:stars", "label": "oidc-implementations"},
+    {"q": "topic:oauth2 stars:>500 sort:stars", "label": "oauth2-implementations"},
+    {"q": "topic:passkeys stars:>200 sort:stars", "label": "passkeys-webauthn"},
+    {"q": "topic:webauthn stars:>300 sort:stars", "label": "webauthn-fido2"},
+    {"q": "topic:keycloak stars:>300 sort:stars", "label": "keycloak-iam"},
+
+    # ── Data Engineering ─────────────────────────────────────────────────────
+    {"q": "topic:apache-kafka stars:>1000 sort:stars", "label": "kafka-projects"},
+    {"q": "topic:apache-spark stars:>1000 sort:stars", "label": "spark-projects"},
+    {"q": "topic:dbt stars:>500 sort:stars", "label": "dbt-analytics"},
+    {"q": "topic:databricks stars:>300 sort:stars", "label": "databricks-projects"},
+    {"q": "topic:duckdb stars:>500 sort:stars", "label": "duckdb-analytics"},
+    {"q": "topic:clickhouse stars:>500 sort:stars", "label": "clickhouse-olap"},
+    {"q": "topic:snowflake stars:>300 sort:stars", "label": "snowflake-dw"},
+
+    # ── AI / LLM Security ────────────────────────────────────────────────────
+    {"q": "topic:prompt-injection stars:>200 sort:stars", "label": "prompt-injection"},
+    {"q": "topic:llm-security stars:>200 sort:stars", "label": "llm-security"},
+    {"q": "topic:ai-safety stars:>300 sort:stars", "label": "ai-safety"},
+    {"q": "topic:guardrails stars:>200 sort:stars", "label": "llm-guardrails"},
+    {"q": "topic:langchain stars:>1000 sort:stars", "label": "langchain-patterns"},
+    {"q": "topic:llamaindex stars:>500 sort:stars", "label": "llamaindex-rag"},
+    {"q": "topic:rag stars:>300 sort:stars", "label": "rag-patterns"},
+
+    # ── WebAssembly ───────────────────────────────────────────────────────────
+    {"q": "topic:webassembly stars:>500 sort:stars", "label": "wasm-projects"},
+    {"q": "topic:wasmtime stars:>300 sort:stars", "label": "wasmtime-runtime"},
+    {"q": "topic:wasi stars:>200 sort:stars", "label": "wasi-projects"},
+
+    # ── Embedded / IoT ────────────────────────────────────────────────────────
+    {"q": "topic:embedded stars:>500 sort:stars", "label": "embedded-systems"},
+    {"q": "topic:iot-security stars:>200 sort:stars", "label": "iot-security"},
+    {"q": "topic:firmware-security stars:>100 sort:stars", "label": "firmware-security"},
+
+    # ── Privacy Engineering ───────────────────────────────────────────────────
+    {"q": "topic:gdpr stars:>200 sort:stars", "label": "gdpr-tools"},
+    {"q": "topic:differential-privacy stars:>200 sort:stars", "label": "differential-privacy"},
+    {"q": "topic:privacy-engineering stars:>100 sort:stars", "label": "privacy-engineering"},
+    {"q": "topic:data-anonymization stars:>100 sort:stars", "label": "data-anonymization"},
+
+    # ── Game Development Security ─────────────────────────────────────────────
+    {"q": "language:csharp topic:unity stars:>1000 sort:stars", "label": "unity-security"},
+    {"q": "language:cpp topic:unreal stars:>500 sort:stars", "label": "unreal-security"},
+
+    # ── Blockchain / Web3 ─────────────────────────────────────────────────────
+    {"q": "topic:smart-contract-security stars:>300 sort:stars", "label": "smart-contract-security"},
+    {"q": "topic:solidity-security stars:>200 sort:stars", "label": "solidity-security"},
+    {"q": "topic:defi-security stars:>100 sort:stars", "label": "defi-security"},
 ]
 
 # Files to extract patterns from — covers all supported languages
