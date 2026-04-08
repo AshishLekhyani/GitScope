@@ -16,6 +16,8 @@ enum AiTier {
 
 enum AiJobType {
   deepImpact
+  codeReview
+  repoScan
 }
 
 enum AiJobStatus {
@@ -85,6 +87,7 @@ model User {
   aiUsageEvents   AiUsageEvent[]
   aiAnalysisJobs  AiAnalysisJob[]
   bookmarks       Bookmark[]
+  codeReviewScans CodeReviewScan[]
 
   @@map("users")
 }
@@ -209,6 +212,24 @@ model Bookmark {
   @@unique([userId, owner, repo])
   @@index([userId])
   @@map("bookmarks")
+}
+
+model CodeReviewScan {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repo        String
+  prNumber    Int?     @map("pr_number")
+  commitSha   String?  @map("commit_sha")
+  scanMode    String   @default("quick") @map("scan_mode")
+  analysisType String  @default("pr") @map("analysis_type")
+  result      Json
+  tokensUsed  Int      @default(0) @map("tokens_used")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId, repo])
+  @@index([createdAt])
+  @@map("code_review_scans")
 }
 
 // identifier prefixes:

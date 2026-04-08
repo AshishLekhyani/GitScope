@@ -22,6 +22,7 @@ export const ROUTES = {
   changelog: "/changelog",
   login: "/login",
   signup: "/login?mode=signup",
+  repos: "/repos",
   // New dashboard pages
   notifications: "/notifications",
   bookmarks: "/bookmarks",

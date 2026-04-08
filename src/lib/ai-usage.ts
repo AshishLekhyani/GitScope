@@ -9,7 +9,9 @@ export type AiUsageFeature =
   | "security-scan"
   | "dora-metrics"
   | "dependency-map"
-  | "repo-analysis";
+  | "repo-analysis"
+  | "code-review"
+  | "repo-scan";
 
 export interface UsageBudgetResult {
   allowed: boolean;

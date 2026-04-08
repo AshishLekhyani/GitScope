@@ -6,7 +6,7 @@ import { DependencyRadar } from "@/features/intelligence/dependency-radar";
 import { VelocityChart } from "@/features/intelligence/velocity-chart";
 import { IntelligenceSearch } from "@/features/intelligence/intelligence-search";
 import { RiskPredictor } from "@/features/intelligence/risk-predictor";
-import { IntelligenceDemoModal } from "@/components/modals/intelligence-demo-modal";
+import { CodeReviewHub } from "@/features/intelligence/code-review-hub";
 import { cn } from "@/lib/utils";
 
 interface CapabilitiesResponse {
@@ -29,12 +29,12 @@ const STORAGE_KEY = "intelligence-page-state";
 
 interface PageState {
   selectedRepos: string[];
-  activeTab: "radar" | "velocity" | "risk";
+  activeTab: "radar" | "velocity" | "risk" | "codelens";
 }
 
 export function IntelligenceClient() {
   const [selectedRepos, setSelectedRepos] = useState<string[]>(["facebook/react"]);
-  const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk">("radar");
+  const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk" | "codelens">("radar");
   const [caps, setCaps] = useState<CapabilitiesResponse | null>(null);
   const [capsLoading, setCapsLoading] = useState(true);
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
@@ -133,6 +133,7 @@ export function IntelligenceClient() {
 
         <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm overflow-x-auto">
           {[
+            { id: "codelens", icon: "rate_review", label: "Code Lens" },
             { id: "radar", icon: "scatter_plot", label: "Radar" },
             { id: "velocity", icon: "speed", label: "Velocity" },
             { id: "risk", icon: "security", label: "AI Risk" }
@@ -140,7 +141,7 @@ export function IntelligenceClient() {
             <button
                key={tab.id}
                type="button"
-               onClick={() => setActiveTab(tab.id as "radar" | "velocity" | "risk")}
+               onClick={() => setActiveTab(tab.id as "radar" | "velocity" | "risk" | "codelens")}
                className={cn(
                  "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
                  activeTab === tab.id
@@ -183,7 +184,7 @@ export function IntelligenceClient() {
         maxRepos={maxRepos}
       />
 
-      <div className="space-y-12 min-h-[600px] relative">
+      <div className="space-y-12 min-h-150 relative">
         {selectedRepos.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/20 rounded-3xl border-2 border-dashed border-outline-variant/20">
              <div className="size-20 rounded-3xl bg-indigo-500/5 flex items-center justify-center border border-indigo-500/10 mb-8">
@@ -206,6 +207,17 @@ export function IntelligenceClient() {
           </div>
         ) : (
           <>
+            {activeTab === "codelens" && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <CodeReviewHub
+                  selectedRepos={selectedRepos}
+                  plan={caps?.plan ?? "free"}
+                  aiAgentDepth={caps?.capabilities.aiAgentDepth ?? 1}
+                  aiRequestsPerHour={caps?.capabilities.aiRequestsPerHour ?? 20}
+                  githubConnected={caps?.githubAuthSource === "session-oauth" || caps?.githubAuthSource === "user-pat"}
+                />
+              </div>
+            )}
             {activeTab === "radar" && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
                  <DependencyRadar repos={selectedRepos} />
@@ -235,7 +247,6 @@ export function IntelligenceClient() {
         )}
       </div>
 
-      <IntelligenceDemoModal />
     </div>
   );
 }

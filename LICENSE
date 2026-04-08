@@ -1,21 +1,65 @@
-MIT License
+Business Source License 1.1
 
-Copyright (c) 2026 Ashish Lekhyani
+Copyright (c) 2026 Ashish Lekhyani. All rights reserved.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+Parameters
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+  Licensor:             Ashish Lekhyani
+  Licensed Work:        GitScope — AI-Powered GitHub Analytics & Code Intelligence Platform
+  Additional Use Grant: You may use the Licensed Work for personal, educational, or
+                        internal non-commercial evaluation purposes only.
+  Change Date:          2030-01-01
+  Change License:       MIT License
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+Terms
+
+The Licensor hereby grants you the right to copy, modify, create derivative
+works, redistribute, and make non-production use of the Licensed Work. The
+Licensor may make an Additional Use Grant, above, permitting limited production use.
+
+Effective on the Change Date, or the fourth anniversary of the first publicly
+available distribution of a specific version of the Licensed Work under this
+License, whichever comes first, the Licensor hereby grants you rights under
+the terms of the Change License, and the rights granted in the paragraph
+above terminate.
+
+COMMERCIAL USE RESTRICTION
+
+Any use of the Licensed Work, or any derivative or fork thereof, for commercial
+purposes — including but not limited to:
+
+  - Operating a SaaS product, hosted service, or any offering that charges
+    subscription fees, usage fees, or generates revenue
+  - Reselling, sublicensing, or redistributing the work as part of a paid product
+  - Using the platform's features (Code Lens, Intelligence Hub, analytics, AI
+    reviews) as the basis for a competing or complementary commercial service
+  - White-labeling or rebranding for any commercial deployment
+
+is STRICTLY PROHIBITED without a separate written commercial license from the
+copyright holder.
+
+To obtain a commercial license, contact: ashishlekhyani@gmail.com
+
+PERSONAL & EDUCATIONAL USE
+
+You may:
+  - Run the software locally for personal use or study
+  - Fork and modify the code for non-commercial learning projects
+  - Contribute improvements back to this repository under this license
+
+You may not:
+  - Deploy a public-facing instance that charges users or generates revenue
+  - Use this codebase to build, bootstrap, or operate a competing product
+  - Remove or alter copyright notices or this license
+
+NOTICE
+
+THE LICENSED WORK IS PROVIDED "AS IS". THE LICENSOR HEREBY DISCLAIMS ALL
+WARRANTIES AND CONDITIONS, EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION)
+WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
+NON-INFRINGEMENT. THE LICENSOR SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND
+ARISING FROM USE OF THE LICENSED WORK, EVEN IF ADVISED OF THE POSSIBILITY OF
+SUCH DAMAGE.
+
+For the full Business Source License 1.1 text, see:
+https://mariadb.com/bsl11/

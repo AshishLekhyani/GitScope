@@ -80,6 +80,12 @@ export function AppSidebar({
       match: (p) => p.startsWith("/activity"),
     },
     {
+      href: ROUTES.repos,
+      label: "My Repos",
+      mat: "folder_special",
+      match: (p) => p.startsWith("/repos"),
+    },
+    {
       href: "/intelligence",
       label: "Intelligence Hub",
       mat: "psychology",
