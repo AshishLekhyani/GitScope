@@ -16,8 +16,8 @@ RUN pip install --no-cache-dir -r requirements.prod.txt
 # Copy source
 COPY . .
 
-# Data directory — mounted as a persistent Fly.io volume
-RUN mkdir -p /app/data/chromadb
+# Data directory (HuggingFace / fastembed model cache)
+RUN mkdir -p /app/data/hf_cache
 
 ENV PORT=8765
 ENV WORKERS=1

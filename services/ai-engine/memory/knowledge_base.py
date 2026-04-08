@@ -35,7 +35,7 @@ logger = logging.getLogger(__name__)
 
 class KnowledgeBase:
     """
-    Thread-safe knowledge base built on ChromaDB.
+    Thread-safe knowledge base backed by PostgreSQL + pgvector (Neon).
     Designed as a singleton — all agents share the same instance.
     """
 

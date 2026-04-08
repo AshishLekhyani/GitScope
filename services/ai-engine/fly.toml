@@ -12,10 +12,7 @@ primary_region = "sin"   # Singapore — closest to India, free tier available
   LOG_LEVEL    = "info"
   WORKERS      = "1"
 
-# Persistent volume — ChromaDB knowledge base survives restarts and deploys
-[[mounts]]
-  source      = "gitscope_data"
-  destination = "/app/data"
+# No persistent volume needed — knowledge base lives in Neon PostgreSQL (DATABASE_URL)
 
 [http_service]
   internal_port        = 8765
