@@ -26,7 +26,6 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse, JSONResponse
-from fastapi.exception_handlers import http_exception_handler
 from pydantic import BaseModel, Field
 
 load_dotenv()
