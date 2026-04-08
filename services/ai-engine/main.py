@@ -201,6 +201,12 @@ async def global_exception_handler(request: Request, exc: Exception):
     )
 
 
+@app.get("/")
+@app.head("/")
+async def root():
+    return {"status": "ok", "service": "gitscope-neural-engine", "version": "2.0.0"}
+
+
 @app.get("/health")
 async def health():
     """
