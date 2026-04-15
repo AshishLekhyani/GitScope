@@ -8,8 +8,9 @@ import { getGitHubTokenWithSource } from "@/lib/github-auth";
 import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-plan";
 import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
+import { callAI, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
+import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "@/lib/repo-knowledge";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -19,6 +20,11 @@ export interface RepoScanFinding {
   file?: string;
   description: string;
   suggestion: string;
+  fix?: {
+    before: string;
+    after: string;
+    language?: string;
+  };
 }
 
 export interface RepoScanResult {
@@ -41,6 +47,12 @@ export interface RepoScanResult {
     grade: "A" | "B" | "C" | "D" | "F";
     issues: RepoScanFinding[];
     strengths: string[];
+  };
+  performance: {
+    score: number;
+    grade: "A" | "B" | "C" | "D" | "F";
+    issues: RepoScanFinding[];
+    positives: string[];
   };
   testability: {
     score: number;
@@ -120,6 +132,24 @@ async function ghFetchText(path: string, token: string | null): Promise<string |
 
 // ── Prompt builder ────────────────────────────────────────────────────────────
 
+const REPO_SCAN_SYSTEM_PROMPT = `You are GitScope's principal codebase auditor — a staff principal engineer with 15+ years of cross-domain expertise:
+• Security: OWASP Top 10, threat modeling, secrets management, dependency CVEs, supply-chain attacks, SAST patterns, injection, XSS, CSRF, auth flaws
+• Architecture: distributed systems, microservices, serverless, monorepos, API design, data modelling, separation of concerns
+• DevOps: CI/CD pipelines, Docker, Kubernetes, infrastructure-as-code, deployment strategies, observability
+• Backend: Node.js, Python, Go, Rust — databases, caching (Redis), queues (BullMQ/RabbitMQ), ORM patterns, connection pooling
+• Frontend: React, Next.js, bundle optimisation, Core Web Vitals, SSR/SSG, accessibility, hydration
+• Code quality: SOLID, DRY, design patterns, cyclomatic complexity, tech debt quantification, naming clarity
+• Testing: unit, integration, E2E — coverage strategy, test pyramid, flaky test detection, mocking boundaries
+• Dependencies: semver risks, deprecated packages, large bundle weight, known CVE patterns, lock file hygiene
+
+CRITICAL RULES — follow exactly:
+1. Every finding MUST cite the EXACT filename from the file tree or contents provided (e.g. "src/lib/auth.ts", not just "auth file")
+2. Every finding description MUST reference the SPECIFIC code pattern, function name, or line — not a generic summary. BAD: "3 console.log calls". GOOD: "console.log(user.password) in src/components/login-form.tsx line ~42 leaks sensitive data to browser console"
+3. Every suggestion MUST be a CONCRETE fix — include corrected code snippet or exact command where possible. BAD: "Remove debug logs". GOOD: "Remove the console.log on line ~42; if logging is needed use a structured logger: logger.debug({ userId: user.id }, 'login attempt')"
+4. Do NOT duplicate findings. If the same issue appears in 3 files, write ONE finding that lists all 3 files in the description.
+5. Prioritise findings by real-world impact. Only include "low" severity if it is a genuine quality concern, not a style preference.
+6. You return ONLY valid JSON. No markdown, no preamble, no trailing text.`;
+
 function buildRepoScanPrompt(params: {
   repo: string;
   meta: Record<string, unknown>;
@@ -133,242 +163,117 @@ function buildRepoScanPrompt(params: {
   const {
     repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode,
   } = params;
+  const isDeep = scanMode === "deep";
 
-  const fileTreeStr = fileTree.slice(0, 80).join("\n");
+  const fileTreeStr = fileTree.slice(0, isDeep ? 120 : 80).join("\n");
   const keyFilesStr = Object.entries(keyFileContents)
-    .map(([name, content]) => `\n### ${name}\n\`\`\`\n${content.slice(0, 1500)}\n\`\`\``)
+    .map(([name, content]) => `\n### ${name}\n\`\`\`\n${content.slice(0, isDeep ? 3000 : 1800)}\n\`\`\``)
     .join("\n");
 
-  return `You are a principal engineer conducting a comprehensive codebase health audit. Return ONLY valid JSON — no markdown, no preamble.
+  return `Perform a ${isDeep ? "full deep" : "quick"} codebase health audit. Return ONLY valid JSON — no preamble, no markdown.
 
-REPOSITORY: ${repo}
-Mode: ${scanMode === "deep" ? "Full Codebase Scan" : "Quick Health Check"}
-
-METADATA:
-${JSON.stringify(meta, null, 2).slice(0, 1000)}
-
+## Repository: ${repo}
+Scan mode: ${isDeep ? "Deep (full codebase scan)" : "Quick (health check)"}
+Language: ${meta.language ?? "Unknown"} | Stars: ${meta.stargazers_count ?? 0} | Open issues: ${meta.open_issues_count ?? 0}
+Created: ${meta.created_at ?? "Unknown"} | Last push: ${meta.pushed_at ?? "Unknown"}
 Contributors: ${contributors} | Open PRs: ${openPRCount}
+Topics: ${Array.isArray(meta.topics) ? (meta.topics as string[]).join(", ") || "none" : "none"}
+Description: ${meta.description ?? "none"}
 
-RECENT COMMITS (last 10):
+## Recent Commits (last 10)
 ${recentCommits.map((m, i) => `${i + 1}. ${m}`).join("\n") || "None available"}
 
-FILE TREE (${fileTree.length} total files shown):
+## File Tree (${fileTree.length} total files — first ${isDeep ? 120 : 80} shown)
 ${fileTreeStr}
 
-${scanMode === "deep" && keyFilesStr ? `KEY FILES:\n${keyFilesStr}` : ""}
+## Key File Contents — READ THESE CAREFULLY, base findings on this actual code
+${keyFilesStr || "(no file contents available — analyse from file tree only)"}
 
-Return this exact JSON structure:
+## Instructions — MANDATORY
+- Base ALL findings on what you actually see in the file contents above — no speculation
+- FILENAME RULE: Every finding.file must be an exact path visible in the file tree (e.g. "src/lib/auth.ts"). Never write "various files" or "multiple files" in the file field — use the most impactful single file, and mention others in the description.
+- SPECIFICITY RULE: Descriptions must include the actual function/variable/pattern name. "The foo() function in src/api/users.ts lacks input validation" not "input validation is missing"
+- SUGGESTION RULE: Every suggestion must include a concrete code fix or command. Show the corrected code, not just the principle.
+- GROUPING RULE: If the same issue pattern repeats across multiple files, group into ONE finding. List all affected files in description.
+- IMPACT RULE: Focus on findings with real production impact — security holes, data leaks, crashes, performance cliffs, broken contracts. Skip pure style preferences.
+- Estimate LOC from the file tree size and average file length from the contents shown
+- For dependency risks, check the exact package names in package.json deps shown above
+
+## JSON Schema (return exactly this, all fields required)
 {
-  "healthScore": <0-100, overall codebase health>,
-  "summary": "<3-4 sentence executive summary of the codebase state>",
+  "healthScore": <0-100, weighted: security 30% + quality 25% + testability 25% + deps 20%>,
+  "summary": "<4-5 sentence executive summary — what the repo does, key strengths, biggest risks, overall verdict>",
   "architecture": {
-    "summary": "<2-3 sentence architecture description>",
-    "patterns": ["<e.g. MVC, REST API, Event-driven>"],
-    "strengths": ["<architectural strength>"],
-    "concerns": ["<architectural concern>"]
+    "summary": "<2-3 sentences on tech stack, structure, and patterns from the actual files>",
+    "patterns": ["<detected patterns e.g. Next.js App Router, REST API, Feature Modules, Prisma ORM>"],
+    "strengths": ["<specific architectural strength with evidence>"],
+    "concerns": ["<specific architectural concern with evidence>"]
   },
   "security": {
     "score": <0-100, higher=safer>,
     "grade": "A"|"B"|"C"|"D"|"F",
-    "issues": [{ "severity": "critical"|"high"|"medium"|"low", "category": "security", "file": null, "description": "...", "suggestion": "..." }],
-    "positives": ["<good security practice observed>"]
+    "issues": [
+      {
+        "severity": "critical"|"high"|"medium"|"low",
+        "category": "security"|"config",
+        "file": "<exact filename from the file tree — e.g. src/lib/auth.ts>",
+        "description": "<MUST name exact function/pattern — e.g. 'hashPassword() in src/lib/auth.ts uses MD5 which is cryptographically broken'>",
+        "suggestion": "<MUST include corrected code — e.g. 'Replace with: const hash = await bcrypt.hash(password, 12)' >"
+      }
+    ],
+    "positives": ["<specific good security practice observed with evidence>"]
   },
   "codeQuality": {
     "score": <0-100>,
     "grade": "A"|"B"|"C"|"D"|"F",
-    "issues": [{ "severity": "medium"|"low", "category": "quality", "file": null, "description": "...", "suggestion": "..." }],
-    "strengths": ["<code quality strength>"]
+    "issues": [
+      {
+        "severity": "medium"|"low",
+        "category": "quality"|"performance"|"style",
+        "file": "<exact filename from file tree>",
+        "description": "<MUST name exact function/variable/pattern — e.g. 'fetchUser() in src/lib/db.ts makes an unbounded SELECT * without pagination, risking OOM on large datasets'>",
+        "suggestion": "<MUST include concrete fix with code — e.g. 'Add: .take(100).skip(offset) to the Prisma query, and accept a page parameter in the function signature'>"
+      }
+    ],
+    "strengths": ["<specific quality strength with evidence>"]
   },
   "testability": {
     "score": <0-100>,
     "grade": "A"|"B"|"C"|"D"|"F",
-    "hasTestFramework": <boolean>,
-    "coverageEstimate": "<e.g. '~40%' or 'Unknown'>",
-    "gaps": ["<untested area>"]
+    "hasTestFramework": <boolean based on deps and file tree>,
+    "coverageEstimate": "<estimated range e.g. '~30-50%' or 'None detected'>",
+    "gaps": ["<specific untested area with evidence>"]
   },
   "dependencies": {
     "score": <0-100>,
-    "totalCount": <integer>,
-    "risks": ["<dependency risk>"],
-    "outdatedSignals": ["<outdated dep signal>"]
+    "totalCount": <count from package.json>,
+    "risks": ["<specific dependency risk with package name>"],
+    "outdatedSignals": ["<specific outdated/deprecated package with migration path>"]
   },
   "techDebt": {
     "score": <0-100, higher=less debt>,
     "level": "minimal"|"manageable"|"significant"|"severe",
-    "hotspots": ["<file or area with debt>"],
-    "estimatedHours": "<e.g. '20-40 hours'>"
+    "hotspots": ["<specific file or area with debt evidence>"],
+    "estimatedHours": "<realistic estimate e.g. '30-60 hours'>"
   },
   "recommendations": [
     {
       "priority": "immediate"|"short-term"|"long-term",
-      "title": "<concise title>",
-      "description": "<actionable description>",
+      "title": "<clear actionable title>",
+      "description": "<specific description with evidence and steps>",
       "effort": "low"|"medium"|"high"
     }
   ],
   "metrics": {
     "primaryLanguage": "${meta.language ?? "Unknown"}",
     "fileCount": ${fileTree.length},
-    "estimatedLoc": "<e.g. '~15,000 lines'>",
+    "estimatedLoc": "<estimate from file count and average size e.g. '~12,000 lines'>",
     "contributors": ${contributors},
-    "repoAge": "<e.g. '2 years'>",
+    "repoAge": "<calculated from created_at>",
     "openIssues": ${meta.open_issues_count ?? 0},
     "stars": ${meta.stargazers_count ?? 0}
   }
 }`;
-}
-
-// ── Demo data ──────────────────────────────────────────────────────────────────
-
-function getDemoScanResult(repo: string): RepoScanResult {
-  return {
-    healthScore: 72,
-    summary: `${repo} is a moderately healthy TypeScript/Next.js application with solid architectural foundations. The codebase demonstrates good separation of concerns and consistent patterns, but carries meaningful security and test coverage debt that should be addressed before scaling. The dependency tree is manageable with a few outdated packages worth investigating.`,
-    architecture: {
-      summary: "Full-stack Next.js application using App Router with clear feature-based module structure. API routes follow RESTful conventions with middleware-based security. Frontend uses React Server Components with client-side state management.",
-      patterns: ["Feature-based modules", "REST API", "Server Components", "Middleware pipeline"],
-      strengths: [
-        "Clean separation between features and shared utilities",
-        "Consistent API route structure with security middleware",
-        "TypeScript throughout — good type safety coverage",
-      ],
-      concerns: [
-        "Some large components would benefit from further decomposition",
-        "Inconsistent error handling patterns across API routes",
-      ],
-    },
-    security: {
-      score: 68,
-      grade: "C",
-      issues: [
-        {
-          severity: "high",
-          category: "security",
-          file: "src/lib/auth.ts",
-          description: "Session token not rotated after privilege escalation — potential session fixation risk.",
-          suggestion: "Call session.regenerate() or equivalent after any permission change.",
-        },
-        {
-          severity: "medium",
-          category: "security",
-          file: "src/app/api",
-          description: "Several API routes lack input sanitization for string fields, creating potential injection vectors.",
-          suggestion: "Use a validation library (zod, yup) to sanitize all user inputs at route entry points.",
-        },
-        {
-          severity: "low",
-          category: "config",
-          file: ".env.example",
-          description: "Missing security-relevant environment variable documentation.",
-          suggestion: "Document all required security env vars with descriptions and example values.",
-        },
-      ],
-      positives: [
-        "CSRF protection implemented via double-submit cookie pattern",
-        "Rate limiting applied to sensitive endpoints",
-        "Passwords hashed with bcrypt",
-        "HTTP security headers configured (CSP, HSTS, X-Frame-Options)",
-      ],
-    },
-    codeQuality: {
-      score: 74,
-      grade: "B",
-      issues: [
-        {
-          severity: "medium",
-          category: "quality",
-          description: "Several async functions missing error boundaries — unhandled promise rejections possible.",
-          suggestion: "Add try/catch to all top-level async handlers or use a global error boundary.",
-          file: undefined,
-        },
-        {
-          severity: "low",
-          category: "quality",
-          description: "Some utility functions duplicated across feature modules.",
-          suggestion: "Consolidate into shared /lib utilities with clear ownership.",
-          file: undefined,
-        },
-      ],
-      strengths: [
-        "Consistent naming conventions throughout the codebase",
-        "Good use of TypeScript generics for reusable patterns",
-        "Components are appropriately sized — no 'god components'",
-      ],
-    },
-    testability: {
-      score: 38,
-      grade: "D",
-      hasTestFramework: true,
-      coverageEstimate: "~20-30%",
-      gaps: [
-        "API route handlers have minimal test coverage",
-        "Authentication flows not covered by integration tests",
-        "No E2E tests for critical user paths",
-        "Utility functions in /lib lack unit tests",
-      ],
-    },
-    dependencies: {
-      score: 79,
-      totalCount: 48,
-      risks: [
-        "2 dependencies have known security advisories (run npm audit)",
-        "heavy bundle — consider code splitting for large UI deps",
-      ],
-      outdatedSignals: [
-        "Some peer dependencies pinned to older major versions",
-        "Prisma client should be kept in sync with schema generator version",
-      ],
-    },
-    techDebt: {
-      score: 58,
-      level: "manageable",
-      hotspots: ["src/features/ (some oversized modules)", "src/app/api/ (inconsistent patterns)", "test/ (coverage gaps)"],
-      estimatedHours: "40-80 hours to baseline",
-    },
-    recommendations: [
-      {
-        priority: "immediate",
-        title: "Add input validation to all API routes",
-        description: "Install zod and add validation schemas to every API route handler. This single change eliminates the largest category of security risk.",
-        effort: "medium",
-      },
-      {
-        priority: "immediate",
-        title: "Address npm audit vulnerabilities",
-        description: "Run npm audit --fix and resolve the 2 known security advisories in dependencies. If not auto-fixable, evaluate alternatives.",
-        effort: "low",
-      },
-      {
-        priority: "short-term",
-        title: "Increase test coverage to 60%+",
-        description: "Focus on API route integration tests and authentication flows first — these are highest-risk lowest-coverage areas.",
-        effort: "high",
-      },
-      {
-        priority: "short-term",
-        title: "Establish session rotation on privilege change",
-        description: "Regenerate session tokens after login, logout, and any permission elevation to prevent session fixation attacks.",
-        effort: "low",
-      },
-      {
-        priority: "long-term",
-        title: "Refactor oversized feature modules",
-        description: "Some features have grown beyond single-responsibility. Plan a decomposition sprint to split into focused sub-modules.",
-        effort: "high",
-      },
-    ],
-    metrics: {
-      primaryLanguage: "TypeScript",
-      fileCount: 142,
-      estimatedLoc: "~18,000 lines",
-      contributors: 3,
-      repoAge: "8 months",
-      openIssues: 12,
-      stars: 0,
-    },
-    model: "demo",
-    isDemo: true,
-  };
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -438,6 +343,9 @@ export async function POST(req: NextRequest) {
       try {
         emit({ type: "progress", step: "Authenticating with GitHub…", percent: 5 });
 
+        // Load cached knowledge for this repo (gives AI prior context)
+        const cachedKnowledge = await loadRepoKnowledge(session.user.id, repo);
+
         const { token: ghToken } = await getGitHubTokenWithSource({ session });
 
         emit({ type: "progress", step: "Fetching repository metadata…", percent: 12 });
@@ -483,16 +391,20 @@ export async function POST(req: NextRequest) {
         const openPRCount = (pullsData ?? []).length;
 
         // Fetch key files for context — config files + actual source code
-        emit({ type: "progress", step: "Reading codebase files…", percent: 38 });
+        emit({ type: "progress", step: "Identifying key files to read…", percent: 35 });
 
         // Config/root files that always give useful context
         const configFiles = [
           "package.json", "tsconfig.json", "README.md", "CHANGELOG.md",
-          ".eslintrc.json", ".eslintrc.js", "biome.json",
-          "jest.config.ts", "jest.config.js", "vitest.config.ts",
+          ".eslintrc.json", ".eslintrc.js", ".eslintrc.cjs",
+          "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs",
+          "biome.json", "biome.jsonc",
+          "jest.config.ts", "jest.config.js", "vitest.config.ts", "vitest.config.js",
           "next.config.ts", "next.config.js",
-          "Dockerfile", "docker-compose.yml",
-          ".github/workflows/ci.yml", ".github/workflows/deploy.yml",
+          "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
+          ".github/workflows/ci.yml", ".github/workflows/ci.yaml",
+          ".github/workflows/deploy.yml", ".github/workflows/main.yml",
+          ".gitlab-ci.yml", "Jenkinsfile", ".travis.yml",
           "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml",
           "middleware.ts", "middleware.js",
         ].filter((f) => fileTree.some((t) => t === f || t.endsWith(`/${f}`)));
@@ -511,41 +423,41 @@ export async function POST(req: NextRequest) {
              lower.includes("model") || lower.includes("service") || lower.includes("controller") ||
              lower.includes("store") || lower.includes("schema") || lower.includes("util"))
           );
-        }).slice(0, scanMode === "deep" ? 20 : 8);
+        }).slice(0, scanMode === "deep" ? 40 : 20);
 
         const keyFileContents: Record<string, string> = {};
+        const configToFetch = scanMode === "deep" ? configFiles : configFiles.slice(0, 6);
+        const allFilesToRead = [...configToFetch, ...importantSourceFiles];
+        const totalFiles = allFilesToRead.length;
 
-        // Fetch config files
-        const configToFetch = scanMode === "deep" ? configFiles : configFiles.slice(0, 4);
-        await Promise.all(
-          configToFetch.map(async (f) => {
-            const actualPath = fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f;
-            const content = await ghFetchText(`/repos/${repo}/contents/${actualPath}`, ghToken);
-            if (content) {
-              // For package.json in quick mode, only keep deps to save space
-              if (f === "package.json" && scanMode !== "deep") {
-                try {
-                  const pkg = JSON.parse(content);
-                  keyFileContents[f] = JSON.stringify(
-                    { dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2
-                  );
-                } catch { keyFileContents[f] = content.slice(0, 2000); }
-              } else {
-                keyFileContents[f] = content.slice(0, 4000); // cap per file
-              }
+        // Read files sequentially so we can emit progress per file
+        for (let i = 0; i < allFilesToRead.length; i++) {
+          const f = allFilesToRead[i];
+          const percent = Math.round(38 + (i / totalFiles) * 20); // 38%–58%
+          const shortName = f.split("/").slice(-2).join("/");
+          emit({ type: "progress", step: `Reading ${shortName}…`, percent });
+
+          const actualPath = configToFetch.includes(f)
+            ? (fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f)
+            : f;
+          const content = await ghFetchText(`/repos/${repo}/contents/${actualPath}`, ghToken);
+
+          if (content) {
+            if (f === "package.json" && scanMode !== "deep") {
+              try {
+                const pkg = JSON.parse(content);
+                keyFileContents[f] = JSON.stringify(
+                  { dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2
+                );
+              } catch { keyFileContents[f] = content.slice(0, 2000); }
+            } else {
+              keyFileContents[f] = content.slice(0, scanMode === "deep" ? 4000 : 3000);
             }
-          })
-        );
+          }
+        }
 
-        // Fetch actual source files so the AI reads real code, not just config
-        await Promise.all(
-          importantSourceFiles.map(async (f) => {
-            const content = await ghFetchText(`/repos/${repo}/contents/${f}`, ghToken);
-            if (content) keyFileContents[f] = content.slice(0, 3000);
-          })
-        );
-
-        emit({ type: "progress", step: "Running internal static analysis…", percent: 58 });
+        const filesRead = Object.keys(keyFileContents).length;
+        emit({ type: "progress", step: `Read ${filesRead} files — running static analysis…`, percent: 58 });
 
         // Always run internal AI — works without any API key
         const internalScanResult = scanRepoWithInternalAI({
@@ -554,42 +466,62 @@ export async function POST(req: NextRequest) {
 
         let result: RepoScanResult;
 
-        if (!process.env.ANTHROPIC_API_KEY) {
+        if (!hasAnyAIProvider()) {
           emit({ type: "progress", step: "Analysis complete…", percent: 90 });
           result = internalScanResult;
         } else {
-          emit({ type: "progress", step: "Enhancing with deep AI analysis…", percent: 65 });
+          emit({ type: "progress", step: "Enhancing with AI analysis…", percent: 65 });
 
-          const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-          const model =
-            plan === "enterprise" ? "claude-opus-4-6" :
-            plan === "team" || plan === "professional" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
+          // Build prompt — inject cached knowledge if available so AI builds on prior findings
+          let basePrompt = buildRepoScanPrompt({ repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode });
+          if (cachedKnowledge) {
+            emit({ type: "progress", step: "Loading memory from previous scan…", percent: 67 });
+            basePrompt = formatKnowledgeForPrompt(cachedKnowledge) + "\n\n" + basePrompt;
+          }
 
-          const prompt = buildRepoScanPrompt({ repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode });
           emit({ type: "progress", step: "AI scanning architecture, security, and quality…", percent: 78 });
-
           try {
-            const message = await client.messages.create({
-              model, max_tokens: 5120,
-              messages: [{ role: "user", content: prompt }],
-              system: "You are a principal engineer conducting a codebase health audit. Return ONLY valid JSON — no markdown, no code fences, no extra text.",
+            const aiRes = await callAI({
+              plan: plan as AIPlan,
+              systemPrompt: REPO_SCAN_SYSTEM_PROMPT,
+              userPrompt: basePrompt,
+              maxTokens: 5120,
             });
-            const text = message.content[0]?.type === "text" ? message.content[0].text : "{}";
-            const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-            result = JSON.parse(cleaned) as RepoScanResult;
-            result.model = model;
-            result.isDemo = false;
-            // Merge internal security issues LLM might have missed
-            const llmDescs = new Set(result.security.issues.map((i) => i.description.slice(0, 40)));
-            const extra = internalScanResult.security.issues.filter((i) => !llmDescs.has(i.description.slice(0, 40)));
-            result.security.issues = [...result.security.issues, ...extra].slice(0, 8);
-            await prisma.codeReviewScan.create({
-              data: {
-                userId: session.user.id, repo, scanMode, analysisType: "repo",
-                result: JSON.parse(JSON.stringify(result)),
-                tokensUsed: (message.usage.input_tokens ?? 0) + (message.usage.output_tokens ?? 0),
-              },
-            });
+            if (aiRes) {
+              const cleaned = aiRes.text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+              result = JSON.parse(cleaned) as RepoScanResult;
+              result.model = aiRes.model;
+              result.isDemo = false;
+              const llmDescs = new Set(result.security.issues.map((i) => i.description.slice(0, 40)));
+              const extra = internalScanResult.security.issues.filter((i) => !llmDescs.has(i.description.slice(0, 40)));
+              result.security.issues = [...result.security.issues, ...extra].slice(0, 8);
+
+              await Promise.all([
+                prisma.codeReviewScan.create({
+                  data: {
+                    userId: session.user.id, repo, scanMode, analysisType: "repo",
+                    result: JSON.parse(JSON.stringify(result)),
+                    tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
+                  },
+                }),
+                // Save knowledge for future scans
+                saveRepoKnowledge(session.user.id, repo, plan, {
+                  summary: result.summary,
+                  patterns: result.architecture.patterns,
+                  insights: {
+                    healthScore: result.healthScore,
+                    securityGrade: result.security.grade,
+                    qualityGrade: result.codeQuality.grade,
+                    techDebtLevel: result.techDebt.level,
+                    topIssues: result.security.issues.slice(0, 3).map((i) => i.description),
+                  },
+                  fileCount: fileTree.length,
+                  tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
+                }),
+              ]);
+            } else {
+              result = internalScanResult;
+            }
           } catch {
             result = internalScanResult;
           }

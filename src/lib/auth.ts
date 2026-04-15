@@ -35,7 +35,7 @@ export const authOptions: NextAuthOptions = {
       allowDangerousEmailAccountLinking: true,
       authorization: {
         params: {
-          scope: "read:user user:email notifications",
+          scope: "read:user user:email notifications repo",
         },
       },
       // SECURITY: Extra verification - call GitHub API to check email is verified.
@@ -250,7 +250,7 @@ export const authOptions: NextAuthOptions = {
               message: `Your ${providerName} account was automatically linked to your existing GitScope account. If you didn't do this, please review your account security immediately.`,
               type: "warning",
               isRead: false,
-              link: "/settings/security",
+              link: "/settings",
             },
           });
           

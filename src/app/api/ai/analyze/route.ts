@@ -1,13 +1,11 @@
 import { NextResponse } from "next/server";
-import Anthropic from "@anthropic-ai/sdk";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
-
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+import { callAI, hasAnyAIProvider } from "@/lib/ai-providers";
+import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import type { AIPlan } from "@/lib/ai-providers";
 
 interface RepoSummary {
   name: string;
@@ -65,12 +63,14 @@ async function handler(req: Request) {
     return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
+  if (!hasAnyAIProvider()) {
     return NextResponse.json(
-      { error: "AI analysis not configured (missing ANTHROPIC_API_KEY)" },
+      { error: "AI analysis not configured — no AI provider keys set" },
       { status: 503 }
     );
   }
+
+  const plan = await resolveAiPlanFromSessionDb(session) as AIPlan;
 
   let body: { repo?: string; question?: string };
   try {
@@ -132,24 +132,25 @@ Provide:
 Keep the total response under 300 words. Be specific, technical, and easy to understand.`;
 
   try {
-    const message = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
-      max_tokens: 512,
-      messages: [{ role: "user", content: userPrompt }],
-      system: systemPrompt,
+    const result = await callAI({
+      plan,
+      systemPrompt,
+      userPrompt,
+      maxTokens: 512,
     });
 
-    const content = message.content[0];
-    const text = content.type === "text" ? content.text : "";
+    if (!result) {
+      return NextResponse.json({ error: "AI analysis failed — no provider available" }, { status: 500 });
+    }
 
     return NextResponse.json({
-      analysis: text,
+      analysis: result.text,
       repo: repoData.name,
-      inputTokens: message.usage.input_tokens,
-      outputTokens: message.usage.output_tokens,
+      model: result.model,
+      inputTokens: result.inputTokens,
+      outputTokens: result.outputTokens,
     });
   } catch (err) {
-    // Log error only in development
     if (process.env.NODE_ENV !== "production") {
       console.error("[AI analyze]", err);
     }

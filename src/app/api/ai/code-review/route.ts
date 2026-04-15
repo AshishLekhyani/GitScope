@@ -8,8 +8,8 @@ import { getGitHubTokenWithSource } from "@/lib/github-auth";
 import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-plan";
 import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
-import Anthropic from "@anthropic-ai/sdk";
 import { analyzeWithInternalAI } from "@/lib/internal-ai";
+import { callAI, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,6 +21,11 @@ export interface CodeReviewFinding {
   description: string;
   suggestion: string;
   codeSnippet?: string;
+  fix?: {
+    before: string;
+    after: string;
+    language?: string;
+  };
 }
 
 export interface CodeReviewResult {
@@ -116,7 +121,43 @@ async function ghFetch<T>(path: string, token: string | null): Promise<T | null>
   }
 }
 
+async function ghFetchText(path: string, token: string | null): Promise<string | null> {
+  const url = path.startsWith("http") ? path : `https://api.github.com${path}`;
+  try {
+    const res = await fetch(url, {
+      headers: {
+        Accept: "application/vnd.github.raw+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+      next: { revalidate: 0 },
+    });
+    if (!res.ok) return null;
+    return res.text();
+  } catch {
+    return null;
+  }
+}
+
 // ── AI Prompt ────────────────────────────────────────────────────────────────
+
+const CODE_REVIEW_SYSTEM_PROMPT = `You are GitScope's senior AI code reviewer — a principal engineer with 15+ years of hands-on expertise:
+• Security engineering: OWASP Top 10, injection attacks, auth flaws, cryptography, supply-chain, CVE analysis, timing attacks, path traversal
+• Backend: Node.js, Python, Go, Rust — APIs, databases, caching, message queues, distributed systems, race conditions
+• Frontend: React, Next.js, performance, accessibility, bundle size, Core Web Vitals, XSS, CSRF
+• DevOps: Docker, Kubernetes, CI/CD pipelines, cloud platforms, IaC, secrets management, supply chain
+• Database: SQL/NoSQL design, query optimization, indexing, migration safety, N+1 queries, replication
+• Architecture: microservices, monoliths, serverless, event-driven, CQRS, DDD patterns, API contracts
+• Code quality: SOLID principles, design patterns, refactoring, tech debt, cyclomatic complexity, naming
+• Network: TLS/SSL, HTTP/2, WebSockets, rate limiting, proxies, CDN, CORS
+
+CRITICAL RULES — follow exactly:
+1. SPECIFICITY: Every finding description must name the EXACT function, variable, or line pattern. BAD: "Missing input validation". GOOD: "The createUser() handler in src/api/users.ts at ~line 47 passes req.body.email directly to prisma.user.create() without sanitisation — a malformed email crashes the ORM"
+2. SUGGESTIONS WITH CODE: Every suggestion must show the corrected snippet or exact command. BAD: "Add validation". GOOD: "Add: const email = z.string().email().parse(req.body.email) before the prisma call"
+3. EVIDENCE ONLY: Only flag issues that are directly visible in the diff or full file contents provided. Never speculate.
+4. FILE ACCURACY: finding.file must be the exact filename from the diff (e.g. "src/api/users.ts"). Never write "various files".
+5. DEDUP: If the same pattern appears in 3 files, write ONE finding listing all 3 in the description — not 3 separate findings.
+6. You return ONLY valid JSON. No markdown fences, no preamble, no trailing text.`;
 
 function buildPRPrompt(params: {
   repo: string;
@@ -125,79 +166,101 @@ function buildPRPrompt(params: {
   prNumber: number;
   files: GHFile[];
   scanMode: string;
+  fileContents?: Record<string, string>;
 }): string {
-  const { repo, repoBrief, prMeta, prNumber, files, scanMode } = params;
+  const { repo, repoBrief, prMeta, prNumber, files, scanMode, fileContents = {} } = params;
   const totalDiff = files.reduce((a, f) => a + (f.patch?.length ?? 0), 0);
+  const isDeep = scanMode === "deep";
 
-  const fileSummaries = files
-    .slice(0, scanMode === "deep" ? 20 : 10)
+  // Always include diffs — more chars in deep mode
+  const fileSections = files
+    .slice(0, isDeep ? 25 : 12)
     .map((f) => {
-      const patchSnippet =
-        f.patch && scanMode === "deep"
-          ? `\n\`\`\`diff\n${f.patch.slice(0, 1200)}\n\`\`\``
-          : "";
-      return `- ${f.filename} (${f.status}, +${f.additions} -${f.deletions})${patchSnippet}`;
+      const diff = f.patch
+        ? `\n\`\`\`diff\n${f.patch.slice(0, isDeep ? 2500 : 800)}\n\`\`\``
+        : "";
+      return `### ${f.filename} (${f.status}, +${f.additions} -${f.deletions})${diff}`;
     })
-    .join("\n");
+    .join("\n\n");
 
-  return `You are an elite AI code reviewer — a principal engineer + security researcher combined.
-Analyze this Pull Request and return ONLY a valid JSON object. No markdown. No preamble. ONLY JSON.
+  const skipped = files.length - (isDeep ? 25 : 12);
 
-REPOSITORY: ${repo}
-Language: ${repoBrief?.language ?? "Unknown"} | Stars: ${repoBrief?.stargazers_count ?? 0} | ${repoBrief?.description ?? "No description"}
+  // Full file contents for important files (beyond just the diff)
+  const fullFileSection = Object.keys(fileContents).length > 0
+    ? `\n## Full File Contents (key changed files — use for deeper context)\n` +
+      Object.entries(fileContents)
+        .map(([name, content]) => `\n### ${name}\n\`\`\`\n${content}\n\`\`\``)
+        .join("\n")
+    : "";
 
-PULL REQUEST #${prNumber}: "${prMeta.title}"
-Author: ${prMeta.user.login}${prMeta.draft ? " (DRAFT)" : ""}
-State: ${prMeta.state} | Mergeable: ${prMeta.mergeable_state}
+  return `Analyze this Pull Request. Return ONLY valid JSON matching the schema at the end — no preamble, no markdown.
+
+## Repository
+${repo} | Language: ${repoBrief?.language ?? "Unknown"} | Stars: ${repoBrief?.stargazers_count ?? 0}
+${repoBrief?.description ? `Description: ${repoBrief.description}` : ""}
+
+## Pull Request #${prNumber}: "${prMeta.title}"
+Author: ${prMeta.user.login}${prMeta.draft ? " [DRAFT]" : ""}
+State: ${prMeta.state} | Mergeable: ${prMeta.mergeable_state ?? "unknown"}
 Labels: ${prMeta.labels.map((l) => l.name).join(", ") || "none"}
-Stats: +${prMeta.additions} lines added, -${prMeta.deletions} lines removed, ${prMeta.changed_files} files changed
-Total diff size: ~${Math.round(totalDiff / 1024)}KB
+Stats: +${prMeta.additions} added / -${prMeta.deletions} removed across ${prMeta.changed_files} files (~${Math.round(totalDiff / 1024)}KB diff)
 
-Description:
-${prMeta.body?.slice(0, 800) ?? "(no description provided)"}
+PR Description:
+${prMeta.body?.slice(0, 1200) ?? "(no description provided)"}
 
-Changed Files:
-${fileSummaries}
+## Changed Files with Diffs
+${fileSections}
+${skipped > 0 ? `\n_(${skipped} additional file${skipped > 1 ? "s" : ""} not shown — focus on the files above)_` : ""}
+${fullFileSection}
 
-Return this exact JSON structure (all fields required):
+## Instructions — MANDATORY
+- Read every diff line before scoring. Do not skim.
+- SPECIFICITY: Name the exact function/variable/line in every finding. "The validateToken() function at line ~23 in src/middleware/auth.ts uses a timing-unsafe string comparison" not "auth middleware has timing issues"
+- SUGGESTION CODE: Include a corrected snippet in every suggestion. Show the fix, not just the principle.
+- EVIDENCE ONLY: Flag only what is directly visible in the diffs and file contents above. No speculation.
+- DEDUP: Group identical patterns from multiple files into one finding. List all affected files in description.
+- IMPACT FOCUS: Prioritise critical/high findings. Include low/medium only if they have real production consequence.
+- testCoverage score: 0 if no tests in diff; scale to 100 based on how thoroughly the implementation is tested.
+
+## JSON Schema (return exactly this, all fields required)
 {
   "verdict": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
-  "confidence": <0-100 integer>,
-  "summary": "<2-3 sentence executive summary>",
+  "confidence": <0-100>,
+  "summary": "<3-4 sentence executive summary — what the PR does, quality signal, merge recommendation>",
   "mergeRisk": "low" | "medium" | "high" | "critical",
   "scores": {
     "security": <0-100, higher=safer>,
-    "value": <0-100, how valuable/impactful is this change>,
+    "value": <0-100, impact and usefulness of this change>,
     "quality": <0-100, code quality and best practices>,
-    "testCoverage": <0-100, estimated test coverage of changed code>,
-    "breakingRisk": <0-100, higher=more likely to break things>
+    "testCoverage": <0-100, how well the change is tested>,
+    "breakingRisk": <0-100, higher=more likely to break existing behaviour>
   },
-  "flags": [<array of applicable: "security","breaking-change","performance","deps","auth","database","api-contract","large-diff","test-coverage","config","logic-error","style">],
+  "flags": [<from: "security","breaking-change","performance","deps","auth","database","api-contract","large-diff","test-coverage","config","logic-error","style","security-fix">],
   "findings": [
     {
       "severity": "critical"|"high"|"medium"|"low",
       "category": "security"|"performance"|"logic"|"quality"|"breaking"|"testing"|"style",
-      "file": "<filename or null>",
-      "line": <line number or null>,
-      "description": "<specific, actionable description>",
-      "suggestion": "<concrete fix with example if possible>",
-      "codeSnippet": "<the problematic code line or null>"
+      "file": "<exact filename from the diff — e.g. src/api/users.ts>",
+      "line": <approximate line number or null>,
+      "description": "<MUST name the exact function/variable/pattern — e.g. 'createUser() in src/api/users.ts passes unsanitised req.body.email to prisma'>",
+      "suggestion": "<MUST include corrected code snippet or exact command — e.g. 'const email = z.string().email().parse(req.body.email)'>",
+      "codeSnippet": "<the exact problematic line or expression from the diff, max 140 chars>"
     }
   ],
-  "breakingChanges": ["<specific breaking change description>"],
-  "securityIssues": ["<specific security concern>"],
-  "positives": ["<what this PR does well, 2-4 items>"],
-  "recommendation": "<2-3 sentence merge recommendation with specific action items>",
-  "reviewChecklist": ["<specific thing reviewer must verify>"],
-  "estimatedReviewTime": "<e.g. '15 min' or '2 hours'>",
-  "suggestedReviewers": <integer 1-5>,
-  "impactAreas": ["<e.g. authentication, database, API, frontend>"],
-  "affectedSystems": ["<e.g. Backend API, Database, Auth Service>"],
+  "breakingChanges": ["<specific breaking change with migration path>"],
+  "securityIssues": ["<one-line security concern referencing file/pattern>"],
+  "positives": ["<specific good practice observed in the diff, 2-5 items>"],
+  "recommendation": "<2-3 sentences — merge decision with specific conditions or action items>",
+  "reviewChecklist": ["<concrete thing a human reviewer must verify before merging>"],
+  "estimatedReviewTime": "<e.g. '20 min' or '1.5h'>",
+  "suggestedReviewers": <1-5>,
+  "impactAreas": ["<e.g. authentication, database, REST API, React UI>"],
+  "affectedSystems": ["<e.g. Auth Service, PostgreSQL, CDN, Background Jobs>"],
   "diffStats": {
     "fileCount": ${prMeta.changed_files},
     "additions": ${prMeta.additions},
     "deletions": ${prMeta.deletions},
-    "hotFiles": ["<top 3-5 most critical/risky files changed>"]
+    "hotFiles": ["<3-5 highest-risk or most-changed files>"]
   }
 }`;
 }
@@ -211,37 +274,49 @@ function buildCommitPrompt(params: {
 }): string {
   const { repo, repoBrief, commit, sha, scanMode } = params;
   const files = commit.files ?? [];
+  const isDeep = scanMode === "deep";
 
-  const fileSummaries = files
-    .slice(0, scanMode === "deep" ? 20 : 10)
+  const fileSections = files
+    .slice(0, isDeep ? 20 : 10)
     .map((f) => {
-      const patchSnippet =
-        f.patch && scanMode === "deep"
-          ? `\n\`\`\`diff\n${f.patch.slice(0, 1200)}\n\`\`\``
-          : "";
-      return `- ${f.filename} (${f.status}, +${f.additions} -${f.deletions})${patchSnippet}`;
+      const diff = f.patch
+        ? `\n\`\`\`diff\n${f.patch.slice(0, isDeep ? 2000 : 900)}\n\`\`\``
+        : "";
+      return `### ${f.filename} (${f.status}, +${f.additions} -${f.deletions})${diff}`;
     })
-    .join("\n");
+    .join("\n\n");
 
-  return `You are an elite AI code reviewer. Analyze this commit and return ONLY valid JSON. No markdown. ONLY JSON.
+  const skipped = files.length - (isDeep ? 20 : 10);
 
-REPOSITORY: ${repo}
-Language: ${repoBrief?.language ?? "Unknown"} | ${repoBrief?.description ?? "No description"}
+  return `Analyze this git commit. Return ONLY valid JSON — no markdown, no preamble.
 
-COMMIT: ${sha.slice(0, 10)}
+## Repository
+${repo} | Language: ${repoBrief?.language ?? "Unknown"}
+${repoBrief?.description ? `Description: ${repoBrief.description}` : ""}
+
+## Commit ${sha.slice(0, 12)}
 Author: ${commit.author?.login ?? commit.commit.author.name}
 Date: ${commit.commit.author.date}
-Message: "${commit.commit.message.slice(0, 500)}"
-Stats: +${commit.stats?.additions ?? 0} -${commit.stats?.deletions ?? 0} (${files.length} files)
+Message:
+"${commit.commit.message.slice(0, 600)}"
 
-Changed Files:
-${fileSummaries || "(no file data available)"}
+Stats: +${commit.stats?.additions ?? 0} / -${commit.stats?.deletions ?? 0} (${files.length} files)
 
-Return this exact JSON (all fields required):
+## Changed Files with Diffs
+${fileSections || "(no diff data available — analyse based on stats and message)"}
+${skipped > 0 ? `\n_(${skipped} additional file${skipped > 1 ? "s" : ""} not shown)_` : ""}
+
+## Instructions
+- Evaluate the commit based on the actual diff lines above
+- Check for security issues, logic errors, breaking changes, and quality
+- Cite exact filenames and code patterns in findings
+- Score testCoverage as 0 if no test files changed
+
+## JSON Schema (all fields required)
 {
   "verdict": "APPROVE" | "REQUEST_CHANGES" | "COMMENT",
   "confidence": <0-100>,
-  "summary": "<2-3 sentence executive summary of what this commit does and whether it should be accepted>",
+  "summary": "<2-3 sentences — what the commit does, quality, and whether it is safe to keep>",
   "mergeRisk": "low" | "medium" | "high" | "critical",
   "scores": {
     "security": <0-100>,
@@ -250,116 +325,34 @@ Return this exact JSON (all fields required):
     "testCoverage": <0-100>,
     "breakingRisk": <0-100>
   },
-  "flags": [<applicable flags>],
-  "findings": [{ "severity": "...", "category": "...", "file": "...", "line": null, "description": "...", "suggestion": "...", "codeSnippet": null }],
-  "breakingChanges": [],
-  "securityIssues": [],
-  "positives": [],
-  "recommendation": "<specific actionable recommendation>",
-  "reviewChecklist": [],
-  "estimatedReviewTime": "<time>",
+  "flags": ["<applicable flags>"],
+  "findings": [
+    {
+      "severity": "critical"|"high"|"medium"|"low",
+      "category": "security"|"performance"|"logic"|"quality"|"breaking"|"testing"|"style",
+      "file": "<filename>",
+      "line": null,
+      "description": "<specific, evidence-based description>",
+      "suggestion": "<concrete fix with code example>",
+      "codeSnippet": "<exact snippet from diff, max 120 chars>"
+    }
+  ],
+  "breakingChanges": ["<specific breaking change>"],
+  "securityIssues": ["<security concern with filename>"],
+  "positives": ["<good practice observed>"],
+  "recommendation": "<2 sentences — keep, revert, or fix — with specific actions>",
+  "reviewChecklist": ["<thing to verify>"],
+  "estimatedReviewTime": "<e.g. '10 min'>",
   "suggestedReviewers": <1-5>,
-  "impactAreas": [],
-  "affectedSystems": [],
+  "impactAreas": ["<impacted area>"],
+  "affectedSystems": ["<affected system>"],
   "diffStats": {
     "fileCount": ${files.length},
     "additions": ${commit.stats?.additions ?? 0},
     "deletions": ${commit.stats?.deletions ?? 0},
-    "hotFiles": []
+    "hotFiles": ["<most-changed or highest-risk files>"]
   }
 }`;
-}
-
-// ── Demo data ────────────────────────────────────────────────────────────────
-
-function getDemoResult(repo: string, prNumber?: number): CodeReviewResult {
-  return {
-    verdict: "REQUEST_CHANGES",
-    confidence: 84,
-    summary: `This ${prNumber ? `PR #${prNumber}` : "commit"} in ${repo} introduces significant changes to the authentication flow with notable security implications. The implementation adds valuable OAuth integration but contains two critical vulnerabilities that must be addressed before merging. The overall code quality is solid with good separation of concerns.`,
-    mergeRisk: "high",
-    scores: { security: 38, value: 82, quality: 71, testCoverage: 45, breakingRisk: 68 },
-    flags: ["security", "auth", "breaking-change", "test-coverage"],
-    findings: [
-      {
-        severity: "critical",
-        category: "security",
-        file: "src/auth/oauth-callback.ts",
-        line: 47,
-        description: "OAuth state parameter is not validated in the callback handler, making this endpoint vulnerable to CSRF attacks during the OAuth flow.",
-        suggestion: 'Add state validation: const expectedState = req.session.oauthState; if (state !== expectedState) return res.status(403).json({ error: "State mismatch" });',
-        codeSnippet: "const { code } = req.query; // state parameter not checked",
-      },
-      {
-        severity: "high",
-        category: "security",
-        file: "src/auth/token-handler.ts",
-        line: 112,
-        description: "Access token is written to application logs in plaintext, creating a credential exposure risk in log aggregation systems.",
-        suggestion: "Remove token from logs or replace with a masked version: logger.info({ tokenMasked: token.slice(0, 8) + '...' })",
-        codeSnippet: "console.log('Token received:', accessToken)",
-      },
-      {
-        severity: "medium",
-        category: "breaking",
-        file: "src/api/user.ts",
-        line: 88,
-        description: "The /api/user/profile endpoint response shape changed — removed 'displayName' field — which will break existing frontend consumers.",
-        suggestion: "Keep 'displayName' as a deprecated alias for 'name' for one release cycle, or version the API endpoint.",
-        codeSnippet: "return { name: user.name, email: user.email }; // displayName removed",
-      },
-      {
-        severity: "medium",
-        category: "testing",
-        file: "src/auth/oauth-callback.ts",
-        description: "The new OAuth callback handler has no test coverage for error cases (invalid code, expired token, revoked access).",
-        suggestion: "Add unit tests covering: invalid state, expired authorization code, revoked OAuth token, and provider API failures.",
-      },
-    ],
-    breakingChanges: [
-      "API response shape change: /api/user/profile drops 'displayName' field",
-      "Database migration adds NOT NULL column 'oauth_provider' — will fail on existing rows without default",
-    ],
-    securityIssues: [
-      "OAuth state parameter not validated (CSRF vulnerability in auth flow)",
-      "Access token written to application logs in plaintext",
-      "Token expiry is not checked before making API calls with the token",
-    ],
-    positives: [
-      "Proper use of PKCE flow — correctly implements code challenge/verifier",
-      "Access tokens stored in httpOnly cookies (not localStorage)",
-      "Good TypeScript types for the OAuth provider interface",
-      "Database token storage uses encryption (AES-256)",
-    ],
-    recommendation:
-      "Request changes on two security issues before merge: (1) add OAuth state parameter validation to prevent CSRF, and (2) remove/mask the access token from application logs. Also add a default value for the DB migration column. ETA for fixes: ~2 hours.",
-    reviewChecklist: [
-      "Verify OAuth state parameter is generated, stored in session, and validated on callback",
-      "Confirm access token is NOT logged anywhere in the auth flow",
-      "Test DB migration with existing data — confirm default value for oauth_provider column",
-      "Validate that /api/user/profile consumers are updated or backward compatibility is preserved",
-      "Run end-to-end OAuth flow test with an actual provider (GitHub or Google)",
-      "Check token refresh logic handles 401 responses from downstream APIs",
-    ],
-    estimatedReviewTime: "45 min",
-    suggestedReviewers: 3,
-    impactAreas: ["authentication", "user-data", "API", "database"],
-    affectedSystems: ["Backend API", "Auth Service", "Database", "Frontend Auth Flow"],
-    diffStats: {
-      fileCount: 14,
-      additions: 387,
-      deletions: 124,
-      hotFiles: [
-        "src/auth/oauth-callback.ts",
-        "src/auth/token-handler.ts",
-        "prisma/migrations/20260408_oauth.sql",
-        "src/api/user.ts",
-        "src/middleware/auth.ts",
-      ],
-    },
-    model: "demo",
-    isDemo: true,
-  };
 }
 
 // ── Main handler ──────────────────────────────────────────────────────────────
@@ -495,16 +488,32 @@ export async function POST(req: NextRequest) {
             return;
           }
 
-          emit({ type: "progress", step: "Fetching changed files and diffs…", percent: 40 });
+          emit({ type: "progress", step: "Fetching changed files and diffs…", percent: 38 });
 
-          const maxFiles = scanMode === "deep" ? caps.maxFilesPerDeepScan : 10;
+          const maxFiles = scanMode === "deep" ? caps.maxFilesPerDeepScan : 12;
           const files =
             (await ghFetch<GHFile[]>(
               `/repos/${repo}/pulls/${prNumber}/files?per_page=${maxFiles}`,
               ghToken
             )) ?? [];
 
-          emit({ type: "progress", step: "Building AI context…", percent: 55 });
+          // Fetch full file contents for the most important changed files
+          // This gives the AI (and internal analyzer) real context beyond just the diff
+          const codeExtensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java", ".cs"];
+          const keyChangedFiles = files
+            .filter((f) => codeExtensions.some((ext) => f.filename.endsWith(ext)) && f.status !== "removed")
+            .slice(0, scanMode === "deep" ? 10 : 5);
+
+          const fileContents: Record<string, string> = {};
+          for (let i = 0; i < keyChangedFiles.length; i++) {
+            const f = keyChangedFiles[i];
+            const shortName = f.filename.split("/").slice(-2).join("/");
+            emit({ type: "progress", step: `Reading ${shortName}…`, percent: Math.round(42 + (i / keyChangedFiles.length) * 12) });
+            const content = await ghFetchText(`/repos/${repo}/contents/${f.filename}`, ghToken);
+            if (content) fileContents[f.filename] = content.slice(0, scanMode === "deep" ? 3000 : 1500);
+          }
+
+          emit({ type: "progress", step: `Analyzed ${files.length} changed files — building context…`, percent: 56 });
 
           // ── Always run internal AI first (fast, no API key needed) ──
           emit({ type: "progress", step: "Running internal static analysis…", percent: 60 });
@@ -512,50 +521,39 @@ export async function POST(req: NextRequest) {
             repo, analysisType: "pr", prMeta, files, prNumber,
           });
 
-          if (!process.env.ANTHROPIC_API_KEY) {
+          if (!hasAnyAIProvider()) {
             emit({ type: "progress", step: "Static analysis complete…", percent: 90 });
             result = internalResult;
           } else {
-            emit({ type: "progress", step: "Enhancing with deep AI analysis…", percent: 68 });
-
-            const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-            const model =
-              plan === "enterprise"
-                ? "claude-opus-4-6"
-                : plan === "team" || plan === "professional"
-                  ? "claude-sonnet-4-6"
-                  : "claude-haiku-4-5-20251001";
-
-            const prompt = buildPRPrompt({ repo, repoBrief, prMeta, prNumber, files, scanMode });
+            emit({ type: "progress", step: "Enhancing with AI analysis…", percent: 68 });
+            const prompt = buildPRPrompt({ repo, repoBrief, prMeta, prNumber, files, scanMode, fileContents });
             emit({ type: "progress", step: "AI analyzing patterns and security vectors…", percent: 78 });
-
             try {
-              const message = await client.messages.create({
-                model,
-                max_tokens: 4096,
-                messages: [{ role: "user", content: prompt }],
-                system: "You are an elite AI code reviewer. Return ONLY valid JSON — no markdown fences, no explanations.",
+              const aiRes = await callAI({
+                plan: plan as AIPlan,
+                systemPrompt: CODE_REVIEW_SYSTEM_PROMPT,
+                userPrompt: prompt,
+                maxTokens: 4096,
               });
-              const text = message.content[0]?.type === "text" ? message.content[0].text : "{}";
-              const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-              result = JSON.parse(cleaned) as CodeReviewResult;
-              result.model = model;
-              result.isDemo = false;
-              // Merge internal findings that the LLM might have missed
-              const llmFindingDescs = new Set(result.findings.map((f) => f.description.slice(0, 40)));
-              const extraFindings = internalResult.findings.filter(
-                (f) => !llmFindingDescs.has(f.description.slice(0, 40))
-              );
-              result.findings = [...result.findings, ...extraFindings].slice(0, 12);
-              await prisma.codeReviewScan.create({
-                data: {
-                  userId: session.user.id, repo, prNumber, scanMode, analysisType: "pr",
-                  result: JSON.parse(JSON.stringify(result)),
-                  tokensUsed: (message.usage.input_tokens ?? 0) + (message.usage.output_tokens ?? 0),
-                },
-              });
+              if (aiRes) {
+                const cleaned = aiRes.text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+                result = JSON.parse(cleaned) as CodeReviewResult;
+                result.model = aiRes.model;
+                result.isDemo = false;
+                const llmDescs = new Set(result.findings.map((f) => f.description.slice(0, 40)));
+                const extra = internalResult.findings.filter((f) => !llmDescs.has(f.description.slice(0, 40)));
+                result.findings = [...result.findings, ...extra].slice(0, 12);
+                await prisma.codeReviewScan.create({
+                  data: {
+                    userId: session.user.id, repo, prNumber, scanMode, analysisType: "pr",
+                    result: JSON.parse(JSON.stringify(result)),
+                    tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
+                  },
+                });
+              } else {
+                result = internalResult;
+              }
             } catch {
-              // LLM failed — internal AI result is still valuable
               result = internalResult;
             }
           }
@@ -581,37 +579,34 @@ export async function POST(req: NextRequest) {
             repo, analysisType: "commit", commitMeta: commit, files: commit.files ?? [], sha: commitSha,
           });
 
-          if (!process.env.ANTHROPIC_API_KEY) {
+          if (!hasAnyAIProvider()) {
             emit({ type: "progress", step: "Analysis complete…", percent: 90 });
             result = internalCommitResult;
           } else {
             emit({ type: "progress", step: "Enhancing with AI analysis…", percent: 68 });
-
-            const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-            const model =
-              plan === "enterprise" ? "claude-opus-4-6" :
-              plan === "professional" || plan === "team" ? "claude-sonnet-4-6" : "claude-haiku-4-5-20251001";
-
             const prompt = buildCommitPrompt({ repo, repoBrief, commit, sha: commitSha!, scanMode });
-
             try {
-              const message = await client.messages.create({
-                model, max_tokens: 3072,
-                messages: [{ role: "user", content: prompt }],
-                system: "You are an elite AI code reviewer. Return ONLY valid JSON — no markdown fences, no explanations.",
+              const aiRes = await callAI({
+                plan: plan as AIPlan,
+                systemPrompt: CODE_REVIEW_SYSTEM_PROMPT,
+                userPrompt: prompt,
+                maxTokens: 3072,
               });
-              const text = message.content[0]?.type === "text" ? message.content[0].text : "{}";
-              const cleaned = text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-              result = JSON.parse(cleaned) as CodeReviewResult;
-              result.model = model;
-              result.isDemo = false;
-              await prisma.codeReviewScan.create({
-                data: {
-                  userId: session.user.id, repo, commitSha, scanMode, analysisType: "commit",
-                  result: JSON.parse(JSON.stringify(result)),
-                  tokensUsed: (message.usage.input_tokens ?? 0) + (message.usage.output_tokens ?? 0),
-                },
-              });
+              if (aiRes) {
+                const cleaned = aiRes.text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
+                result = JSON.parse(cleaned) as CodeReviewResult;
+                result.model = aiRes.model;
+                result.isDemo = false;
+                await prisma.codeReviewScan.create({
+                  data: {
+                    userId: session.user.id, repo, commitSha, scanMode, analysisType: "commit",
+                    result: JSON.parse(JSON.stringify(result)),
+                    tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
+                  },
+                });
+              } else {
+                result = internalCommitResult;
+              }
             } catch {
               result = internalCommitResult;
             }

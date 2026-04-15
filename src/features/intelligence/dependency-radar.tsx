@@ -22,6 +22,8 @@ interface DependencyData {
   links: Link[];
 }
 
+type AIState = "idle" | "loading" | "done" | "error";
+
 export function DependencyRadar({ repos }: { repos: string[] }) {
   const [data, setData] = useState<DependencyData | null>(null);
   const [loading, setLoading] = useState(false);
@@ -29,6 +31,9 @@ export function DependencyRadar({ repos }: { repos: string[] }) {
   const [scanState, setScanState] = useState<"idle" | "scanning" | "done">("idle");
   const [scanResults, setScanResults] = useState<{ package: string; advisories: { id: number; severity: string; title: string; url: string; fixedIn: string }[] }[]>([]);
   const [scanError, setScanError] = useState("");
+  const [aiState, setAiState] = useState<AIState>("idle");
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (repos.length === 0) return;
@@ -69,6 +74,37 @@ export function DependencyRadar({ repos }: { repos: string[] }) {
     } catch (e) {
       setScanError(e instanceof Error ? e.message : "Scan failed");
       setScanState("idle");
+    }
+  };
+
+  const fetchAIDependencyInsight = async () => {
+    const primaryRepo = repos[0];
+    if (!primaryRepo || aiState === "loading") return;
+    setAiState("loading");
+    setAiInsight(null);
+    setAiError(null);
+
+    const totalDeps = data?.nodes.filter(n => n.type === "library").length ?? 0;
+    const vulnSummary = scanResults.length > 0
+      ? `${scanResults.length} vulnerable packages found: ${scanResults.slice(0, 5).map(r => `${r.package} (${r.advisories[0]?.severity ?? "unknown"})`).join(", ")}`
+      : "No vulnerabilities detected in security scan";
+
+    try {
+      const res = await fetch("/api/ai/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repo: primaryRepo,
+          question: `Analyze dependency security posture: ${totalDeps} total dependencies, ${vulnSummary}. Provide: 1) Risk assessment of the dependency footprint, 2) Specific recommendations for the flagged vulnerabilities, 3) General dependency hygiene improvements (pinning strategy, update cadence, removal candidates). Be specific and actionable.`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "AI analysis failed");
+      setAiInsight(json.analysis);
+      setAiState("done");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "AI analysis failed");
+      setAiState("error");
     }
   };
 
@@ -309,6 +345,75 @@ export function DependencyRadar({ repos }: { repos: string[] }) {
                   ))}
                 </div>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── AI Dependency Insight Panel ── */}
+      {data && data.nodes.length > 0 && (
+        <div className="mt-6 rounded-3xl border border-outline-variant/10 bg-surface-container/20 p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="size-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center">
+                <MaterialIcon name="psychology" size={16} className="text-violet-400" />
+              </div>
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-violet-400/80">AI Dependency Analyst</p>
+                <p className="text-[9px] text-muted-foreground/40">Risk assessment + hygiene recommendations</p>
+              </div>
+            </div>
+            {aiState !== "done" && (
+              <button
+                type="button"
+                onClick={fetchAIDependencyInsight}
+                disabled={aiState === "loading"}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                  aiState === "loading"
+                    ? "bg-violet-500/10 text-violet-400/50 cursor-not-allowed"
+                    : "bg-violet-500 text-white hover:bg-violet-600 shadow-lg shadow-violet-500/20"
+                )}
+              >
+                <MaterialIcon name={aiState === "loading" ? "hourglass_top" : "auto_awesome"} size={12} className={aiState === "loading" ? "animate-spin" : ""} />
+                {aiState === "loading" ? "Analyzing…" : "AI Risk Analysis"}
+              </button>
+            )}
+          </div>
+
+          {aiState === "idle" && (
+            <p className="text-[11px] text-muted-foreground/40 italic leading-relaxed">
+              Get AI interpretation of your dependency footprint — risk assessment, vulnerability prioritization, and hygiene recommendations.
+            </p>
+          )}
+
+          {aiState === "loading" && (
+            <div className="flex items-center gap-3 py-4 animate-pulse">
+              <div className="size-4 rounded-full border-2 border-violet-500 border-t-transparent animate-spin shrink-0" />
+              <span className="text-xs text-muted-foreground/50 font-medium">Evaluating dependency risk surface…</span>
+            </div>
+          )}
+
+          {aiState === "done" && aiInsight && (
+            <div className="animate-in fade-in duration-500 space-y-3">
+              <div className="p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10">
+                <p className="text-[12px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{aiInsight}</p>
+              </div>
+              <button
+                type="button"
+                onClick={fetchAIDependencyInsight}
+                className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground/40 hover:text-violet-400 transition-colors"
+              >
+                <MaterialIcon name="refresh" size={12} />
+                Re-analyze
+              </button>
+            </div>
+          )}
+
+          {aiState === "error" && (
+            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+              <MaterialIcon name="error" size={14} className="shrink-0 text-red-400" />
+              <p className="text-[11px] text-red-400">{aiError ?? "AI analysis unavailable — check your AI provider settings."}</p>
             </div>
           )}
         </div>

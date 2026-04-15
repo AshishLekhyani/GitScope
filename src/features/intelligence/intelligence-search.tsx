@@ -155,11 +155,13 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
               <div className="text-xs font-black text-indigo-500 tracking-tight">
                 <span className="opacity-40">{repo.split("/")[0]}/</span>{repo.split("/")[1]}
               </div>
-              <button 
+              <button
+                type="button"
                 onClick={() => onRemove(repo)}
-                className="size-6 rounded-lg bg-indigo-500/20 text-indigo-500 hover:bg-indigo-500 hover:text-white transition-all flex items-center justify-center"
+                title="Remove repo"
+                className="size-7 rounded-lg bg-indigo-500/30 text-indigo-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 border border-indigo-500/20 hover:border-red-500"
               >
-                <MaterialIcon name="close" size={14} />
+                <MaterialIcon name="close" size={15} />
               </button>
             </motion.div>
           ))}

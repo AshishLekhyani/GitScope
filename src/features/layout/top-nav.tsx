@@ -671,12 +671,11 @@ export function TopNav({
               </div>
               <DropdownMenuSeparator className="bg-outline-variant/10 m-0" />
               <Link
-                href="https://github.com/notifications"
-                target="_blank"
+                href="/notifications"
                 className="flex items-center justify-center p-3 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
               >
                 Go to Inbox
-                <MaterialIcon name="open_in_new" size={12} className="ml-2" />
+                <MaterialIcon name="arrow_forward" size={12} className="ml-2" />
               </Link>
             </DropdownMenuContent>
           )}

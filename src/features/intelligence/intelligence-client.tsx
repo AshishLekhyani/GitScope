@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { MaterialIcon } from "@/components/material-icon";
 import { DependencyRadar } from "@/features/intelligence/dependency-radar";
 import { VelocityChart } from "@/features/intelligence/velocity-chart";
@@ -25,7 +26,7 @@ interface CapabilitiesResponse {
   };
 }
 
-const STORAGE_KEY = "intelligence-page-state";
+const STORAGE_KEY = "intelligence-page-state-v2";
 
 interface PageState {
   selectedRepos: string[];
@@ -33,8 +34,9 @@ interface PageState {
 }
 
 export function IntelligenceClient() {
-  const [selectedRepos, setSelectedRepos] = useState<string[]>(["facebook/react"]);
-  const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk" | "codelens">("radar");
+  const searchParams = useSearchParams();
+  const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
+  const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk" | "codelens">("codelens");
   const [caps, setCaps] = useState<CapabilitiesResponse | null>(null);
   const [capsLoading, setCapsLoading] = useState(true);
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
@@ -62,7 +64,7 @@ export function IntelligenceClient() {
     };
   }, []);
 
-  // Load saved state on mount
+  // Load saved state on mount, then apply ?repo= URL param (URL wins)
   useEffect(() => {
     try {
       const saved = localStorage.getItem(STORAGE_KEY);
@@ -78,7 +80,15 @@ export function IntelligenceClient() {
     } catch {
       // Ignore parse errors
     }
-  }, []);
+
+    // ?repo=owner/name → pre-select it (URL param takes priority)
+    const repoParam = searchParams.get("repo");
+    if (repoParam) {
+      setSelectedRepos((prev) =>
+        prev.includes(repoParam) ? prev : [repoParam, ...prev.filter((r) => r !== repoParam)]
+      );
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Save state whenever it changes
   useEffect(() => {

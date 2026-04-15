@@ -33,6 +33,10 @@ function timeAgo(dateStr: string): string {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
+function commitCacheKey(repo: string, sha: string, mode: string) {
+  return `gitscope-commit-v1:${repo}:${sha}:${mode}`;
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
 
 interface CommitInspectorProps {
@@ -46,6 +50,9 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
   const [repo, setRepo] = useState(selectedRepo ?? "");
   const [commits, setCommits] = useState<GHCommit[]>([]);
   const [loadingCommits, setLoadingCommits] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [commitsPage, setCommitsPage] = useState(1);
+  const [hasMoreCommits, setHasMoreCommits] = useState(false);
   const [selectedSha, setSelectedSha] = useState<string | null>(null);
   const [shaInput, setShaInput] = useState("");
   const [scanMode, setScanMode] = useState<"quick" | "deep">("quick");
@@ -55,32 +62,65 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
   const [error, setError] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
+  // Load commits — initial load resets page; subsequent calls append
+  const fetchCommits = useCallback(async (target: string, page: number, append: boolean) => {
+    if (append) setLoadingMore(true);
+    else setLoadingCommits(true);
+
+    try {
+      const ghPath = `/repos/${target}/commits?per_page=20&page=${page}`;
+      const res = await fetch(`/api/github/proxy?path=${encodeURIComponent(ghPath)}`);
+      const data: GHCommit[] = res.ok ? await res.json() : [];
+      const list = Array.isArray(data) ? data : [];
+      setCommits((prev) => {
+        if (!append) return list;
+        const seen = new Set(prev.map((c) => c.sha));
+        return [...prev, ...list.filter((c) => !seen.has(c.sha))];
+      });
+      setHasMoreCommits(list.length === 20);
+    } catch {
+      if (!append) setCommits([]);
+    } finally {
+      if (append) setLoadingMore(false);
+      else setLoadingCommits(false);
+    }
+  }, []);
+
   // Load recent commits when repo changes
   useEffect(() => {
     const target = selectedRepo ?? repo;
     if (!target || !/^[\w.-]+\/[\w.-]+$/.test(target)) {
       setCommits([]);
+      setCommitsPage(1);
+      setHasMoreCommits(false);
       return;
     }
+    setCommitsPage(1);
+    fetchCommits(target, 1, false);
+  }, [selectedRepo, repo, fetchCommits]);
 
-    let cancelled = false;
-    setLoadingCommits(true);
-    fetch(`/api/github/proxy?path=/repos/${encodeURIComponent(target)}/commits?per_page=8`)
-      .then((r) => r.ok ? r.json() : [])
-      .then((data: GHCommit[]) => {
-        if (!cancelled) setCommits(Array.isArray(data) ? data : []);
-      })
-      .catch(() => {
-        if (!cancelled) setCommits([]);
-      })
-      .finally(() => {
-        if (!cancelled) setLoadingCommits(false);
-      });
-
-    return () => { cancelled = true; };
-  }, [selectedRepo, repo]);
+  const handleLoadMore = () => {
+    const target = selectedRepo ?? repo;
+    if (!target || loadingMore) return;
+    const nextPage = commitsPage + 1;
+    setCommitsPage(nextPage);
+    fetchCommits(target, nextPage, true);
+  };
 
   const runAnalysis = useCallback(async (sha: string, targetRepo: string) => {
+    // Check sessionStorage cache first
+    try {
+      const cached = sessionStorage.getItem(commitCacheKey(targetRepo, sha, scanMode));
+      if (cached) {
+        const parsed = JSON.parse(cached) as CodeReviewResult;
+        setSelectedSha(sha);
+        setResult(parsed);
+        setState("done");
+        setError(null);
+        return;
+      }
+    } catch { /* ignore */ }
+
     abortRef.current?.abort();
     abortRef.current = new AbortController();
     setState("scanning");
@@ -139,6 +179,9 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
               } else if (data.result) {
                 setState("done");
                 setResult(data.result);
+                try {
+                  sessionStorage.setItem(commitCacheKey(targetRepo, sha, scanMode), JSON.stringify(data.result));
+                } catch { /* quota exceeded — ignore */ }
               }
             }
           } catch { /* skip */ }
@@ -264,23 +307,40 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
         {/* Findings */}
         {result.findings.length > 0 && (
           <div className="space-y-2">
-            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5 px-1">
+            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-1.5 px-1">
               <MaterialIcon name="bug_report" size={12} /> Findings ({result.findings.length})
             </p>
             {result.findings.map((f, i) => {
-              const sty = { critical: "border-red-500/25 bg-red-500/8 text-red-400", high: "border-orange-500/25 bg-orange-500/8 text-orange-400", medium: "border-amber-500/25 bg-amber-500/8 text-amber-400", low: "border-outline-variant/15 bg-surface-container/30 text-muted-foreground" }[f.severity];
+              const styles = {
+                critical: { wrap: "border-red-500/40 bg-red-500/8", badge: "bg-red-500/20 text-red-300 border-red-500/30", dot: "bg-red-400", fix: "bg-red-500/10 border-red-500/20 text-red-300" },
+                high:     { wrap: "border-orange-500/35 bg-orange-500/6", badge: "bg-orange-500/20 text-orange-300 border-orange-500/30", dot: "bg-orange-400", fix: "bg-orange-500/8 border-orange-500/15 text-orange-300" },
+                medium:   { wrap: "border-amber-500/35 bg-amber-500/6", badge: "bg-amber-500/20 text-amber-300 border-amber-500/30", dot: "bg-amber-400", fix: "bg-amber-500/8 border-amber-500/15 text-amber-300" },
+                low:      { wrap: "border-outline-variant/25 bg-surface-container/30", badge: "bg-surface-container text-foreground/60 border-outline-variant/25", dot: "bg-muted-foreground/40", fix: "bg-surface-container/50 border-outline-variant/20 text-foreground/60" },
+              }[f.severity] ?? { wrap: "border-outline-variant/25 bg-surface-container/30", badge: "bg-surface-container text-foreground/60 border-outline-variant/25", dot: "bg-muted-foreground/40", fix: "bg-surface-container/50 border-outline-variant/20 text-foreground/60" };
+              const fileName = f.file ? f.file.split("/").slice(-1)[0] : null;
               return (
-                <div key={i} className={cn("rounded-2xl border p-4 space-y-2", sty)}>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-80">{f.severity}</span>
-                    <span className="opacity-40">·</span>
-                    <span className="text-[9px] font-black uppercase tracking-widest opacity-60">{f.category}</span>
-                    {f.file && <span className="ml-auto text-[9px] font-mono opacity-40 truncate max-w-[120px]">{f.file.split("/").slice(-1)[0]}</span>}
+                <div key={i} className={cn("rounded-2xl border p-4 space-y-3", styles.wrap)}>
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn("size-2 rounded-full shrink-0", styles.dot)} />
+                    <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border", styles.badge)}>
+                      {f.severity}
+                    </span>
+                    {f.category && (
+                      <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/50">{f.category}</span>
+                    )}
+                    {fileName && (
+                      <span className="ml-auto text-[9px] font-mono font-bold text-foreground/55 bg-surface-container-highest px-2 py-0.5 rounded border border-outline-variant/20 truncate max-w-[150px]">
+                        {fileName}
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs font-medium leading-snug opacity-90">{f.description}</p>
-                  <div className="flex items-start gap-1.5 pt-1.5 border-t border-current/10">
-                    <MaterialIcon name="lightbulb" size={11} className="shrink-0 mt-0.5 opacity-60" />
-                    <p className="text-[10px] opacity-70 leading-relaxed">{f.suggestion}</p>
+                  {/* Description */}
+                  <p className="text-xs font-semibold text-foreground/85 leading-relaxed">{f.description}</p>
+                  {/* Suggestion */}
+                  <div className={cn("flex items-start gap-2 p-2.5 rounded-xl border", styles.fix)}>
+                    <MaterialIcon name="lightbulb" size={12} className="shrink-0 mt-0.5" />
+                    <p className="text-[10px] leading-relaxed text-foreground/75">{f.suggestion}</p>
                   </div>
                 </div>
               );
@@ -296,10 +356,11 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
           <p className="text-xs text-foreground/75 font-medium leading-relaxed">{result.recommendation}</p>
         </div>
 
-        <div className="flex justify-end pt-2 border-t border-outline-variant/10">
+        <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+          <span className="text-[9px] font-mono text-muted-foreground/30">{result.isDemo ? "preview mode" : `${result.confidence}% confidence`}</span>
           <button type="button" onClick={reset}
-            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-indigo-400 transition-colors">
-            <MaterialIcon name="refresh" size={12} /> Inspect Another
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all">
+            <MaterialIcon name="manage_search" size={13} /> Inspect Another
           </button>
         </div>
       </div>
@@ -309,14 +370,20 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
   // ── Idle state ──────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {!selectedRepo && (
-        <div className="space-y-2">
-          <input
-            value={repo}
-            onChange={(e) => setRepo(e.target.value)}
-            placeholder="Repository (owner/repo)"
-            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-5 py-3.5 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
-          />
+      {!selectedRepo ? (
+        <input
+          value={repo}
+          onChange={(e) => setRepo(e.target.value)}
+          placeholder="Repository (owner/repo)"
+          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-5 py-3.5 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+        />
+      ) : (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-500/8 border border-indigo-500/20">
+          <MaterialIcon name="folder" size={18} className="text-indigo-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400/60 mb-0.5">Repository</p>
+            <p className="text-sm font-black text-foreground/90 truncate">{selectedRepo}</p>
+          </div>
         </div>
       )}
 
@@ -408,6 +475,20 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
               </button>
             ))}
           </div>
+
+          {hasMoreCommits && (
+            <button
+              type="button"
+              onClick={handleLoadMore}
+              disabled={loadingMore}
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-outline-variant/15 bg-surface-container/20 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-indigo-400 hover:border-indigo-500/20 hover:bg-indigo-500/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loadingMore
+                ? <><span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> Loading…</>
+                : <><MaterialIcon name="expand_more" size={14} /> Load more commits</>
+              }
+            </button>
+          )}
         </div>
       )}
     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { getCsrfToken } from "@/lib/csrf-client";
@@ -54,36 +54,95 @@ function ScoreBar({ label, score, grade }: { label: string; score: number; grade
   );
 }
 
+const SEVERITY_STYLES = {
+  critical: {
+    border: "border-red-500/40",
+    badge: "bg-red-500/20 text-red-300 border-red-500/30",
+    dot: "bg-red-400",
+    accent: "text-red-300",
+    expand: "bg-red-500/10 border-red-500/20",
+  },
+  high: {
+    border: "border-orange-500/35",
+    badge: "bg-orange-500/20 text-orange-300 border-orange-500/30",
+    dot: "bg-orange-400",
+    accent: "text-orange-300",
+    expand: "bg-orange-500/8 border-orange-500/15",
+  },
+  medium: {
+    border: "border-amber-500/35",
+    badge: "bg-amber-500/20 text-amber-300 border-amber-500/30",
+    dot: "bg-amber-400",
+    accent: "text-amber-300",
+    expand: "bg-amber-500/8 border-amber-500/15",
+  },
+  low: {
+    border: "border-outline-variant/25",
+    badge: "bg-surface-container text-foreground/60 border-outline-variant/25",
+    dot: "bg-muted-foreground/40",
+    accent: "text-foreground/60",
+    expand: "bg-surface-container/50 border-outline-variant/15",
+  },
+  info: {
+    border: "border-indigo-500/30",
+    badge: "bg-indigo-500/15 text-indigo-300 border-indigo-500/25",
+    dot: "bg-indigo-400",
+    accent: "text-indigo-300",
+    expand: "bg-indigo-500/8 border-indigo-500/15",
+  },
+} as const;
+
 function FindingItem({ finding }: { finding: RepoScanFinding }) {
   const [open, setOpen] = useState(false);
-  const sty = {
-    critical: "border-red-500/20 text-red-400",
-    high: "border-orange-500/20 text-orange-400",
-    medium: "border-amber-500/20 text-amber-400",
-    low: "border-outline-variant/15 text-muted-foreground",
-    info: "border-indigo-500/15 text-indigo-400",
-  }[finding.severity];
+  const sev = (finding.severity in SEVERITY_STYLES ? finding.severity : "low") as keyof typeof SEVERITY_STYLES;
+  const s = SEVERITY_STYLES[sev];
+  const fileName = finding.file ? finding.file.split("/").slice(-1)[0] : null;
 
   return (
-    <div className={cn("rounded-xl border overflow-hidden bg-surface-container/20", sty.split(" ")[0])}>
+    <div className={cn("rounded-2xl border overflow-hidden bg-surface-container/25 dark:bg-surface-container/15", s.border)}>
       <button type="button" onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left">
-        <span className={cn("text-[8px] font-black uppercase tracking-wider shrink-0", sty.split(" ")[1])}>
+        className="w-full flex items-center gap-3 px-4 py-3 text-left hover:bg-surface-container/40 transition-colors">
+        {/* Severity dot */}
+        <span className={cn("size-2 rounded-full shrink-0 mt-px", s.dot)} />
+        {/* Severity badge */}
+        <span className={cn("text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full border shrink-0", s.badge)}>
           {finding.severity}
         </span>
-        <p className="flex-1 text-[11px] font-medium text-foreground/70 line-clamp-1">{finding.description}</p>
-        {finding.file && (
-          <span className="text-[9px] font-mono text-muted-foreground/30 shrink-0 hidden sm:block truncate max-w-[100px]">
-            {finding.file.split("/").slice(-1)[0]}
+        {/* Description */}
+        <p className="flex-1 text-[11px] font-semibold text-foreground/85 leading-snug line-clamp-2">{finding.description}</p>
+        {/* File name — always visible, prominent */}
+        {fileName && (
+          <span className="text-[9px] font-mono font-bold text-foreground/50 bg-surface-container-highest px-2 py-0.5 rounded border border-outline-variant/20 shrink-0 hidden sm:block max-w-[140px] truncate">
+            {fileName}
           </span>
         )}
-        <MaterialIcon name={open ? "expand_less" : "expand_more"} size={14} className="text-muted-foreground/30 shrink-0" />
+        {/* Expand indicator */}
+        <div className={cn("shrink-0 size-6 rounded-lg flex items-center justify-center transition-colors",
+          open ? "bg-indigo-500/20 text-indigo-400" : "bg-surface-container-highest text-muted-foreground/50"
+        )}>
+          <MaterialIcon name={open ? "expand_less" : "expand_more"} size={14} />
+        </div>
       </button>
       {open && (
-        <div className="px-3 pb-3 space-y-2 animate-in fade-in duration-150">
-          <div className="flex items-start gap-1.5 p-2.5 rounded-lg bg-indigo-500/5 border border-indigo-500/10">
-            <MaterialIcon name="lightbulb" size={12} className="shrink-0 mt-0.5 text-indigo-400" />
-            <p className="text-[10px] text-foreground/70 leading-relaxed">{finding.suggestion}</p>
+        <div className="px-4 pb-4 space-y-3 animate-in fade-in duration-150 border-t border-outline-variant/10">
+          {finding.file && (
+            <div className="flex items-center gap-2 pt-3">
+              <MaterialIcon name="insert_drive_file" size={12} className="text-muted-foreground/50 shrink-0" />
+              <span className="text-[10px] font-mono text-foreground/50 truncate">{finding.file}</span>
+            </div>
+          )}
+          {finding.category && (
+            <div className="flex items-center gap-2">
+              <MaterialIcon name="label" size={12} className="text-muted-foreground/40 shrink-0" />
+              <span className="text-[9px] font-black uppercase tracking-wider text-muted-foreground/50">{finding.category}</span>
+            </div>
+          )}
+          <div className={cn("flex items-start gap-2.5 p-3 rounded-xl border", s.expand)}>
+            <MaterialIcon name="lightbulb" size={13} className={cn("shrink-0 mt-0.5", s.accent)} />
+            <div>
+              <p className={cn("text-[10px] font-black uppercase tracking-wider mb-1", s.accent)}>Suggested fix</p>
+              <p className="text-xs text-foreground/75 leading-relaxed">{finding.suggestion}</p>
+            </div>
           </div>
         </div>
       )}
@@ -101,6 +160,10 @@ interface RepoScannerProps {
 
 type ScanState = "idle" | "scanning" | "done" | "error";
 
+function scanCacheKey(repo: string, mode: string) {
+  return `gitscope-scan-v1:${repo}:${mode}`;
+}
+
 export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: RepoScannerProps) {
   const [repoInput, setRepoInput] = useState(selectedRepo ?? "");
   const [scanMode, setScanMode] = useState<"quick" | "deep">("quick");
@@ -114,6 +177,25 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
   const abortRef = useRef<AbortController | null>(null);
 
   const targetRepo = selectedRepo ?? repoInput;
+
+  // Restore last scan result from sessionStorage on mount
+  useEffect(() => {
+    const repo = selectedRepo ?? repoInput;
+    if (!repo) return;
+    for (const mode of ["quick", "deep"] as const) {
+      try {
+        const raw = sessionStorage.getItem(scanCacheKey(repo, mode));
+        if (raw) {
+          const cached = JSON.parse(raw) as RepoScanResult;
+          setResult(cached);
+          setState("done");
+          setScanMode(mode);
+          return;
+        }
+      } catch { /* ignore */ }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRepo]);
 
   const runScan = useCallback(async () => {
     if (!targetRepo || !/^[\w.-]+\/[\w.-]+$/.test(targetRepo)) {
@@ -168,7 +250,13 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
               setProgress({ step: data.step, percent: data.percent ?? 0 });
             } else if (data.type === "done") {
               if (data.error) { setState("error"); setError(data.error); }
-              else if (data.result) { setState("done"); setResult(data.result); }
+              else if (data.result) {
+                setState("done");
+                setResult(data.result);
+                try {
+                  sessionStorage.setItem(scanCacheKey(targetRepo, scanMode), JSON.stringify(data.result));
+                } catch { /* quota exceeded — ignore */ }
+              }
             }
           } catch { /* skip */ }
         }
@@ -187,6 +275,10 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
     setResult(null);
     setError(null);
     setProgress({ step: "", percent: 0 });
+    try {
+      sessionStorage.removeItem(scanCacheKey(targetRepo, "quick"));
+      sessionStorage.removeItem(scanCacheKey(targetRepo, "deep"));
+    } catch { /* ignore */ }
   };
 
   // ── Scanning ──────────────────────────────────────────────────────────────
@@ -613,13 +705,13 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
         })()}
 
         {/* Footer */}
-        <div className="flex items-center justify-between pt-2 border-t border-outline-variant/10">
+        <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
           <span className="text-[9px] font-mono text-muted-foreground/30">
             {result.isDemo ? "preview mode" : `analyzed with ${result.model}`}
           </span>
           <button type="button" onClick={reset}
-            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-indigo-400 transition-colors">
-            <MaterialIcon name="refresh" size={12} /> New Scan
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all">
+            <MaterialIcon name="refresh" size={13} /> Rescan Repository
           </button>
         </div>
       </div>
@@ -629,10 +721,18 @@ export function RepoScanner({ selectedRepo, canDeepScan, allowsPrivateRepo }: Re
   // ── Idle / Error ────────────────────────────────────────────────────────────
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {!selectedRepo && (
+      {!selectedRepo ? (
         <input value={repoInput} onChange={(e) => setRepoInput(e.target.value)}
           placeholder="Repository to scan (owner/repo)"
           className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-5 py-4 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all" />
+      ) : (
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-500/8 border border-indigo-500/20">
+          <MaterialIcon name="folder" size={18} className="text-indigo-400 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400/60 mb-0.5">Target Repository</p>
+            <p className="text-sm font-black text-foreground/90 truncate">{selectedRepo}</p>
+          </div>
+        </div>
       )}
 
       <div className="flex flex-wrap items-center gap-3">

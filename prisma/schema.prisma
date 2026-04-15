@@ -88,6 +88,7 @@ model User {
   aiAnalysisJobs  AiAnalysisJob[]
   bookmarks       Bookmark[]
   codeReviewScans CodeReviewScan[]
+  repoKnowledge   RepoKnowledge[]
 
   @@map("users")
 }
@@ -230,6 +231,32 @@ model CodeReviewScan {
   @@index([userId, repo])
   @@index([createdAt])
   @@map("code_review_scans")
+}
+
+// ── Codebase Memory System ─────────────────────────────────────────────────────
+// Stores AI-generated knowledge about repositories, plan-gated by TTL.
+// Free: ephemeral (1h), Professional: 7d, Team: 30d + org-shared, Enterprise: 90d + team patterns
+model RepoKnowledge {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orgId         String?  @map("org_id")         // Shared across org for team/enterprise
+  repo          String                           // "owner/repo"
+  knowledgeType String   @map("knowledge_type") // "scan-result" | "team-patterns" | "architecture"
+  summary       String   @db.Text               // AI-generated narrative summary
+  patterns      Json     @default("[]")         // Detected architectural patterns
+  insights      Json     @default("{}")         // Structured findings (security, quality, etc.)
+  fileCount     Int      @default(0) @map("file_count")
+  tokensUsed    Int      @default(0) @map("tokens_used")
+  expiresAt     DateTime @map("expires_at")     // Plan-gated TTL
+  lastUpdated   DateTime @default(now()) @map("last_updated") @updatedAt
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, repo, knowledgeType])
+  @@index([userId, repo])
+  @@index([orgId, repo])
+  @@index([expiresAt])
+  @@map("repo_knowledge")
 }
 
 // identifier prefixes:

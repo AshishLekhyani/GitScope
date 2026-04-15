@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
+import { signIn, signOut } from "next-auth/react";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
@@ -57,7 +58,13 @@ function getActivityLevel(pushedAt: string): { label: string; color: string } {
 
 // ── Repo Card ─────────────────────────────────────────────────────────────────
 
-function RepoCard({ repo, viewMode }: { repo: MyRepo; viewMode: "grid" | "list" }) {
+function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
+  repo: MyRepo;
+  viewMode: "grid" | "list";
+  isHidden: boolean;
+  onHide: (name: string) => void;
+  onUnhide: (name: string) => void;
+}) {
   const router = useRouter();
   const langColor = getLangColor(repo.language);
   const activity = getActivityLevel(repo.pushed_at);
@@ -69,7 +76,7 @@ function RepoCard({ repo, viewMode }: { repo: MyRepo; viewMode: "grid" | "list" 
     router.push(`/intelligence?repo=${encodeURIComponent(repo.full_name)}`);
   };
 
-  const handleDashboard = (e: React.MouseEvent) => {
+  const handleInsights = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     const [owner, name] = repo.full_name.split("/");
@@ -78,11 +85,9 @@ function RepoCard({ repo, viewMode }: { repo: MyRepo; viewMode: "grid" | "list" 
 
   if (viewMode === "list") {
     return (
-      <a
-        href={repo.html_url}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="group flex items-center gap-4 px-5 py-4 rounded-2xl border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/40 hover:border-indigo-500/20 transition-all"
+      <div
+        onClick={handleInsights}
+        className="group flex items-center gap-4 px-5 py-4 rounded-2xl border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/40 hover:border-indigo-500/20 transition-all cursor-pointer"
       >
         {/* Owner avatar */}
         <div className="size-10 rounded-xl overflow-hidden shrink-0 bg-surface-container-highest border border-outline-variant/10">
@@ -151,27 +156,40 @@ function RepoCard({ repo, viewMode }: { repo: MyRepo; viewMode: "grid" | "list" 
         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
           <button
             type="button"
-            onClick={handleDashboard}
+            title={isHidden ? "Show in list" : "Hide from list"}
+            onClick={(e) => { e.preventDefault(); e.stopPropagation(); isHidden ? onUnhide(repo.full_name) : onHide(repo.full_name); }}
+            className="size-8 rounded-xl bg-surface-container-highest hover:bg-amber-500/10 flex items-center justify-center transition-colors"
+          >
+            <MaterialIcon name={isHidden ? "visibility" : "visibility_off"} size={14} className="text-muted-foreground/40 hover:text-amber-400" />
+          </button>
+          <button
+            type="button"
+            title="View insights"
+            onClick={handleInsights}
             className="size-8 rounded-xl bg-surface-container-highest hover:bg-indigo-500/10 flex items-center justify-center transition-colors"
           >
             <MaterialIcon name="dashboard" size={14} className="text-muted-foreground/60 hover:text-indigo-400" />
           </button>
           <button
             type="button"
+            title="AI analyze"
             onClick={handleAnalyze}
             className="size-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500 flex items-center justify-center transition-colors group/btn"
           >
             <MaterialIcon name="auto_awesome" size={14} className="text-indigo-400 group-hover/btn:text-white" />
           </button>
         </div>
-      </a>
+      </div>
     );
   }
 
   // Grid card
   return (
     <div className="group relative flex flex-col rounded-3xl border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/35 hover:border-indigo-500/20 transition-all overflow-hidden cursor-pointer"
-      onClick={() => window.open(repo.html_url, "_blank", "noopener noreferrer")}
+      onClick={() => {
+        const [owner, name] = repo.full_name.split("/");
+        router.push(`/dashboard/${owner}/${name}`);
+      }}
     >
       {/* Language color header */}
       <div className="h-1.5 w-full shrink-0" style={{ backgroundColor: langColor, opacity: 0.7 }} />
@@ -266,21 +284,31 @@ function RepoCard({ repo, viewMode }: { repo: MyRepo; viewMode: "grid" | "list" 
       </div>
 
       {/* Hover action overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-3xl flex items-end justify-end p-3 gap-2">
+      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-3xl flex items-end justify-between p-3">
         <button
           type="button"
-          onClick={handleDashboard}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/20 transition-colors"
+          title={isHidden ? "Show in list" : "Hide from list"}
+          onClick={(e) => { e.preventDefault(); e.stopPropagation(); isHidden ? onUnhide(repo.full_name) : onHide(repo.full_name); }}
+          className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-black/30 backdrop-blur-md border border-white/10 text-white/60 hover:bg-amber-500/30 hover:text-white hover:border-amber-400/30 transition-colors"
         >
-          <MaterialIcon name="dashboard" size={12} /> Insights
+          <MaterialIcon name={isHidden ? "visibility" : "visibility_off"} size={12} />
         </button>
-        <button
-          type="button"
-          onClick={handleAnalyze}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 border border-indigo-400 text-white text-[10px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/30"
-        >
-          <MaterialIcon name="auto_awesome" size={12} /> AI Analyze
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={handleInsights}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/20 transition-colors"
+          >
+            <MaterialIcon name="dashboard" size={12} /> Insights
+          </button>
+          <button
+            type="button"
+            onClick={handleAnalyze}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 border border-indigo-400 text-white text-[10px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/30"
+          >
+            <MaterialIcon name="auto_awesome" size={12} /> AI Analyze
+          </button>
+        </div>
       </div>
 
       {/* Access level badge */}
@@ -309,7 +337,11 @@ interface ReposMeta {
   source: string;
   githubUser?: string;
   message?: string;
+  scopeLimited?: boolean;
+  grantedScopes?: string;
 }
+
+const HIDDEN_REPOS_KEY = "gitscope-hidden-repos-v1";
 
 export function ReposClient() {
   const [repos, setRepos] = useState<MyRepo[]>([]);
@@ -321,21 +353,58 @@ export function ReposClient() {
   const [sortBy, setSortBy] = useState<SortType>("updated");
   const [langFilter, setLangFilter] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [hiddenRepos, setHiddenRepos] = useState<Set<string>>(new Set());
+  const [showHidden, setShowHidden] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
+  // Load hidden repos from localStorage on mount
   useEffect(() => {
+    try {
+      const raw = localStorage.getItem(HIDDEN_REPOS_KEY);
+      if (raw) setHiddenRepos(new Set(JSON.parse(raw) as string[]));
+    } catch { /* ignore */ }
+  }, []);
+
+  const hideRepo = (fullName: string) => {
+    setHiddenRepos((prev) => {
+      const next = new Set(prev);
+      next.add(fullName);
+      try { localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+      return next;
+    });
+  };
+
+  const unhideRepo = (fullName: string) => {
+    setHiddenRepos((prev) => {
+      const next = new Set(prev);
+      next.delete(fullName);
+      try { localStorage.setItem(HIDDEN_REPOS_KEY, JSON.stringify([...next])); } catch { /* ignore */ }
+      // If no more hidden repos, leave the hidden-view so the list isn't empty
+      if (next.size === 0) setShowHidden(false);
+      return next;
+    });
+  };
+
+  const loadRepos = () => {
     setLoading(true);
-    fetch("/api/github/my-repos?type=all&sort=updated&visibility=all")
-      .then((r) => r.ok ? r.json() : Promise.reject(r))
-      .then((data: { repos: MyRepo[]; meta: ReposMeta }) => {
+    setError(null);
+    fetch("/api/github/my-repos?type=all&sort=updated", { cache: "no-store" })
+      .then(async (r) => {
+        const data = await r.json();
+        if (!r.ok) throw new Error(data?.error ?? `HTTP ${r.status}`);
+        return data as { repos: MyRepo[]; meta: ReposMeta };
+      })
+      .then((data) => {
         setRepos(data.repos ?? []);
         setMeta(data.meta ?? null);
       })
-      .catch(() => {
-        setError("Failed to load repositories. Connect your GitHub account in Settings.");
+      .catch((err: Error) => {
+        setError(err.message ?? "Failed to load repositories.");
       })
       .finally(() => setLoading(false));
-  }, []);
+  };
+
+  useEffect(() => { loadRepos(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keyboard shortcut: / to focus search
   useEffect(() => {
@@ -357,7 +426,22 @@ export function ReposClient() {
 
   // Filtered + sorted repos
   const filtered = useMemo(() => {
-    let result = repos;
+    let result = showHidden
+      ? repos.filter((r) => hiddenRepos.has(r.full_name))
+      : repos.filter((r) => !hiddenRepos.has(r.full_name));
+
+    // In hidden-repos view, only apply search — skip type/language filters (they'd empty the list)
+    if (showHidden) {
+      if (search) {
+        const q = search.toLowerCase();
+        result = result.filter(
+          (r) =>
+            r.full_name.toLowerCase().includes(q) ||
+            (r.description ?? "").toLowerCase().includes(q)
+        );
+      }
+      return result;
+    }
 
     // Search
     if (search) {
@@ -393,7 +477,7 @@ export function ReposClient() {
     });
 
     return result;
-  }, [repos, search, filter, sortBy, langFilter]);
+  }, [repos, search, filter, sortBy, langFilter, hiddenRepos, showHidden]);
 
   const FILTER_TABS: { id: FilterType; label: string; icon: string; count?: number }[] = [
     { id: "all", label: "All", icon: "folder_open", count: repos.length },
@@ -425,22 +509,35 @@ export function ReposClient() {
           </p>
         </div>
 
-        {/* Stats */}
-        {meta && !loading && (
-          <div className="flex flex-wrap items-center gap-3">
-            {[
-              { label: "Total", value: meta.total, icon: "folder", color: "text-indigo-400" },
-              { label: "Private", value: meta.private, icon: "lock", color: "text-amber-400" },
-              { label: "Public", value: meta.public, icon: "public", color: "text-emerald-400" },
-              { label: "Owned", value: meta.owned, icon: "person", color: "text-violet-400" },
-            ].map((s) => (
-              <div key={s.label} className="flex flex-col items-center px-4 py-2.5 rounded-2xl bg-surface-container/30 border border-outline-variant/10 min-w-[68px]">
-                <span className={cn("text-xl font-black", s.color)}>{s.value}</span>
-                <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mt-0.5">{s.label}</span>
-              </div>
-            ))}
-          </div>
-        )}
+        {/* Right side: refresh + stats */}
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={loadRepos}
+            disabled={loading}
+            title="Refresh repositories"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-outline-variant/15 bg-surface-container/30 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-indigo-500/30 transition-all disabled:opacity-40"
+          >
+            <MaterialIcon name="refresh" size={14} className={loading ? "animate-spin" : ""} />
+            Refresh
+          </button>
+
+          {meta && !loading && (
+            <>
+              {[
+                { label: "Total", value: meta.total, icon: "folder", color: "text-indigo-400" },
+                { label: "Private", value: meta.private, icon: "lock", color: "text-amber-400" },
+                { label: "Public", value: meta.public, icon: "public", color: "text-emerald-400" },
+                { label: "Owned", value: meta.owned, icon: "person", color: "text-violet-400" },
+              ].map((s) => (
+                <div key={s.label} className="flex flex-col items-center px-4 py-2.5 rounded-2xl bg-surface-container/30 border border-outline-variant/10 min-w-[68px]">
+                  <span className={cn("text-xl font-black", s.color)}>{s.value}</span>
+                  <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mt-0.5">{s.label}</span>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
       </div>
 
       {/* ── Controls ── */}
@@ -457,7 +554,7 @@ export function ReposClient() {
               className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-11 pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
             />
             {search && (
-              <button type="button" onClick={() => setSearch("")}
+              <button type="button" onClick={() => setSearch("")} title="Clear search"
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground/40 hover:text-foreground transition-colors">
                 <MaterialIcon name="close" size={15} />
               </button>
@@ -468,6 +565,7 @@ export function ReposClient() {
           <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-xl border border-outline-variant/10">
             {(["grid", "list"] as const).map((mode) => (
               <button key={mode} type="button" onClick={() => setViewMode(mode)}
+                title={mode === "grid" ? "Grid view" : "List view"}
                 className={cn("p-2 rounded-lg transition-all",
                   viewMode === mode ? "bg-indigo-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}>
@@ -480,6 +578,7 @@ export function ReposClient() {
           <select
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortType)}
+            aria-label="Sort repositories"
             className="bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-4 py-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer"
           >
             {[
@@ -515,6 +614,28 @@ export function ReposClient() {
               )}
             </button>
           ))}
+
+          {/* Hidden repos toggle */}
+          {hiddenRepos.size > 0 && (
+            <div className={cn(
+              "flex items-center gap-1 rounded-xl border transition-all",
+              showHidden
+                ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
+                : "bg-surface-container/25 border-outline-variant/10 text-muted-foreground/50"
+            )}>
+              <button type="button" onClick={() => setShowHidden((v) => !v)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-[9px] font-black uppercase tracking-wider hover:text-amber-400 transition-colors">
+                <MaterialIcon name={showHidden ? "visibility" : "visibility_off"} size={11} />
+                {showHidden ? "Showing hidden" : "Hidden"} ({hiddenRepos.size})
+              </button>
+              {showHidden && (
+                <button type="button" title="Back to all repos" onClick={() => setShowHidden(false)}
+                  className="pr-2 hover:text-amber-300 transition-colors">
+                  <MaterialIcon name="close" size={12} />
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Language filter */}
           {languages.length > 0 && (
@@ -563,19 +684,150 @@ export function ReposClient() {
         </div>
       )}
 
-      {!loading && !error && meta?.message && repos.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 text-center space-y-6">
+      {/* ── Scope-limited: empty because token lacks repo/public_repo scope ── */}
+      {!loading && !error && meta?.scopeLimited && repos.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-8 animate-in fade-in duration-500">
+          <div className="size-20 rounded-3xl bg-amber-500/8 border border-amber-500/20 flex items-center justify-center">
+            <MaterialIcon name="key_off" size={36} className="text-amber-400/70" />
+          </div>
+
+          <div className="space-y-2 max-w-sm">
+            <h3 className="text-xl font-black">GitScope needs repo access</h3>
+            <p className="text-sm text-muted-foreground/60 leading-relaxed">
+              Your GitHub session doesn't have permission to list repositories.
+              Choose how much access to grant — you can always change this later.
+            </p>
+          </div>
+
+          {/* Access level choice */}
+          <div className="w-full max-w-md space-y-3 text-left">
+            {/* Option A: public only */}
+            <div className="rounded-2xl border border-outline-variant/20 bg-surface-container/30 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="size-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <MaterialIcon name="public" size={16} className="text-emerald-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-foreground/90">Public repos only</p>
+                  <p className="text-[11px] text-muted-foreground/55 mt-0.5 leading-relaxed">
+                    GitScope can only see your public repos. No private repo access is granted.
+                    GitHub shows this as <span className="font-mono bg-surface-container-highest px-1 rounded">public_repo</span> scope.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut({ redirect: false });
+                  signIn("github", { callbackUrl: "/repos" }, { scope: "read:user user:email notifications public_repo" });
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all"
+              >
+                <MaterialIcon name="lock_open" size={13} /> Connect — Public only
+              </button>
+            </div>
+
+            {/* Option B: all repos */}
+            <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <MaterialIcon name="lock" size={16} className="text-indigo-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-black text-foreground/90">Public + Private repos</p>
+                  <p className="text-[11px] text-muted-foreground/55 mt-0.5 leading-relaxed">
+                    GitScope can see all your repos including private ones. GitHub shows this as
+                    <span className="font-mono bg-surface-container-highest px-1 rounded ml-1">repo</span> scope.
+                    GitScope does not store your code — only metadata and AI analysis results.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={async () => {
+                  await signOut({ redirect: false });
+                  signIn("github", { callbackUrl: "/repos" }, { scope: "read:user user:email notifications repo" });
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20"
+              >
+                <MaterialIcon name="sync" size={13} /> Connect — All repos
+              </button>
+            </div>
+
+            <p className="text-[9px] text-muted-foreground/30 text-center px-4 leading-relaxed">
+              GitHub OAuth Apps require all-or-nothing repo access — you cannot choose individual repos.
+              Use the hide feature to control which repos appear in GitScope's UI.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ── Scope-limited banner (shown above repos when some repos did load) ── */}
+      {!loading && !error && meta?.scopeLimited && repos.length > 0 && (
+        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+          <MaterialIcon name="lock" size={18} className="text-amber-400 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-black text-amber-300">Showing public repos only</p>
+            <p className="text-xs text-amber-400/60">Reconnect with "All repos" access to see private repos too.</p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              await signOut({ redirect: false });
+              signIn("github", { callbackUrl: "/repos" }, { scope: "read:user user:email notifications repo" });
+            }}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all whitespace-nowrap"
+          >
+            <MaterialIcon name="sync" size={13} /> Upgrade access
+          </button>
+        </div>
+      )}
+
+      {/* ── No GitHub connected / repos empty ── */}
+      {!loading && !error && repos.length === 0 && !meta?.scopeLimited && (
+        <div className="flex flex-col items-center justify-center py-16 text-center space-y-6">
           <div className="size-20 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center">
             <MaterialIcon name="folder_open" size={32} className="text-indigo-500/30" />
           </div>
           <div>
-            <h3 className="text-xl font-black mb-2">No Repositories Found</h3>
-            <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed">{meta.message}</p>
+            <h3 className="text-xl font-black mb-2">
+              {meta?.message ? "No Repositories Found" : meta ? "No Repos Returned" : "Not Connected"}
+            </h3>
+            <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed">
+              {meta?.message ?? (meta ? "GitHub returned 0 repositories for this token." : "Connect your GitHub account in Settings.")}
+            </p>
           </div>
-          <Link href="/settings"
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 text-white text-[11px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors">
-            <MaterialIcon name="link" size={14} /> Connect GitHub
-          </Link>
+          <div className="flex gap-3">
+            <button type="button" onClick={loadRepos}
+              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-outline-variant/20 text-[10px] font-black uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+              <MaterialIcon name="refresh" size={13} /> Retry
+            </button>
+            <Link href="/settings"
+              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 text-white text-[11px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors">
+              <MaterialIcon name="link" size={14} /> Go to Settings
+            </Link>
+          </div>
+
+          {/* Debug info panel — only shown when meta exists and repos empty */}
+          {meta && (
+            <details className="w-full max-w-md text-left">
+              <summary className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 cursor-pointer hover:text-muted-foreground/60 transition-colors">
+                Debug info
+              </summary>
+              <div className="mt-3 rounded-2xl border border-outline-variant/15 bg-surface-container/20 p-4 space-y-1.5 text-[11px] font-mono text-muted-foreground/60">
+                <div><span className="text-foreground/40">source:</span> {meta.source}</div>
+                <div><span className="text-foreground/40">githubUser:</span> {meta.githubUser || "(empty)"}</div>
+                <div><span className="text-foreground/40">scopeLimited:</span> {String(meta.scopeLimited)}</div>
+                <div><span className="text-foreground/40">total:</span> {meta.total}</div>
+                {meta.grantedScopes !== undefined && (
+                  <div><span className="text-foreground/40">grantedScopes:</span> {meta.grantedScopes || "(none)"}</div>
+                )}
+                <p className="text-[9px] text-muted-foreground/30 pt-1 border-t border-outline-variant/10">
+                  Open DevTools → Network → my-repos to see the full API response.
+                </p>
+              </div>
+            </details>
+          )}
         </div>
       )}
 
@@ -608,13 +860,13 @@ export function ReposClient() {
           {viewMode === "grid" ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr">
               {filtered.map((repo) => (
-                <RepoCard key={repo.id} repo={repo} viewMode="grid" />
+                <RepoCard key={repo.id} repo={repo} viewMode="grid" isHidden={hiddenRepos.has(repo.full_name)} onHide={hideRepo} onUnhide={unhideRepo} />
               ))}
             </div>
           ) : (
             <div className="space-y-1.5">
               {filtered.map((repo) => (
-                <RepoCard key={repo.id} repo={repo} viewMode="list" />
+                <RepoCard key={repo.id} repo={repo} viewMode="list" isHidden={hiddenRepos.has(repo.full_name)} onHide={hideRepo} onUnhide={unhideRepo} />
               ))}
             </div>
           )}

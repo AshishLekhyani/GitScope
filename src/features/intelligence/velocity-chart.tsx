@@ -25,9 +25,14 @@ interface VelocityMetrics {
   } | null;
 }
 
+type AIState = "idle" | "loading" | "done" | "error";
+
 export function VelocityChart({ repos }: { repos: string[] }) {
   const [data, setData] = useState<VelocityMetrics[]>([]);
   const [loading, setLoading] = useState(false);
+  const [aiState, setAiState] = useState<AIState>("idle");
+  const [aiInsight, setAiInsight] = useState<string | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   useEffect(() => {
     if (repos.length === 0) return;
@@ -49,6 +54,40 @@ export function VelocityChart({ repos }: { repos: string[] }) {
 
     fetchMetrics();
   }, [repos]);
+
+  const fetchAICoaching = async () => {
+    const validRepos = data.filter(d => d.metrics);
+    if (validRepos.length === 0 || aiState === "loading") return;
+
+    setAiState("loading");
+    setAiInsight(null);
+    setAiError(null);
+
+    const metricsText = validRepos.map(d => {
+      const m = d.metrics!;
+      return `${d.name}: cycle time ${m.cycleTime}h, lead time ${m.leadTime}h, bus factor ${m.busFactor}, frequency ${m.freq}/day, ${m.count} merges/month`;
+    }).join(" | ");
+
+    const primaryRepo = repos[0];
+
+    try {
+      const res = await fetch("/api/ai/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repo: primaryRepo,
+          question: `Analyze these engineering velocity (DORA) metrics and provide actionable coaching: ${metricsText}. Identify bottlenecks, highlight bus factor risks, compare against DORA benchmarks (Elite: <1h, High: <1d, Medium: <1w), and give 3 specific improvement recommendations. Be direct and technical.`,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error ?? "AI coaching failed");
+      setAiInsight(json.analysis);
+      setAiState("done");
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : "AI coaching failed");
+      setAiState("error");
+    }
+  };
 
   const chartData = data.filter(d => d.metrics).map(d => ({
     name: d.name.split("/")[1],
@@ -221,6 +260,73 @@ export function VelocityChart({ repos }: { repos: string[] }) {
           </div>
         );
       })()}
+
+      {/* ── AI Coaching Panel ── */}
+      <div className="rounded-3xl border border-outline-variant/10 bg-surface-container/20 p-6 space-y-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="size-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
+              <MaterialIcon name="psychology" size={16} className="text-indigo-400" />
+            </div>
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/80">AI Velocity Coach</p>
+              <p className="text-[9px] text-muted-foreground/40">DORA benchmark analysis + improvement roadmap</p>
+            </div>
+          </div>
+          {aiState !== "done" && (
+            <button
+              type="button"
+              onClick={fetchAICoaching}
+              disabled={aiState === "loading" || data.filter(d => d.metrics).length === 0}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                aiState === "loading"
+                  ? "bg-indigo-500/10 text-indigo-400/50 cursor-not-allowed"
+                  : "bg-indigo-500 text-white hover:bg-indigo-600 shadow-lg shadow-indigo-500/20"
+              )}
+            >
+              <MaterialIcon name={aiState === "loading" ? "hourglass_top" : "auto_awesome"} size={12} className={aiState === "loading" ? "animate-spin" : ""} />
+              {aiState === "loading" ? "Analyzing…" : "Get AI Coaching"}
+            </button>
+          )}
+        </div>
+
+        {aiState === "idle" && (
+          <p className="text-[11px] text-muted-foreground/40 italic leading-relaxed">
+            Ask the AI to interpret your DORA metrics, identify bottlenecks, and recommend improvements based on your team&apos;s velocity data.
+          </p>
+        )}
+
+        {aiState === "loading" && (
+          <div className="flex items-center gap-3 py-4 animate-pulse">
+            <div className="size-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
+            <span className="text-xs text-muted-foreground/50 font-medium">Benchmarking against DORA standards…</span>
+          </div>
+        )}
+
+        {aiState === "done" && aiInsight && (
+          <div className="animate-in fade-in duration-500 space-y-3">
+            <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+              <p className="text-[12px] text-foreground/80 leading-relaxed whitespace-pre-wrap">{aiInsight}</p>
+            </div>
+            <button
+              type="button"
+              onClick={fetchAICoaching}
+              className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground/40 hover:text-indigo-400 transition-colors"
+            >
+              <MaterialIcon name="refresh" size={12} />
+              Refresh coaching
+            </button>
+          </div>
+        )}
+
+        {aiState === "error" && (
+          <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+            <MaterialIcon name="error" size={14} className="shrink-0 text-red-400" />
+            <p className="text-[11px] text-red-400">{aiError ?? "AI coaching unavailable — check your AI provider settings."}</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }

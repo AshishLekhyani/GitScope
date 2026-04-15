@@ -49,6 +49,7 @@ const CATEGORY_ICON: Record<string, string> = {
 
 const FLAG_COLOR: Record<string, string> = {
   security: "bg-red-500/10 text-red-400 border-red-500/20",
+  "security-fix": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   "breaking-change": "bg-orange-500/10 text-orange-400 border-orange-500/20",
   performance: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
   deps: "bg-purple-500/10 text-purple-400 border-purple-500/20",
@@ -57,6 +58,9 @@ const FLAG_COLOR: Record<string, string> = {
   "api-contract": "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
   "large-diff": "bg-amber-500/10 text-amber-400 border-amber-500/20",
   "test-coverage": "bg-teal-500/10 text-teal-400 border-teal-500/20",
+  tests: "bg-teal-500/10 text-teal-400 border-teal-500/20",
+  middleware: "bg-slate-500/10 text-slate-400 border-slate-500/20",
+  dependencies: "bg-purple-500/10 text-purple-400 border-purple-500/20",
   config: "bg-slate-500/10 text-slate-400 border-slate-500/20",
   "logic-error": "bg-pink-500/10 text-pink-400 border-pink-500/20",
   style: "bg-gray-500/10 text-gray-400 border-gray-500/20",
@@ -762,9 +766,9 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
           <button
             type="button"
             onClick={reset}
-            className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-indigo-400 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all"
           >
-            <MaterialIcon name="refresh" size={12} />
+            <MaterialIcon name="rate_review" size={13} />
             New Review
           </button>
         </div>

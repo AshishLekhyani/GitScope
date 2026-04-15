@@ -50,10 +50,11 @@ async function fetchAllPages<T>(
   baseUrl: string,
   token: string | null,
   maxPages = 5
-): Promise<T[]> {
+): Promise<{ data: T[]; status: number }> {
   const results: T[] = [];
   let url: string | null = baseUrl;
   let page = 0;
+  let firstStatus = 200;
 
   while (url && page < maxPages) {
     page++;
@@ -64,8 +65,9 @@ async function fetchAllPages<T>(
           "X-GitHub-Api-Version": "2022-11-28",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        next: { revalidate: 120 }, // cache 2min
+        cache: "no-store", // never cache — response varies per Authorization header
       });
+      if (page === 1) firstStatus = res.status;
       if (!res.ok) break;
       const data = (await res.json()) as T[];
       results.push(...data);
@@ -79,7 +81,7 @@ async function fetchAllPages<T>(
     }
   }
 
-  return results;
+  return { data: results, status: firstStatus };
 }
 
 export async function GET(req: NextRequest) {
@@ -107,11 +109,52 @@ export async function GET(req: NextRequest) {
   const visibility = url.searchParams.get("visibility") ?? "all"; // all | public | private
 
   try {
-    // Fetch all repos including private ones the user has access to
-    const rawRepos = await fetchAllPages<MyRepo>(
-      `https://api.github.com/user/repos?type=${type}&sort=${sort}&per_page=100&visibility=${visibility}`,
-      token
-    );
+    // Fetch the authenticated user's GitHub login (username) and all repos in parallel
+    const authHeaders = {
+      Accept: "application/vnd.github+json",
+      "X-GitHub-Api-Version": "2022-11-28",
+      Authorization: `Bearer ${token}`,
+    };
+
+    // Fetch user identity — no caching so we always get fresh x-oauth-scopes header
+    const githubUserRes = await fetch("https://api.github.com/user", { headers: authHeaders, cache: "no-store" });
+
+    // Determine GitHub login: prefer API response, fall back to session name
+    let githubLogin: string = session.user?.name ?? "";
+    let grantedScopes = "";
+    if (githubUserRes.ok) {
+      const ghUser = (await githubUserRes.json()) as { login: string };
+      githubLogin = ghUser.login;
+      grantedScopes = githubUserRes.headers.get("x-oauth-scopes") ?? "";
+    }
+    const hasRepoScope = grantedScopes.split(",").map((s) => s.trim()).some((s) => s === "repo" || s === "public_repo");
+
+    // GitHub API: `type` and `visibility` are mutually exclusive — sending both causes a 422.
+    // Strategy: when we have repo scope, use visibility param (more expressive). When we don't,
+    // use type param only (which limits to public repos without erroring).
+    const repoListUrl = hasRepoScope
+      ? `https://api.github.com/user/repos?visibility=${visibility}&sort=${sort}&per_page=100`
+      : `https://api.github.com/user/repos?type=${type}&sort=${sort}&per_page=100`;
+
+    const firstFetch = await fetchAllPages<MyRepo>(repoListUrl, token);
+
+    let rawRepos = firstFetch.data;
+    let scopeLimited = !hasRepoScope;
+
+    if (rawRepos.length === 0 && firstFetch.status !== 200) {
+      // Non-200 (expired/revoked token, 422, etc.) — log status and return empty gracefully
+      if (process.env.NODE_ENV !== "production") {
+        console.warn(`[my-repos] GitHub API returned status ${firstFetch.status}`);
+      }
+      rawRepos = [];
+    } else if (rawRepos.length === 0 && hasRepoScope) {
+      // Got 200 but empty — retry without any filter (GitHub default: all accessible repos)
+      const retryFetch = await fetchAllPages<MyRepo>(
+        `https://api.github.com/user/repos?sort=${sort}&per_page=100`,
+        token
+      );
+      rawRepos = retryFetch.data;
+    }
 
     const repos: MyRepo[] = rawRepos.map((r) => {
       const perms = r.permissions;
@@ -122,7 +165,7 @@ export async function GET(req: NextRequest) {
 
       return {
         ...r,
-        isOwned: r.owner.login === session.user?.name || r.owner.login === session.user?.email?.split("@")[0],
+        isOwned: r.owner.login === githubLogin,
         isContributor: !!(perms?.push || perms?.maintain) && r.owner.type === "User",
         accessLevel,
       };
@@ -135,17 +178,26 @@ export async function GET(req: NextRequest) {
       return new Date(b.pushed_at).getTime() - new Date(a.pushed_at).getTime();
     });
 
-    return NextResponse.json({
-      repos,
-      meta: {
-        total: repos.length,
-        private: repos.filter((r) => r.private).length,
-        public: repos.filter((r) => !r.private).length,
-        owned: repos.filter((r) => r.isOwned).length,
-        source,
-        githubUser: session.user?.name ?? "",
+    return NextResponse.json(
+      {
+        repos,
+        meta: {
+          total: repos.length,
+          private: repos.filter((r) => r.private).length,
+          public: repos.filter((r) => !r.private).length,
+          owned: repos.filter((r) => r.isOwned).length,
+          source,
+          githubUser: githubLogin,
+          scopeLimited,
+          grantedScopes: process.env.NODE_ENV !== "production" ? grantedScopes : undefined,
+        },
       },
-    });
+      {
+        headers: {
+          "Cache-Control": "no-store",
+        },
+      }
+    );
   } catch (err) {
     if (process.env.NODE_ENV !== "production") {
       console.error("[my-repos]", err);

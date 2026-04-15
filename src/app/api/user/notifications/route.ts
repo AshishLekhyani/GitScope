@@ -17,6 +17,16 @@ interface LocalNotification {
   createdAt: Date;
 }
 
+function convertGitHubApiUrl(apiUrl: string | null): string {
+  if (!apiUrl) return "/notifications";
+  // Convert GitHub REST API URL to browser-viewable HTML URL
+  // e.g. https://api.github.com/repos/owner/repo/pulls/123 → https://github.com/owner/repo/pull/123
+  return apiUrl
+    .replace("https://api.github.com/repos/", "https://github.com/")
+    .replace(/\/pulls\/(\d+)$/, "/pull/$1")
+    .replace(/\/commits\/([a-f0-9]+)$/, "/commit/$1");
+}
+
 async function getHandler() {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -53,7 +63,7 @@ async function getHandler() {
             message: `${n.repository.full_name} - ${n.reason.replace(/_/g, ' ')}`,
             type: n.subject.type === "PullRequest" ? "info" : "warning",
             isRead: false,
-            link: n.subject.url.replace("api.github.com/repos", "github.com"),
+            link: convertGitHubApiUrl(n.subject.url),
             createdAt: n.updated_at,
             source: "github"
           }));

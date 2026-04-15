@@ -1,88 +1,33 @@
 /**
  * GitScope AI Engine
  *
- * Tiered AI architecture:
- * - free: lite analysis (single-pass fast model + strong heuristics fallback)
- * - professional: multi-agent analysis (specialists + synthesis)
- * - team/enterprise: deeper specialist set and wider context windows
+ * PR batch analysis and deep code impact scanning.
+ * Free plan → heuristic analysis only (no LLM).
+ * Paid plans → LLM via ai-providers.ts (Anthropic → OpenAI → Gemini).
  */
 
-import Anthropic from "@anthropic-ai/sdk";
-import OpenAI from "openai";
+import { callAI as callAIProvider, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
 import type { AiPlan } from "@/lib/ai-plan";
 
-// ---------------------------------------------------------------------------
-// Provider detection
-// ---------------------------------------------------------------------------
+// ── Internal call adapter ──────────────────────────────────────────────────────
+// Creates a simple string-returning wrapper bound to a plan for inner functions.
 
-type Provider = "anthropic" | "openai" | "none";
+type AICallFn = (opts: { system: string; prompt: string; maxTokens: number }) => Promise<string>;
 
-function detectProvider(): Provider {
-  const explicit = process.env.AI_PROVIDER?.toLowerCase();
-  if (explicit === "openai" && process.env.OPENAI_API_KEY) return "openai";
-  if (explicit === "anthropic" && process.env.ANTHROPIC_API_KEY) return "anthropic";
-  if (process.env.ANTHROPIC_API_KEY) return "anthropic";
-  if (process.env.OPENAI_API_KEY) return "openai";
-  return "none";
+function makeCallFn(plan: AIPlan): AICallFn {
+  return async (opts) => {
+    const result = await callAIProvider({
+      plan,
+      systemPrompt: opts.system,
+      userPrompt: opts.prompt,
+      maxTokens: opts.maxTokens,
+    });
+    return result?.text ?? "";
+  };
 }
-
-const PROVIDER = detectProvider();
 
 export function hasAIProvider(): boolean {
-  return PROVIDER !== "none";
-}
-
-const anthropic =
-  PROVIDER === "anthropic"
-    ? new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-    : null;
-
-const openai =
-  PROVIDER === "openai"
-    ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
-    : null;
-
-const FAST_MODEL =
-  PROVIDER === "openai"
-    ? (process.env.OPENAI_FAST_MODEL ?? "gpt-4o-mini")
-    : (process.env.ANTHROPIC_FAST_MODEL ?? "claude-haiku-4-5-20251001");
-
-const SMART_MODEL =
-  PROVIDER === "openai"
-    ? (process.env.OPENAI_SMART_MODEL ?? "gpt-4o")
-    : (process.env.ANTHROPIC_SMART_MODEL ?? "claude-sonnet-4-6");
-
-async function callAI(opts: {
-  model: "fast" | "smart";
-  system: string;
-  prompt: string;
-  maxTokens: number;
-}): Promise<string> {
-  const model = opts.model === "fast" ? FAST_MODEL : SMART_MODEL;
-
-  if (anthropic) {
-    const msg = await anthropic.messages.create({
-      model,
-      max_tokens: opts.maxTokens,
-      system: opts.system,
-      messages: [{ role: "user", content: opts.prompt }],
-    });
-    return msg.content[0].type === "text" ? msg.content[0].text.trim() : "";
-  }
-
-  if (openai) {
-    const res = await openai.chat.completions.create({
-      model,
-      max_tokens: opts.maxTokens,
-      messages: [
-        { role: "system", content: opts.system },
-        { role: "user", content: opts.prompt },
-      ],
-    });
-    return res.choices[0]?.message?.content?.trim() ?? "";
-  }
-
-  return "";
+  return hasAnyAIProvider();
 }
 
 function extractJSON<T>(text: string, arrayMode = false): T | null {
@@ -107,9 +52,7 @@ function tierDepth(plan: AiPlan): 0 | 1 | 2 | 3 {
   return 1;
 }
 
-// ---------------------------------------------------------------------------
-// Quick batch analysis (PR list cards)
-// ---------------------------------------------------------------------------
+// ── PR batch quick analysis ────────────────────────────────────────────────────
 
 export interface PRSummary {
   number: number;
@@ -158,13 +101,7 @@ function heuristicQuick(p: PRSummary): PRQuickAnalysis {
       ? `Scope is moderate across ${p.changedFiles} files. Focus on interface changes and downstream dependency impact during review.`
       : `The change is fairly contained. A focused review plus smoke tests should usually be enough.`;
 
-  return {
-    headline,
-    analysis,
-    flags,
-    hotFiles: p.fileNames.slice(0, 3),
-    confidence: "medium",
-  };
+  return { headline, analysis, flags, hotFiles: p.fileNames.slice(0, 3), confidence: "medium" };
 }
 
 type SpecialistQuickOutput = {
@@ -175,20 +112,19 @@ type SpecialistQuickOutput = {
   riskDelta?: number;
 };
 
-async function runQuickSpecialist(role: "security" | "architecture" | "delivery", prs: PRSummary[]): Promise<SpecialistQuickOutput[]> {
+async function runQuickSpecialist(
+  role: "security" | "architecture" | "delivery",
+  prs: PRSummary[],
+  call: AICallFn,
+): Promise<SpecialistQuickOutput[]> {
   const systemByRole: Record<typeof role, string> = {
-    security:
-      "You are a strict security reviewer. Focus on auth, secret handling, unsafe inputs, privilege boundaries, and dependency risk.",
-    architecture:
-      "You are a principal engineer reviewing architecture and maintainability. Focus on module boundaries, API contracts, and coupling risk.",
-    delivery:
-      "You are a release manager reviewing delivery risk. Focus on churn, blast radius, migration risk, and testing confidence.",
+    security: "You are a strict security reviewer. Focus on auth, secret handling, unsafe inputs, privilege boundaries, and dependency risk.",
+    architecture: "You are a principal engineer reviewing architecture and maintainability. Focus on module boundaries, API contracts, and coupling risk.",
+    delivery: "You are a release manager reviewing delivery risk. Focus on churn, blast radius, migration risk, and testing confidence.",
   };
 
   const blocks = prs
-    .map(
-      (p) => `PR #${p.number}\nTitle: ${p.title}\nRisk seed: ${p.riskScore}\nDiff: +${p.additions}/-${p.deletions} across ${p.changedFiles} files\nFiles: ${p.fileNames.slice(0, 14).join(", ") || "none"}\nBody: ${(p.body || "").slice(0, 320)}`
-    )
+    .map((p) => `PR #${p.number}\nTitle: ${p.title}\nRisk seed: ${p.riskScore}\nDiff: +${p.additions}/-${p.deletions} across ${p.changedFiles} files\nFiles: ${p.fileNames.slice(0, 14).join(", ") || "none"}\nBody: ${(p.body || "").slice(0, 320)}`)
     .join("\n\n---\n\n");
 
   const prompt = `Analyze each PR from the perspective of ${role}.
@@ -196,27 +132,11 @@ async function runQuickSpecialist(role: "security" | "architecture" | "delivery"
 ${blocks}
 
 Return ONLY JSON array:
-[
-  {
-    "number": 123,
-    "notes": "1 short sentence specific to this PR",
-    "flags": ["security", "api-contract"],
-    "hotFiles": ["src/x.ts"],
-    "riskDelta": -15..15
-  }
-]`;
+[{ "number": 123, "notes": "1 short sentence", "flags": ["security"], "hotFiles": ["src/x.ts"], "riskDelta": 0 }]`;
 
   try {
-    const text = await callAI({
-      model: "fast",
-      system: systemByRole[role],
-      prompt,
-      maxTokens: 1300,
-    });
-
-    const parsed = extractJSON<SpecialistQuickOutput[]>(text, true);
-    if (!parsed) return [];
-    return parsed;
+    const text = await call({ system: systemByRole[role], prompt, maxTokens: 1300 });
+    return extractJSON<SpecialistQuickOutput[]>(text, true) ?? [];
   } catch {
     return [];
   }
@@ -225,7 +145,8 @@ Return ONLY JSON array:
 async function runQuickSynthesis(
   prs: PRSummary[],
   specialists: Record<string, SpecialistQuickOutput[]>,
-  model: "fast" | "smart"
+  smart: boolean,
+  call: AICallFn,
 ): Promise<Map<number, PRQuickAnalysis>> {
   const prompt = `You are the lead AI reviewer. Merge specialist outputs into final PR cards.
 
@@ -236,123 +157,60 @@ Specialist outputs:
 ${JSON.stringify(specialists)}
 
 Return ONLY JSON array:
-[
-  {
-    "number": 123,
-    "headline": "6-10 words",
-    "analysis": "2-3 sentences, concrete and technical",
-    "flags": ["security", "deps"],
-    "hotFiles": ["src/a.ts", "src/b.ts"],
-    "confidence": "low|medium|high"
-  }
-]`;
+[{ "number": 123, "headline": "6-10 words", "analysis": "2-3 sentences", "flags": ["security"], "hotFiles": ["src/a.ts"], "confidence": "low|medium|high" }]`;
 
   try {
-    const text = await callAI({
-      model,
-      system:
-        "You write as a helpful senior teammate. Keep the summary concise, concrete, and human. Ground every claim in file paths and change size.",
+    const text = await call({
+      system: "You write as a helpful senior teammate. Keep the summary concise, concrete, and human. Ground every claim in file paths and change size.",
       prompt,
-      maxTokens: model === "smart" ? 2200 : 1500,
+      maxTokens: smart ? 2200 : 1500,
     });
 
-    const rows = extractJSON<
-      {
-        number: number;
-        headline: string;
-        analysis: string;
-        flags?: string[];
-        hotFiles?: string[];
-        confidence?: "low" | "medium" | "high";
-      }[]
-    >(text, true);
-
+    const rows = extractJSON<{ number: number; headline: string; analysis: string; flags?: string[]; hotFiles?: string[]; confidence?: "low" | "medium" | "high" }[]>(text, true);
     if (!rows) return new Map();
 
-    return new Map(
-      rows.map((r) => [
-        r.number,
-        {
-          headline: r.headline,
-          analysis: r.analysis,
-          flags: r.flags ?? [],
-          hotFiles: r.hotFiles ?? [],
-          confidence: r.confidence ?? "medium",
-        },
-      ])
-    );
+    return new Map(rows.map((r) => [r.number, { headline: r.headline, analysis: r.analysis, flags: r.flags ?? [], hotFiles: r.hotFiles ?? [], confidence: r.confidence ?? "medium" }]));
   } catch {
     return new Map();
   }
 }
 
-export async function analyzePRBatch(
-  prs: PRSummary[],
-  options?: { plan?: AiPlan }
-): Promise<Map<number, PRQuickAnalysis>> {
+export async function analyzePRBatch(prs: PRSummary[], options?: { plan?: AiPlan }): Promise<Map<number, PRQuickAnalysis>> {
   const plan = options?.plan ?? "free";
   if (prs.length === 0) return new Map();
 
   const heuristicMap = new Map(prs.map((p) => [p.number, heuristicQuick(p)]));
-  if (PROVIDER === "none") return heuristicMap;
 
+  // Free plan or no keys → heuristic only
+  if (plan === "free" || !hasAnyAIProvider()) return heuristicMap;
+
+  const call = makeCallFn(plan as AIPlan);
   const depth = tierDepth(plan);
 
-  // Lite single-pass mode for free users.
   if (depth <= 1) {
     const blocks = prs
       .slice(0, 6)
-      .map(
-        (p) => `PR #${p.number}: ${p.title}\nDiff: +${p.additions}/-${p.deletions} across ${p.changedFiles} files\nFiles: ${p.fileNames.slice(0, 12).join(", ") || "none"}\nBody: ${(p.body || "").slice(0, 260)}`
-      )
+      .map((p) => `PR #${p.number}: ${p.title}\nDiff: +${p.additions}/-${p.deletions} across ${p.changedFiles} files\nFiles: ${p.fileNames.slice(0, 12).join(", ") || "none"}\nBody: ${(p.body || "").slice(0, 260)}`)
       .join("\n\n---\n\n");
 
     const prompt = `Return JSON array with one object per PR:
-[
-  {
-    "number": 1,
-    "headline": "...",
-    "analysis": "...",
-    "flags": ["security"],
-    "hotFiles": ["src/file.ts"],
-    "confidence": "low|medium|high"
-  }
-]
+[{ "number": 1, "headline": "...", "analysis": "...", "flags": ["security"], "hotFiles": ["src/file.ts"], "confidence": "low|medium|high" }]
 
 ${blocks}`;
 
     try {
-      const text = await callAI({
-        model: "fast",
-        system:
-          "You are a practical engineering reviewer. Write clear and human PR summaries with concrete risks and next checks.",
+      const text = await call({
+        system: "You are a practical engineering reviewer. Write clear and human PR summaries with concrete risks and next checks.",
         prompt,
         maxTokens: 1300,
       });
 
-      const rows = extractJSON<
-        {
-          number: number;
-          headline: string;
-          analysis: string;
-          flags?: string[];
-          hotFiles?: string[];
-          confidence?: "low" | "medium" | "high";
-        }[]
-      >(text, true);
-
+      const rows = extractJSON<{ number: number; headline: string; analysis: string; flags?: string[]; hotFiles?: string[]; confidence?: "low" | "medium" | "high" }[]>(text, true);
       if (!rows) return heuristicMap;
 
       for (const row of rows) {
-        heuristicMap.set(row.number, {
-          headline: row.headline,
-          analysis: row.analysis,
-          flags: row.flags ?? [],
-          hotFiles: row.hotFiles ?? [],
-          confidence: row.confidence ?? "medium",
-        });
+        heuristicMap.set(row.number, { headline: row.headline, analysis: row.analysis, flags: row.flags ?? [], hotFiles: row.hotFiles ?? [], confidence: row.confidence ?? "medium" });
       }
-
       return heuristicMap;
     } catch {
       return heuristicMap;
@@ -360,39 +218,26 @@ ${blocks}`;
   }
 
   const specialistRoles: ("security" | "architecture" | "delivery")[] =
-    depth >= 3
-      ? ["security", "architecture", "delivery"]
-      : ["security", "delivery"];
+    depth >= 3 ? ["security", "architecture", "delivery"] : ["security", "delivery"];
 
   const specialistEntries = await Promise.all(
-    specialistRoles.map(async (role) => [role, await runQuickSpecialist(role, prs)] as const)
+    specialistRoles.map(async (role) => [role, await runQuickSpecialist(role, prs, call)] as const)
   );
-
   const specialistMap: Record<string, SpecialistQuickOutput[]> = Object.fromEntries(specialistEntries);
-
-  const synthesized = await runQuickSynthesis(prs, specialistMap, depth >= 3 ? "smart" : "fast");
+  const synthesized = await runQuickSynthesis(prs, specialistMap, depth >= 3, call);
 
   for (const pr of prs) {
     if (!synthesized.has(pr.number)) {
       const base = heuristicMap.get(pr.number)!;
-      const specialistFlags = specialistRoles.flatMap((role) =>
-        (specialistMap[role] ?? [])
-          .find((entry) => entry.number === pr.number)
-          ?.flags ?? []
-      );
-      synthesized.set(pr.number, {
-        ...base,
-        flags: Array.from(new Set([...base.flags, ...specialistFlags])),
-      });
+      const specialistFlags = specialistRoles.flatMap((role) => (specialistMap[role] ?? []).find((e) => e.number === pr.number)?.flags ?? []);
+      synthesized.set(pr.number, { ...base, flags: Array.from(new Set([...base.flags, ...specialistFlags])) });
     }
   }
 
   return synthesized;
 }
 
-// ---------------------------------------------------------------------------
-// Deep code impact scan (single PR with code context)
-// ---------------------------------------------------------------------------
+// ── Deep code impact scan ──────────────────────────────────────────────────────
 
 export interface Concern {
   severity: "critical" | "high" | "medium" | "low";
@@ -405,29 +250,17 @@ export interface Concern {
 export interface DeepImpactResult {
   headline: string;
   summary: string;
-
   riskScore: number;
   riskLevel: "CRITICAL" | "HIGH" | "MODERATE" | "LOW" | "STABLE";
-
-  dimensions: {
-    security: number;
-    performance: number;
-    maintainability: number;
-    testability: number;
-    breakingChange: number;
-  };
-
+  dimensions: { security: number; performance: number; maintainability: number; testability: number; breakingChange: number };
   concerns: Concern[];
   breakingChanges: string[];
-
   impactAreas: string[];
   affectedSystems: string[];
-
   recommendation: string;
   reviewChecklist: string[];
   suggestedReviewers: number;
   estimatedReviewTime: string;
-
   provider: string;
   model: string;
   analysisTier?: AiPlan;
@@ -442,117 +275,51 @@ function riskLevelFromScore(score: number): DeepImpactResult["riskLevel"] {
   return "STABLE";
 }
 
-function heuristicDeep(input: {
-  additions: number;
-  deletions: number;
-  files: { filename: string; additions: number; deletions: number }[];
-}): DeepImpactResult {
+function heuristicDeep(input: { additions: number; deletions: number; files: { filename: string; additions: number; deletions: number }[] }): DeepImpactResult {
   const churn = input.additions + input.deletions;
   const fileCount = input.files.length;
-
-  const security = clamp(
-    (input.files.some((f) => /auth|token|secret|password|jwt/i.test(f.filename)) ? 35 : 10) +
-      (churn > 600 ? 20 : 5),
-    0,
-    100
-  );
-  const performance = clamp(
-    (input.files.some((f) => /query|cache|performance|worker|stream/i.test(f.filename)) ? 30 : 10) +
-      (churn > 900 ? 20 : 8),
-    0,
-    100
-  );
+  const security = clamp((input.files.some((f) => /auth|token|secret|password|jwt/i.test(f.filename)) ? 35 : 10) + (churn > 600 ? 20 : 5), 0, 100);
+  const performance = clamp((input.files.some((f) => /query|cache|performance|worker|stream/i.test(f.filename)) ? 30 : 10) + (churn > 900 ? 20 : 8), 0, 100);
   const maintainability = clamp((fileCount * 3) + (churn > 500 ? 20 : 8), 0, 100);
-  const testability = clamp(
-    (input.files.some((f) => /test|spec|__tests__/i.test(f.filename)) ? 20 : 60) +
-      (churn > 700 ? 15 : 5),
-    0,
-    100
-  );
-  const breakingChange = clamp(
-    (input.files.some((f) => /route|api|schema|migration|types?/i.test(f.filename)) ? 40 : 10) +
-      (churn > 700 ? 20 : 8),
-    0,
-    100
-  );
-
-  const riskScore = Math.round(
-    (security * 0.25) +
-      (performance * 0.2) +
-      (maintainability * 0.2) +
-      (testability * 0.15) +
-      (breakingChange * 0.2)
-  );
+  const testability = clamp((input.files.some((f) => /test|spec|__tests__/i.test(f.filename)) ? 20 : 60) + (churn > 700 ? 15 : 5), 0, 100);
+  const breakingChange = clamp((input.files.some((f) => /route|api|schema|migration|types?/i.test(f.filename)) ? 40 : 10) + (churn > 700 ? 20 : 8), 0, 100);
+  const riskScore = Math.round((security * 0.25) + (performance * 0.2) + (maintainability * 0.2) + (testability * 0.15) + (breakingChange * 0.2));
 
   const concerns: Concern[] = [];
-  if (security >= 60) {
-    concerns.push({
-      severity: "high",
-      category: "security",
-      description: "Sensitive auth or token related paths are being modified and require focused review.",
-      suggestion: "Run auth-path regression tests and verify no token/secret handling logic weakened.",
-    });
-  }
-  if (breakingChange >= 60) {
-    concerns.push({
-      severity: "medium",
-      category: "breaking",
-      description: "API/schema adjacent files changed with enough scope to risk downstream compatibility.",
-      suggestion: "Validate request/response contracts and migration impacts before merge.",
-    });
-  }
+  if (security >= 60) concerns.push({ severity: "high", category: "security", description: "Sensitive auth or token related paths are being modified and require focused review.", suggestion: "Run auth-path regression tests and verify no token/secret handling logic weakened." });
+  if (breakingChange >= 60) concerns.push({ severity: "medium", category: "breaking", description: "API/schema adjacent files changed with enough scope to risk downstream compatibility.", suggestion: "Validate request/response contracts and migration impacts before merge." });
 
   return {
     headline: riskScore >= 70 ? "High impact change requires specialist review" : "Moderate impact engineering change",
     summary: `Heuristic analysis detected ${fileCount} changed files with +${input.additions}/-${input.deletions} churn. Prioritize review around high-change modules and contract-sensitive paths.`,
-    riskScore,
-    riskLevel: riskLevelFromScore(riskScore),
+    riskScore, riskLevel: riskLevelFromScore(riskScore),
     dimensions: { security, performance, maintainability, testability, breakingChange },
-    concerns,
-    breakingChanges: [],
+    concerns, breakingChanges: [],
     impactAreas: ["Code Quality", "Delivery Risk"],
     affectedSystems: ["api", "application"],
-    recommendation:
-      "Use at least one domain reviewer plus one code owner reviewer for high-change files. Ensure tests cover newly touched paths.",
-    reviewChecklist: [
-      "Validate auth and permission checks in touched routes",
-      "Check API or schema compatibility with existing clients",
-      "Confirm tests cover the changed behaviors",
-    ],
+    recommendation: "Use at least one domain reviewer plus one code owner reviewer for high-change files. Ensure tests cover newly touched paths.",
+    reviewChecklist: ["Validate auth and permission checks in touched routes", "Check API or schema compatibility with existing clients", "Confirm tests cover the changed behaviors"],
     suggestedReviewers: riskScore >= 70 ? 3 : 2,
     estimatedReviewTime: riskScore >= 70 ? "60-90 min" : "25-45 min",
-    provider: "heuristic",
-    model: "none",
+    provider: "heuristic", model: "none",
   };
 }
 
-async function runDeepSpecialist(role: string, context: string): Promise<string> {
+async function runDeepSpecialist(role: string, context: string, call: AICallFn): Promise<string> {
   const roleSystem: Record<string, string> = {
-    security:
-      "You are an AppSec engineer. Identify security and data exposure risks only. Be specific and concise.",
-    architecture:
-      "You are a staff software architect. Focus on coupling, maintainability, and API/schema contract risks.",
-    testing:
-      "You are a test strategy engineer. Focus on coverage gaps and high-risk untested paths.",
-    performance:
-      "You are a performance engineer. Focus on latency, memory, query, and scale risks.",
-    operations:
-      "You are an SRE reviewer. Focus on deployment, observability, and rollback risk.",
+    security: "You are an AppSec engineer. Identify security and data exposure risks only. Be specific and concise.",
+    architecture: "You are a staff software architect. Focus on coupling, maintainability, and API/schema contract risks.",
+    testing: "You are a test strategy engineer. Focus on coverage gaps and high-risk untested paths.",
+    performance: "You are a performance engineer. Focus on latency, memory, query, and scale risks.",
+    operations: "You are an SRE reviewer. Focus on deployment, observability, and rollback risk.",
   };
 
-  const system = roleSystem[role] ?? roleSystem.architecture;
-  const prompt = `Review this pull request context and provide a compact specialist note.
-
-Return plain text with:
-1) Top findings (max 5 bullets)
-2) Highest-risk files
-3) One action recommendation
-
-Context:
-${context}`;
-
   try {
-    return await callAI({ model: "fast", system, prompt, maxTokens: 700 });
+    return await call({
+      system: roleSystem[role] ?? roleSystem.architecture,
+      prompt: `Review this pull request context and provide a compact specialist note.\n\nReturn plain text with:\n1) Top findings (max 5 bullets)\n2) Highest-risk files\n3) One action recommendation\n\nContext:\n${context}`,
+      maxTokens: 700,
+    });
   } catch {
     return "";
   }
@@ -560,46 +327,25 @@ ${context}`;
 
 export async function deepCodeImpact(
   input: {
-    prNumber: number;
-    title: string;
-    body: string;
-    author: string;
-    additions: number;
-    deletions: number;
-    files: {
-      filename: string;
-      status: string;
-      additions: number;
-      deletions: number;
-      patch?: string;
-      snippet?: string;
-    }[];
+    prNumber: number; title: string; body: string; author: string;
+    additions: number; deletions: number;
+    files: { filename: string; status: string; additions: number; deletions: number; patch?: string; snippet?: string }[];
   },
-  options?: {
-    plan?: AiPlan;
-    maxFiles?: number;
-  }
+  options?: { plan?: AiPlan; maxFiles?: number },
 ): Promise<DeepImpactResult> {
   const plan = options?.plan ?? "free";
   const fallback = heuristicDeep(input);
 
-  if (PROVIDER === "none") {
-    return {
-      ...fallback,
-      analysisTier: plan,
-      agentCount: 0,
-      provider: "none",
-      model: "none",
-    };
+  // Free plan or no keys → heuristic only
+  if (plan === "free" || !hasAnyAIProvider()) {
+    return { ...fallback, analysisTier: plan, agentCount: 0, provider: "heuristic", model: "none" };
   }
 
+  const call = makeCallFn(plan as AIPlan);
   const depth = tierDepth(plan);
-  const maxFiles = options?.maxFiles ?? (plan === "free" ? 4 : plan === "professional" ? 10 : plan === "team" ? 20 : 35);
+  const maxFiles = options?.maxFiles ?? (plan === "professional" ? 10 : plan === "team" ? 20 : 35);
 
-  const sortedFiles = [...input.files]
-    .sort((a, b) => (b.additions + b.deletions) - (a.additions + a.deletions))
-    .slice(0, maxFiles);
-
+  const sortedFiles = [...input.files].sort((a, b) => (b.additions + b.deletions) - (a.additions + a.deletions)).slice(0, maxFiles);
   const fileContext = sortedFiles
     .map((f) => {
       const patch = f.patch ? `\nPATCH:\n${f.patch.slice(0, 1200)}` : "";
@@ -608,35 +354,21 @@ export async function deepCodeImpact(
     })
     .join("\n\n---\n\n");
 
-  const context = `PR #${input.prNumber}: ${input.title}
-Author: ${input.author}
-Diff: +${input.additions}/-${input.deletions}
-Description: ${(input.body || "").slice(0, 1200)}
-
-${fileContext}`;
+  const context = `PR #${input.prNumber}: ${input.title}\nAuthor: ${input.author}\nDiff: +${input.additions}/-${input.deletions}\nDescription: ${(input.body || "").slice(0, 1200)}\n\n${fileContext}`;
 
   const specialistRoles =
-    depth <= 1
-      ? []
-      : depth === 2
-      ? ["security", "architecture"]
-      : plan === "enterprise"
-      ? ["security", "architecture", "testing", "performance", "operations"]
-      : ["security", "architecture", "testing", "performance"];
+    depth <= 1 ? [] :
+    depth === 2 ? ["security", "architecture"] :
+    plan === "enterprise" ? ["security", "architecture", "testing", "performance", "operations"] :
+    ["security", "architecture", "testing", "performance"];
 
   const specialistNotes: Record<string, string> = {};
   if (specialistRoles.length > 0) {
-    const pairs = await Promise.all(
-      specialistRoles.map(async (role) => [role, await runDeepSpecialist(role, context)] as const)
-    );
-    for (const [role, note] of pairs) {
-      specialistNotes[role] = note;
-    }
+    const pairs = await Promise.all(specialistRoles.map(async (role) => [role, await runDeepSpecialist(role, context, call)] as const));
+    for (const [role, note] of pairs) specialistNotes[role] = note;
   }
 
-  const synthPrompt = `You are GitScope's lead AI reviewer.
-
-Merge PR context and specialist notes into one strict JSON report.
+  const synthPrompt = `You are GitScope's lead AI reviewer. Merge PR context and specialist notes into one strict JSON report.
 
 PR context:
 ${context}
@@ -644,64 +376,32 @@ ${context}
 Specialist notes:
 ${JSON.stringify(specialistNotes)}
 
-Return ONLY JSON with this exact shape:
+Return ONLY JSON:
 {
   "headline": "6-10 words",
   "summary": "3-4 sentences",
   "riskScore": 0,
   "riskLevel": "CRITICAL|HIGH|MODERATE|LOW|STABLE",
-  "dimensions": {
-    "security": 0,
-    "performance": 0,
-    "maintainability": 0,
-    "testability": 0,
-    "breakingChange": 0
-  },
-  "concerns": [
-    {
-      "severity": "critical|high|medium|low",
-      "category": "security|performance|logic|maintainability|breaking|testing|config",
-      "file": "optional filename",
-      "description": "specific issue",
-      "suggestion": "specific fix"
-    }
-  ],
-  "breakingChanges": ["..."] ,
-  "impactAreas": ["..."],
-  "affectedSystems": ["..."],
+  "dimensions": { "security": 0, "performance": 0, "maintainability": 0, "testability": 0, "breakingChange": 0 },
+  "concerns": [{ "severity": "critical|high|medium|low", "category": "security|performance|logic|maintainability|breaking|testing|config", "file": "optional", "description": "...", "suggestion": "..." }],
+  "breakingChanges": [],
+  "impactAreas": [],
+  "affectedSystems": [],
   "recommendation": "...",
-  "reviewChecklist": ["..."],
-  "suggestedReviewers": 1,
+  "reviewChecklist": [],
+  "suggestedReviewers": 2,
   "estimatedReviewTime": "20-30 min"
 }`;
 
   try {
-    const model: "fast" | "smart" = depth >= 2 ? "smart" : "fast";
-    const text = await callAI({
-      model,
-      system:
-        "You are a principal engineer coaching a teammate. Be direct but human, avoid robotic phrasing, and ground every finding in the provided context.",
-      prompt: synthPrompt,
-      maxTokens: depth >= 3 ? 3200 : 2200,
-    });
-
+    const text = await call({ system: "You are a principal engineer coaching a teammate. Be direct but human, avoid robotic phrasing, and ground every finding in the provided context.", prompt: synthPrompt, maxTokens: depth >= 3 ? 3200 : 2200 });
     const parsed = extractJSON<DeepImpactResult>(text);
-    if (!parsed) {
-      return {
-        ...fallback,
-        analysisTier: plan,
-        agentCount: specialistRoles.length + 1,
-        provider: PROVIDER,
-        model,
-      };
-    }
+    if (!parsed) return { ...fallback, analysisTier: plan, agentCount: specialistRoles.length + 1, provider: "ai-providers", model: plan };
 
     const riskScore = clamp(Number(parsed.riskScore ?? 0), 0, 100);
-
     return {
       ...parsed,
-      riskScore,
-      riskLevel: parsed.riskLevel ?? riskLevelFromScore(riskScore),
+      riskScore, riskLevel: parsed.riskLevel ?? riskLevelFromScore(riskScore),
       dimensions: {
         security: clamp(parsed.dimensions?.security ?? 0, 0, 100),
         performance: clamp(parsed.dimensions?.performance ?? 0, 0, 100),
@@ -716,18 +416,10 @@ Return ONLY JSON with this exact shape:
       reviewChecklist: parsed.reviewChecklist ?? [],
       suggestedReviewers: clamp(Number(parsed.suggestedReviewers ?? 2), 1, 5),
       estimatedReviewTime: parsed.estimatedReviewTime ?? "30-45 min",
-      provider: PROVIDER,
-      model: model === "fast" ? FAST_MODEL : SMART_MODEL,
-      analysisTier: plan,
-      agentCount: specialistRoles.length + 1,
+      provider: "ai-providers", model: plan,
+      analysisTier: plan, agentCount: specialistRoles.length + 1,
     };
   } catch {
-    return {
-      ...fallback,
-      analysisTier: plan,
-      agentCount: specialistRoles.length + 1,
-      provider: PROVIDER,
-      model: SMART_MODEL,
-    };
+    return { ...fallback, analysisTier: plan, agentCount: specialistRoles.length + 1, provider: "ai-providers", model: plan };
   }
 }
