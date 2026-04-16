@@ -1869,6 +1869,14 @@ export interface InternalRepoScanInput {
   contributors: number;
   meta: Record<string, unknown>;
   scanMode: string;
+  /** Real LOC computed from GitHub file sizes — use instead of estimating */
+  realLoc?: string;
+  /** LOC broken down by file extension */
+  realLocByExt?: Record<string, number>;
+  /** Total number of code files in the repo */
+  totalCodeFiles?: number;
+  /** Import graph: file → list of import specifiers it imports */
+  importGraph?: Record<string, string[]>;
 }
 
 // Files that are never code — skip during content scanning
@@ -1984,7 +1992,7 @@ const RISKY_DEP_REASONS: Record<string, string> = {
 };
 
 export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanResult {
-  const { repo, fileTree, keyFileContents, contributors, meta } = input;
+  const { repo, fileTree, keyFileContents, contributors, meta, importGraph = {} } = input;
 
   // ── Package.json parsing ───────────────────────────────────────────────────
   let pkg: Record<string, unknown> = {};
@@ -2097,22 +2105,27 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   const hasCsrfProtection = "csrf" in deps || "csurf" in deps || "lusca" in deps;
   const hasRateLimit = "express-rate-limit" in deps || "rate-limiter-flexible" in deps || "@upstash/ratelimit" in deps;
 
-  // ── LOC estimation (code files only) ──────────────────────────────────────
-  let fetchedLines = 0;
-  let fetchedFileCount = 0;
-  for (const [fname, content] of Object.entries(keyFileContents)) {
-    if (!content || fname === "package.json" || NON_CODE_EXTENSIONS.test(fname)) continue;
-    fetchedLines += content.split("\n").length;
-    fetchedFileCount++;
+  // ── LOC — prefer real data from GitHub file sizes, fall back to content-based estimate ──
+  let estimatedLoc: string;
+  if (input.realLoc && input.realLoc !== "Unknown") {
+    estimatedLoc = input.realLoc;
+  } else {
+    let fetchedLines = 0;
+    let fetchedFileCount = 0;
+    for (const [fname, content] of Object.entries(keyFileContents)) {
+      if (!content || fname === "package.json" || NON_CODE_EXTENSIONS.test(fname)) continue;
+      fetchedLines += content.split("\n").length;
+      fetchedFileCount++;
+    }
+    const avgLinesPerFile = fetchedFileCount > 0 ? fetchedLines / fetchedFileCount : 100;
+    const codeFiles = fileTree.filter((f) => !NON_CODE_EXTENSIONS.test(f));
+    const rawEstLoc = Math.round(avgLinesPerFile * codeFiles.length);
+    estimatedLoc =
+      rawEstLoc < 500 ? `${rawEstLoc} lines` :
+      rawEstLoc < 1_000 ? `${rawEstLoc} lines` :
+      rawEstLoc < 10_000 ? `${(rawEstLoc / 1000).toFixed(1)}k lines` :
+      `${Math.round(rawEstLoc / 1000)}k lines`;
   }
-  const avgLinesPerFile = fetchedFileCount > 0 ? fetchedLines / fetchedFileCount : 100;
-  const codeFiles = fileTree.filter((f) => !NON_CODE_EXTENSIONS.test(f));
-  const rawEstLoc = Math.round(avgLinesPerFile * codeFiles.length);
-  const estimatedLoc =
-    rawEstLoc < 500 ? "< 500 lines" :
-    rawEstLoc < 1000 ? "< 1,000 lines" :
-    rawEstLoc < 10_000 ? `~${Math.round(rawEstLoc / 500) * 500} lines` :
-    `~${Math.round(rawEstLoc / 1000)}k lines`;
 
   // ── Security scanning of fetched file contents ────────────────────────────
   const codeSecurityFindings: RepoScanFinding[] = [];
@@ -2205,6 +2218,190 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
         suggestion: rule.suggestion,
         fix: rule.fix,
       });
+    }
+  }
+
+  // ── Cross-file analysis using import graph ────────────────────────────────
+  // Detects issues that only appear when tracing data flow across file boundaries.
+  const crossFileFindings: RepoScanFinding[] = [];
+
+  if (Object.keys(importGraph).length > 0) {
+    // Resolve a specifier to an actual file path in keyFileContents
+    const resolveImport = (fromFile: string, specifier: string): string | null => {
+      if (!specifier.startsWith(".") && !specifier.startsWith("@/") && !specifier.startsWith("~/")) return null;
+      const base = fromFile.split("/").slice(0, -1).join("/");
+      const candidates = [
+        specifier,
+        `${specifier}.ts`, `${specifier}.tsx`, `${specifier}.js`, `${specifier}.jsx`,
+        `${specifier}/index.ts`, `${specifier}/index.tsx`, `${specifier}/index.js`,
+      ].map((s) => {
+        if (s.startsWith("@/") || s.startsWith("~/")) return s.slice(2);
+        if (s.startsWith("./") || s.startsWith("../")) {
+          const parts = `${base}/${s}`.split("/");
+          const resolved: string[] = [];
+          for (const p of parts) {
+            if (p === "..") resolved.pop();
+            else if (p !== ".") resolved.push(p);
+          }
+          return resolved.join("/");
+        }
+        return s;
+      });
+      return Object.keys(keyFileContents).find((f) => candidates.some((c) => f === c || f.endsWith(`/${c}`))) ?? null;
+    };
+
+    // Build a map of which files have which security properties
+    const fileHasAuth = new Map<string, boolean>();
+    const fileHasValidation = new Map<string, boolean>();
+    const fileHasDbOp = new Map<string, boolean>();
+    const fileIsClientComponent = new Map<string, boolean>();
+    const fileHasServerEnv = new Map<string, boolean>();
+    const fileHasRawInput = new Map<string, boolean>();
+
+    for (const [file, content] of Object.entries(keyFileContents)) {
+      fileHasAuth.set(file, /getServerSession|getSession|verifyToken|requireAuth|currentUser|session\.user|authenticate\(/i.test(content));
+      fileHasValidation.set(file, /z\.object|z\.string|joi\.|yup\.|safeParse|schema\.parse|validate\(/i.test(content));
+      fileHasDbOp.set(file, /prisma\.\w+\.(find|create|update|delete|upsert)|db\.query|mongoose\.\w+\.(find|save|update|delete)|\.execute\(/i.test(content));
+      fileIsClientComponent.set(file, /^["']use client["']/m.test(content));
+      fileHasServerEnv.set(file, /process\.env\.(?!NEXT_PUBLIC_)[A-Z_]{4,}/g.test(content));
+      fileHasRawInput.set(file, /req\.body|req\.params|req\.query|request\.body|ctx\.body/i.test(content));
+    }
+
+    // ── Pattern 1: Unvalidated input flows into a file that does DB operations ──
+    // Route/handler with raw req.body → imported into (or imports) a DB file without validation
+    for (const [file, content] of Object.entries(keyFileContents)) {
+      if (!fileHasRawInput.get(file)) continue;
+      if (fileHasValidation.get(file)) continue; // validated at source ✓
+
+      const specifiers = importGraph[file] ?? [];
+      for (const spec of specifiers) {
+        const target = resolveImport(file, spec);
+        if (!target) continue;
+        if (fileHasDbOp.get(target) && !fileHasValidation.get(target)) {
+          crossFileFindings.push({
+            severity: "high",
+            category: "security",
+            file,
+            description: `Unvalidated input flow: \`${file.split("/").slice(-2).join("/")}\` reads \`req.body/params/query\` without schema validation and passes data into \`${target.split("/").slice(-2).join("/")}\` which performs database operations. Attacker-controlled values reach the DB layer unchecked.`,
+            suggestion: `Add Zod validation in ${file.split("/").pop()} before passing data downstream:\nconst body = z.object({ id: z.string(), name: z.string().max(100) }).parse(req.body);\nThen pass only the typed \`body\` — not raw \`req.body\` — to ${target.split("/").pop()}.`,
+            fix: {
+              before: `// ${file.split("/").pop()} — no validation\nexport async function POST(req) {\n  const data = await req.json(); // unvalidated\n  await createRecord(data);      // flows into DB layer\n}`,
+              after: `// ${file.split("/").pop()} — validated at the boundary\nimport { z } from "zod";\nconst Schema = z.object({ name: z.string().min(1).max(100) });\nexport async function POST(req) {\n  const data = Schema.parse(await req.json());\n  await createRecord(data); // typed, safe\n}`,
+              language: "typescript",
+            },
+          });
+          break; // one finding per source file
+        }
+      }
+    }
+
+    // ── Pattern 2: Mutating API route with no auth delegates to a handler ──────
+    // Route file has no auth check → imports a handler file that does privileged ops
+    for (const [file, content] of Object.entries(keyFileContents)) {
+      const isApiRoute = /app\/api\/|pages\/api\/|routes\//.test(file) &&
+        /export\s+(?:async\s+)?function\s+(?:POST|PUT|PATCH|DELETE)|router\.(post|put|patch|delete)/i.test(content);
+      if (!isApiRoute) continue;
+      if (fileHasAuth.get(file)) continue; // auth at route level ✓
+
+      for (const spec of (importGraph[file] ?? [])) {
+        const target = resolveImport(file, spec);
+        if (!target) continue;
+        const targetContent = keyFileContents[target] ?? "";
+        if (fileHasDbOp.get(target) || /delete|remove|drop|truncate|destroy|admin/i.test(targetContent)) {
+          crossFileFindings.push({
+            severity: "high",
+            category: "security",
+            file,
+            description: `Auth bypass chain: \`${file.split("/").slice(-2).join("/")}\` is a mutating API route with no visible authentication check, yet it delegates to \`${target.split("/").slice(-2).join("/")}\` which performs privileged/database operations. Any unauthenticated caller can trigger these operations.`,
+            suggestion: `Add an auth guard at the top of ${file.split("/").pop()} before calling into ${target.split("/").pop()}:\nconst session = await getServerSession(authOptions);\nif (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });`,
+            fix: {
+              before: `// ${file.split("/").pop()} — no auth\nexport async function DELETE(req) {\n  return deleteResource(req); // anyone can call this\n}`,
+              after: `// ${file.split("/").pop()} — auth gated\nexport async function DELETE(req) {\n  const session = await getServerSession(authOptions);\n  if (!session?.user) return Response.json({ error: "Unauthorized" }, { status: 401 });\n  return deleteResource(req);\n}`,
+              language: "typescript",
+            },
+          });
+          break;
+        }
+      }
+    }
+
+    // ── Pattern 3: Server-only env var in a file imported by a client component ─
+    for (const [file] of Object.entries(keyFileContents)) {
+      if (!fileHasServerEnv.get(file)) continue;
+      // Check if any client component imports this file
+      for (const [clientFile, specifiers] of Object.entries(importGraph)) {
+        if (!fileIsClientComponent.get(clientFile)) continue;
+        const resolved = specifiers.map((s) => resolveImport(clientFile, s)).filter(Boolean);
+        if (resolved.includes(file)) {
+          crossFileFindings.push({
+            severity: "high",
+            category: "security",
+            file,
+            description: `Secret exposure risk: \`${file.split("/").slice(-2).join("/")}\` accesses server-only environment variables (non-NEXT_PUBLIC_) and is imported by the client component \`${clientFile.split("/").slice(-2).join("/")}\`. These secrets will be included in the browser bundle.`,
+            suggestion: `Move the env-accessing code out of \`${file.split("/").pop()}\` into a Server Component, API route, or server action. If the client needs a value, expose only a NEXT_PUBLIC_ prefixed variable.`,
+            fix: {
+              before: `// ${file.split("/").pop()} — accessed from client component\nexport const stripeKey = process.env.STRIPE_SECRET_KEY; // leaked to browser`,
+              after: `// Move to an API route or server action:\n// src/app/api/create-payment/route.ts\nconst stripeKey = process.env.STRIPE_SECRET_KEY; // server-only, never exported\n// Client only receives the result, never the key`,
+              language: "typescript",
+            },
+          });
+          break;
+        }
+      }
+    }
+
+    // ── Pattern 4: Error swallowed in utility, propagated silently to callers ──
+    const EMPTY_CATCH = /catch\s*\([^)]*\)\s*\{\s*\}/;
+    for (const [file, content] of Object.entries(keyFileContents)) {
+      if (!EMPTY_CATCH.test(content)) continue;
+      // Find files that import this file — they'll inherit silent failures
+      const callers = Object.entries(importGraph)
+        .filter(([, specs]) => specs.some((s) => resolveImport(file, s) === file ||
+          Object.keys(keyFileContents).some((k) => k === file && specs.some((sp) => {
+            const r = resolveImport(file, sp);
+            return r && Object.keys(keyFileContents).includes(r);
+          }))))
+        .map(([f]) => f)
+        .slice(0, 3);
+
+      if (callers.length > 0) {
+        crossFileFindings.push({
+          severity: "medium",
+          category: "quality",
+          file,
+          description: `Silent failure propagation: \`${file.split("/").slice(-2).join("/")}\` has empty catch blocks that swallow errors silently. Files that import it (${callers.map((c) => c.split("/").pop()).join(", ")}) will receive undefined/null returns with no indication that an error occurred, making debugging and monitoring impossible.`,
+          suggestion: `Replace empty catch blocks with explicit error handling. At minimum:\ncatch (err) { console.error("[${file.split("/").pop()}]", err); throw err; }\nOr return a typed Result: return { ok: false, error: err instanceof Error ? err.message : String(err) };`,
+          fix: {
+            before: `async function fetchData() {\n  try { return await db.query(); }\n  catch (err) {} // callers get 'undefined', no idea why\n}`,
+            after: `async function fetchData() {\n  try { return await db.query(); }\n  catch (err) {\n    console.error("[fetchData] DB error:", err);\n    throw new Error(\`Database fetch failed: \${err instanceof Error ? err.message : String(err)}\`);\n  }\n}`,
+            language: "typescript",
+          },
+        });
+      }
+    }
+
+    // ── Pattern 5: Shared mutable state exported and mutated from multiple files ─
+    const MUTABLE_EXPORT = /^export\s+(?:let\s+\w+|const\s+\w+\s*=\s*\{|\s*\{)/m;
+    const MUTATION_PATTERN = /\.(push|pop|splice|delete|set|clear)\s*\(|=\s*(?!>)/;
+    for (const [file, content] of Object.entries(keyFileContents)) {
+      if (!MUTABLE_EXPORT.test(content)) continue;
+      const importers = Object.entries(importGraph)
+        .filter(([importer, specs]) =>
+          importer !== file &&
+          specs.some((s) => resolveImport(importer, s) === file) &&
+          MUTATION_PATTERN.test(keyFileContents[importer] ?? "")
+        )
+        .map(([f]) => f);
+
+      if (importers.length >= 2) {
+        crossFileFindings.push({
+          severity: "medium",
+          category: "quality",
+          file,
+          description: `Shared mutable state: \`${file.split("/").slice(-2).join("/")}\` exports mutable data that is imported and mutated by ${importers.length} files (${importers.slice(0, 3).map((f) => f.split("/").pop()).join(", ")}). In Node.js, module-level objects are singletons — mutations from one request bleed into others, causing race conditions and subtle data corruption bugs.`,
+          suggestion: `Replace mutable module-level state with factory functions or request-scoped state:\n// Instead of: export const cache = {};\n// Use: export function createCache() { return {}; }\nOr use a proper store (Redis, DB) for shared state in a multi-instance deployment.`,
+        });
+      }
     }
   }
 
@@ -2339,7 +2536,9 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   }
 
   // ── Score calculation ──────────────────────────────────────────────────────
-  const allSecIssues = [...codeSecurityFindings, ...structuralIssues];
+  const crossFileSecFindings = crossFileFindings.filter((f) => f.category === "security");
+  const crossFileQualityFindings = crossFileFindings.filter((f) => f.category !== "security");
+  const allSecIssues = [...codeSecurityFindings, ...crossFileSecFindings, ...structuralIssues];
 
   let securityScore = 84;
   securityScore -= allSecIssues.filter((i) => i.severity === "critical").length * 22;
@@ -2536,7 +2735,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     }. ${criticalHighCount > 0
       ? `${criticalHighCount} critical/high security issue${criticalHighCount > 1 ? "s" : ""} found across ${scannedFiles} scanned files.`
       : `No critical security issues in ${scannedFiles} scanned files.`
-    } ${!hasTests && !hasTestDir ? "No test infrastructure — regression risk is high." : `Test infrastructure present${hasAnyE2E ? " (including E2E)" : ""}.`} ${estimatedLoc} of code estimated.`,
+    } ${!hasTests && !hasTestDir ? "No test infrastructure — regression risk is high." : `Test infrastructure present${hasAnyE2E ? " (including E2E)" : ""}.`} ${estimatedLoc} of code across ${fileTree.length} files (${scannedFiles} read).`,
 
     architecture: {
       summary: `${patterns.filter((p) => !["TypeScript", "Docker", "Serverless/Edge"].includes(p)).slice(0, 4).join(" + ") || primaryLanguage} project with ${fileTree.length} tracked files.${hasMigrations ? " Database migrations tracked." : ""}${hasDocker ? " Containerized." : ""}${hasMonorepo || hasWorkspaces ? " Monorepo structure." : ""}`,
@@ -2548,14 +2747,14 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     security: {
       score: securityScore,
       grade: grade(securityScore),
-      issues: allSecIssues.slice(0, 12),
+      issues: allSecIssues.slice(0, 14),
       positives: securityPositives.length > 0 ? securityPositives : ["No obvious hardcoded secrets found in scanned files"],
     },
 
     codeQuality: {
       score: qualityScore,
       grade: grade(qualityScore),
-      issues: [...qualityFindings, ...performanceFindings].slice(0, 12),
+      issues: [...crossFileQualityFindings, ...qualityFindings, ...performanceFindings].slice(0, 14),
       strengths: qualityStrengths.length > 0 ? qualityStrengths : ["Code is organized consistently"],
     },
 

@@ -159,45 +159,75 @@ function buildRepoScanPrompt(params: {
   contributors: number;
   openPRCount: number;
   scanMode: string;
+  realLoc: string;
+  filesRead: number;
+  importGraph: Record<string, string[]>;
 }): string {
   const {
-    repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode,
+    repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode, realLoc, filesRead, importGraph,
   } = params;
   const isDeep = scanMode === "deep";
 
-  const fileTreeStr = fileTree.slice(0, isDeep ? 120 : 80).join("\n");
+  const fileTreeStr = fileTree.slice(0, isDeep ? 200 : 120).join("\n");
+
+  // For key files: show full content for high-signal files, abbreviated for others
+  const HIGH_SIGNAL_PROMPT = /auth|api[/\\]|\/lib\/|middleware|main\.|index\.|server\.|app\.|router|database|\/db\/|prisma|model|service|controller|store|schema|util|hook|action|handler|payment|stripe|config|env/i;
   const keyFilesStr = Object.entries(keyFileContents)
-    .map(([name, content]) => `\n### ${name}\n\`\`\`\n${content.slice(0, isDeep ? 3000 : 1800)}\n\`\`\``)
+    .sort(([a], [b]) => {
+      const aHigh = HIGH_SIGNAL_PROMPT.test(a) ? 0 : 1;
+      const bHigh = HIGH_SIGNAL_PROMPT.test(b) ? 0 : 1;
+      return aHigh - bHigh;
+    })
+    .map(([name, content]) => {
+      const isHighSignal = HIGH_SIGNAL_PROMPT.test(name);
+      const limit = isHighSignal ? (isDeep ? 5000 : 3500) : (isDeep ? 2000 : 1200);
+      return `\n### ${name}\n\`\`\`\n${content.slice(0, limit)}\n\`\`\``;
+    })
+    .join("\n");
+
+  // Build a condensed import graph for the AI — only local imports, not npm packages
+  const localImports = Object.entries(importGraph)
+    .filter(([, deps]) => deps.some((d) => d.startsWith(".") || d.startsWith("@/") || d.startsWith("~/")))
+    .map(([file, deps]) => {
+      const local = deps.filter((d) => d.startsWith(".") || d.startsWith("@/") || d.startsWith("~/"));
+      return `${file.split("/").slice(-2).join("/")} → ${local.slice(0, 8).join(", ")}`;
+    })
+    .slice(0, 80)
     .join("\n");
 
   return `Perform a ${isDeep ? "full deep" : "quick"} codebase health audit. Return ONLY valid JSON — no preamble, no markdown.
 
 ## Repository: ${repo}
-Scan mode: ${isDeep ? "Deep (full codebase scan)" : "Quick (health check)"}
+Scan mode: ${isDeep ? "Deep (ALL files scanned)" : "Quick (top files scanned)"}
 Language: ${meta.language ?? "Unknown"} | Stars: ${meta.stargazers_count ?? 0} | Open issues: ${meta.open_issues_count ?? 0}
 Created: ${meta.created_at ?? "Unknown"} | Last push: ${meta.pushed_at ?? "Unknown"}
 Contributors: ${contributors} | Open PRs: ${openPRCount}
 Topics: ${Array.isArray(meta.topics) ? (meta.topics as string[]).join(", ") || "none" : "none"}
 Description: ${meta.description ?? "none"}
+Total files: ${fileTree.length} | Files read: ${filesRead} | Real LOC (computed from file sizes): ${realLoc}
 
 ## Recent Commits (last 10)
 ${recentCommits.map((m, i) => `${i + 1}. ${m}`).join("\n") || "None available"}
 
-## File Tree (${fileTree.length} total files — first ${isDeep ? 120 : 80} shown)
+## File Tree (${fileTree.length} total — first ${isDeep ? 200 : 120} shown)
 ${fileTreeStr}
 
-## Key File Contents — READ THESE CAREFULLY, base findings on this actual code
+## Dependency Graph (local imports — how files wire together)
+${localImports || "(import graph unavailable)"}
+
+## File Contents — base ALL findings on this actual code
 ${keyFilesStr || "(no file contents available — analyse from file tree only)"}
 
 ## Instructions — MANDATORY
-- Base ALL findings on what you actually see in the file contents above — no speculation
-- FILENAME RULE: Every finding.file must be an exact path visible in the file tree (e.g. "src/lib/auth.ts"). Never write "various files" or "multiple files" in the file field — use the most impactful single file, and mention others in the description.
-- SPECIFICITY RULE: Descriptions must include the actual function/variable/pattern name. "The foo() function in src/api/users.ts lacks input validation" not "input validation is missing"
-- SUGGESTION RULE: Every suggestion must include a concrete code fix or command. Show the corrected code, not just the principle.
-- GROUPING RULE: If the same issue pattern repeats across multiple files, group into ONE finding. List all affected files in description.
-- IMPACT RULE: Focus on findings with real production impact — security holes, data leaks, crashes, performance cliffs, broken contracts. Skip pure style preferences.
-- Estimate LOC from the file tree size and average file length from the contents shown
-- For dependency risks, check the exact package names in package.json deps shown above
+- CROSS-FILE ANALYSIS: Use the dependency graph above to trace data flows across boundaries. If a bug in file A causes problems in file B (e.g. unvalidated input flows from route → service → DB; missing auth in route that delegates to privileged handler; secret accessed in server file imported by client component), report it as a CROSS-FILE finding and name BOTH files.
+- Base findings only on what you see in the file contents — no speculation
+- FILENAME RULE: Every finding.file must be an exact path from the file tree. Never write "various files" — pick the most impactful file and mention others in the description.
+- SPECIFICITY RULE: Name the actual function/variable/pattern. "hashPassword() in src/lib/auth.ts uses MD5" not "weak hashing detected"
+- SUGGESTION RULE: Every suggestion must include a concrete code snippet fix, not just a principle.
+- GROUPING RULE: Same pattern in multiple files → ONE finding listing all affected files.
+- IMPACT RULE: Only include findings with real production impact. Skip pure style nitpicks.
+- LOC: Use the real LOC value (${realLoc}) verbatim in metrics.estimatedLoc — do NOT re-estimate.
+- For dependency risks, check exact package names in package.json shown above.
 
 ## JSON Schema (return exactly this, all fields required)
 {
@@ -267,7 +297,7 @@ ${keyFilesStr || "(no file contents available — analyse from file tree only)"}
   "metrics": {
     "primaryLanguage": "${meta.language ?? "Unknown"}",
     "fileCount": ${fileTree.length},
-    "estimatedLoc": "<estimate from file count and average size e.g. '~12,000 lines'>",
+    "estimatedLoc": "${realLoc}",
     "contributors": ${contributors},
     "repoAge": "<calculated from created_at>",
     "openIssues": ${meta.open_issues_count ?? 0},
@@ -378,10 +408,42 @@ export async function POST(req: NextRequest) {
           ),
         ]);
 
-        const fileTree = (treeData?.tree ?? [])
-          .filter((t) => t.type === "blob")
-          .map((t) => t.path)
-          .slice(0, 200);
+        // Keep size for real LOC calculation
+        const treeBlobs = (treeData?.tree ?? []).filter(
+          (t): t is { path: string; type: string; size?: number } => t.type === "blob"
+        );
+        const fileTree = treeBlobs.map((t) => t.path).slice(0, 2000);
+
+        // Real LOC: sum file sizes for code files, divide by language avg bytes/line
+        const CODE_EXT = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|cs|rb|php|swift|kt|cpp|c|h|vue|svelte|css|scss|sass|less)$/;
+        const BYTES_PER_LINE: Record<string, number> = {
+          ts: 52, tsx: 50, js: 48, jsx: 48, py: 44, go: 58, rs: 60,
+          java: 62, cs: 60, rb: 42, php: 50, swift: 58, kt: 56,
+          cpp: 62, c: 60, h: 55, vue: 48, svelte: 48, css: 38, scss: 36,
+          sass: 34, less: 36, mjs: 48, cjs: 48,
+        };
+        let totalCodeBytes = 0;
+        let totalCodeFiles = 0;
+        for (const blob of treeBlobs) {
+          if (!CODE_EXT.test(blob.path)) continue;
+          totalCodeBytes += blob.size ?? 0;
+          totalCodeFiles++;
+        }
+        // Weighted average bytes/line across detected code files
+        const avgBytesPerLine = 50;
+        const realLocRaw = totalCodeBytes > 0 ? Math.round(totalCodeBytes / avgBytesPerLine) : 0;
+        const realLoc = realLocRaw === 0 ? "Unknown"
+          : realLocRaw < 500 ? `${realLocRaw} lines`
+          : realLocRaw < 1_000 ? `${realLocRaw} lines`
+          : realLocRaw < 10_000 ? `${(realLocRaw / 1000).toFixed(1)}k lines`
+          : `${Math.round(realLocRaw / 1000)}k lines`;
+        const realLocByExt: Record<string, number> = {};
+        for (const blob of treeBlobs) {
+          const ext = blob.path.split(".").pop() ?? "";
+          if (!(ext in BYTES_PER_LINE)) continue;
+          const bpl = BYTES_PER_LINE[ext] ?? avgBytesPerLine;
+          realLocByExt[ext] = (realLocByExt[ext] ?? 0) + Math.round((blob.size ?? 0) / bpl);
+        }
 
         const recentCommits = (commitsData ?? [])
           .slice(0, 10)
@@ -390,78 +452,117 @@ export async function POST(req: NextRequest) {
         const contributors = (contributorsData ?? []).length;
         const openPRCount = (pullsData ?? []).length;
 
-        // Fetch key files for context — config files + actual source code
-        emit({ type: "progress", step: "Identifying key files to read…", percent: 35 });
+        // ── File selection ──────────────────────────────────────────────────────
+        emit({ type: "progress", step: "Identifying files to read…", percent: 35 });
 
-        // Config/root files that always give useful context
-        const configFiles = [
-          "package.json", "tsconfig.json", "README.md", "CHANGELOG.md",
-          ".eslintrc.json", ".eslintrc.js", ".eslintrc.cjs",
-          "eslint.config.js", "eslint.config.mjs", "eslint.config.cjs",
+        const CONFIG_FILES = [
+          "package.json", "tsconfig.json", "README.md",
+          ".eslintrc.json", ".eslintrc.js", "eslint.config.js", "eslint.config.mjs",
           "biome.json", "biome.jsonc",
           "jest.config.ts", "jest.config.js", "vitest.config.ts", "vitest.config.js",
           "next.config.ts", "next.config.js",
           "Dockerfile", "docker-compose.yml", "docker-compose.yaml",
           ".github/workflows/ci.yml", ".github/workflows/ci.yaml",
           ".github/workflows/deploy.yml", ".github/workflows/main.yml",
-          ".gitlab-ci.yml", "Jenkinsfile", ".travis.yml",
-          "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml",
-          "middleware.ts", "middleware.js",
+          ".gitlab-ci.yml", "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml",
+          "middleware.ts", "middleware.js", "prisma/schema.prisma",
         ].filter((f) => fileTree.some((t) => t === f || t.endsWith(`/${f}`)));
 
-        // Source files — pick the most important ones from the actual file tree
-        const sourceExtensions = [".ts", ".tsx", ".js", ".jsx", ".py", ".go", ".rs", ".java"];
-        const importantSourceFiles = fileTree.filter((f) => {
-          const lower = f.toLowerCase();
-          return (
-            sourceExtensions.some((ext) => f.endsWith(ext)) &&
-            // Prioritise: auth, API routes, lib, middleware, main entry points
-            (lower.includes("auth") || lower.includes("api/") || lower.includes("/lib/") ||
-             lower.includes("middleware") || lower.includes("main.") || lower.includes("index.") ||
-             lower.includes("server.") || lower.includes("app.") || lower.includes("router") ||
-             lower.includes("database") || lower.includes("db/") || lower.includes("prisma") ||
-             lower.includes("model") || lower.includes("service") || lower.includes("controller") ||
-             lower.includes("store") || lower.includes("schema") || lower.includes("util"))
-          );
-        }).slice(0, scanMode === "deep" ? 40 : 20);
+        const SOURCE_EXTS = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|cs|rb|php|vue|svelte)$/;
+        const EXCLUDE = /node_modules\/|\.next\/|dist\/|build\/|\.min\.(js|ts)$|\.d\.ts$/;
+        const allSourceFiles = fileTree.filter((f) => SOURCE_EXTS.test(f) && !EXCLUDE.test(f));
 
+        // High-signal tier — always read these first regardless of mode
+        const HIGH_SIGNAL = /auth|api[/\\]|\/lib\/|middleware|main\.|index\.|server\.|app\.|router|database|\/db\/|prisma|model|service|controller|store|schema|util|hook|action|guard|handler|payment|stripe|webhook|config|env|permission|role/i;
+        const tier1 = allSourceFiles.filter((f) => HIGH_SIGNAL.test(f));
+        const tier2 = allSourceFiles.filter((f) => !HIGH_SIGNAL.test(f));
+
+        // Deep: read every source file; Quick: read top 60 most important
+        const sourceFilesToRead = scanMode === "deep"
+          ? allSourceFiles                          // ALL — no cap
+          : [...tier1, ...tier2].slice(0, 60);
+
+        const allFilesToRead = [...CONFIG_FILES, ...sourceFilesToRead];
+
+        // ── Batch parallel fetch (25 concurrent) ───────────────────────────────
+        const BATCH = 25;
         const keyFileContents: Record<string, string> = {};
-        const configToFetch = scanMode === "deep" ? configFiles : configFiles.slice(0, 6);
-        const allFilesToRead = [...configToFetch, ...importantSourceFiles];
-        const totalFiles = allFilesToRead.length;
 
-        // Read files sequentially so we can emit progress per file
-        for (let i = 0; i < allFilesToRead.length; i++) {
-          const f = allFilesToRead[i];
-          const percent = Math.round(38 + (i / totalFiles) * 20); // 38%–58%
-          const shortName = f.split("/").slice(-2).join("/");
-          emit({ type: "progress", step: `Reading ${shortName}…`, percent });
+        emit({ type: "progress", step: `Reading ${allFilesToRead.length} files…`, percent: 38 });
 
-          const actualPath = configToFetch.includes(f)
-            ? (fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f)
-            : f;
-          const content = await ghFetchText(`/repos/${repo}/contents/${actualPath}`, ghToken);
+        for (let i = 0; i < allFilesToRead.length; i += BATCH) {
+          const batch = allFilesToRead.slice(i, i + BATCH);
+          const percent = Math.round(38 + ((i + BATCH) / allFilesToRead.length) * 22);
+          emit({
+            type: "progress",
+            step: `Reading files ${i + 1}–${Math.min(i + BATCH, allFilesToRead.length)} of ${allFilesToRead.length}…`,
+            percent: Math.min(percent, 60),
+          });
 
-          if (content) {
-            if (f === "package.json" && scanMode !== "deep") {
+          await Promise.all(batch.map(async (f) => {
+            const actualPath = CONFIG_FILES.includes(f)
+              ? (fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f)
+              : f;
+            const content = await ghFetchText(`/repos/${repo}/contents/${actualPath}`, ghToken);
+            if (!content) return;
+
+            if (f === "package.json") {
               try {
                 const pkg = JSON.parse(content);
                 keyFileContents[f] = JSON.stringify(
-                  { dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2
+                  { name: pkg.name, version: pkg.version, scripts: pkg.scripts, dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2
                 );
-              } catch { keyFileContents[f] = content.slice(0, 2000); }
+              } catch { keyFileContents[f] = content.slice(0, 4000); }
             } else {
-              keyFileContents[f] = content.slice(0, scanMode === "deep" ? 4000 : 3000);
+              // Full content for high-signal files, truncated for rest
+              const isHighSignal = HIGH_SIGNAL.test(f) || CONFIG_FILES.includes(f);
+              const limit = isHighSignal
+                ? (scanMode === "deep" ? 8000 : 5000)
+                : (scanMode === "deep" ? 4000 : 2500);
+              keyFileContents[f] = content.slice(0, limit);
             }
-          }
+          }));
         }
 
         const filesRead = Object.keys(keyFileContents).length;
-        emit({ type: "progress", step: `Read ${filesRead} files — running static analysis…`, percent: 58 });
+
+        // ── Build import graph ────────────────────────────────────────────────
+        // Parse import/require statements from every fetched file to understand
+        // how the codebase is wired together (who depends on whom).
+        emit({ type: "progress", step: "Building dependency graph…", percent: 61 });
+
+        const importGraph: Record<string, string[]> = {};
+        const importedBy: Record<string, string[]> = {};   // reverse map: who imports this file
+
+        for (const [file, content] of Object.entries(keyFileContents)) {
+          const imports: string[] = [];
+          // ES module imports: import X from './y'  /  import { X } from '@/y'
+          for (const m of content.matchAll(/^import\s+.*?\s+from\s+['"]([^'"]+)['"]/gm)) {
+            imports.push(m[1]);
+          }
+          // require() calls
+          for (const m of content.matchAll(/require\s*\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+            imports.push(m[1]);
+          }
+          // Dynamic imports
+          for (const m of content.matchAll(/import\s*\(\s*['"]([^'"]+)['"]\s*\)/g)) {
+            imports.push(m[1]);
+          }
+          importGraph[file] = imports;
+
+          // Build reverse map
+          for (const imp of imports) {
+            if (!importedBy[imp]) importedBy[imp] = [];
+            importedBy[imp].push(file);
+          }
+        }
+
+        emit({ type: "progress", step: `Read ${filesRead} files — running static analysis…`, percent: 63 });
 
         // Always run internal AI — works without any API key
         const internalScanResult = scanRepoWithInternalAI({
           repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+          realLoc, realLocByExt, totalCodeFiles, importGraph,
         });
 
         let result: RepoScanResult;
@@ -473,7 +574,7 @@ export async function POST(req: NextRequest) {
           emit({ type: "progress", step: "Enhancing with AI analysis…", percent: 65 });
 
           // Build prompt — inject cached knowledge if available so AI builds on prior findings
-          let basePrompt = buildRepoScanPrompt({ repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode });
+          let basePrompt = buildRepoScanPrompt({ repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode, realLoc, filesRead, importGraph });
           if (cachedKnowledge) {
             emit({ type: "progress", step: "Loading memory from previous scan…", percent: 67 });
             basePrompt = formatKnowledgeForPrompt(cachedKnowledge) + "\n\n" + basePrompt;
