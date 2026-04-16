@@ -15,7 +15,7 @@ import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
 import { useSession, signIn } from "next-auth/react";
 import { performLogout } from "@/lib/client-auth";
 
-type SettingsTab = "profile" | "account" | "appearance" | "workspace";
+type SettingsTab = "profile" | "account" | "appearance" | "workspace" | "integrations";
 type ThemeOption = "light" | "dark" | "system";
 type AiPlan = "free" | "professional" | "team" | "enterprise";
 
@@ -38,10 +38,11 @@ interface AiJobSummary {
 }
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
-  { id: "profile", label: "Profile", icon: "person" },
-  { id: "account", label: "Account", icon: "manage_accounts" },
-  { id: "appearance", label: "Appearance", icon: "palette" },
-  { id: "workspace", label: "Workspace", icon: "tune" },
+  { id: "profile",      label: "Profile",      icon: "person" },
+  { id: "account",      label: "Account",      icon: "manage_accounts" },
+  { id: "appearance",   label: "Appearance",   icon: "palette" },
+  { id: "workspace",    label: "Workspace",    icon: "tune" },
+  { id: "integrations", label: "Integrations", icon: "extension" },
 ];
 
 export function SettingsPanel() {
@@ -106,6 +107,25 @@ export function SettingsPanel() {
   const [connectedProviders, setConnectedProviders] = useState<string[]>([]);
   const [settingsLoading, setSettingsLoading] = useState(true);
 
+  // ── Integrations state ─────────────────────────────────────────────────────
+  const [slackWebhook, setSlackWebhook]           = useState("");
+  const [slackSaved, setSlackSaved]               = useState(false);  // true = has saved webhook
+  const [slackSaving, setSlackSaving]             = useState(false);
+  const [slackMsg, setSlackMsg]                   = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [slackTestSending, setSlackTestSending]   = useState(false);
+
+  const [weeklyDigest, setWeeklyDigest]           = useState(false);
+  const [digestLastSent, setDigestLastSent]        = useState<string | null>(null);
+  const [digestSending, setDigestSending]         = useState(false);
+  const [digestMsg, setDigestMsg]                 = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  const [ghAppInstalled, setGhAppInstalled]       = useState(false);
+  const [ghAppInstallUrl, setGhAppInstallUrl]     = useState<string | null>(null);
+  const [ghAppConfigured, setGhAppConfigured]     = useState(false);
+  const [ghInstallIdInput, setGhInstallIdInput]   = useState("");
+  const [ghAppSaving, setGhAppSaving]             = useState(false);
+  const [ghAppMsg, setGhAppMsg]                   = useState<{ type: "success" | "error"; text: string } | null>(null);
+
   // Load all settings data in a single fetch
   useEffect(() => {
     setMounted(true);
@@ -161,6 +181,24 @@ export function SettingsPanel() {
             since: new Date().toISOString(),
           });
         }
+      })
+      .then(() => {
+        // Load integrations in parallel
+        Promise.all([
+          fetch("/api/user/digest").then(r => r.ok ? r.json() : null),
+          fetch("/api/github-app/status").then(r => r.ok ? r.json() : null),
+        ]).then(([digestData, ghData]) => {
+          if (digestData) {
+            setWeeklyDigest(digestData.weeklyDigestEnabled ?? false);
+            setDigestLastSent(digestData.weeklyDigestLastSent ?? null);
+            setSlackSaved(digestData.hasSlack ?? false);
+          }
+          if (ghData) {
+            setGhAppInstalled(ghData.installed ?? false);
+            setGhAppInstallUrl(ghData.installUrl ?? null);
+            setGhAppConfigured(ghData.appConfigured ?? false);
+          }
+        }).catch(() => { /* non-fatal */ });
       })
       .catch(() => {
         // Fallback: at least set display name from session
@@ -370,6 +408,117 @@ export function SettingsPanel() {
       setTierMsg({ type: "error", text: "Failed to update tier." });
     } finally {
       setTierSaving(false);
+    }
+  };
+
+  // ── Integration handlers ───────────────────────────────────────────────────
+  const handleSaveSlack = async (remove = false) => {
+    setSlackSaving(true);
+    setSlackMsg(null);
+    try {
+      const res = await fetch("/api/user/account", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slackWebhookUrl: remove ? null : slackWebhook.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setSlackMsg({ type: "success", text: remove ? "Slack disconnected." : "Slack webhook saved." });
+        setSlackSaved(!remove);
+        if (remove) setSlackWebhook("");
+      } else {
+        setSlackMsg({ type: "error", text: data.error ?? "Failed to save Slack webhook." });
+      }
+    } catch {
+      setSlackMsg({ type: "error", text: "An error occurred." });
+    } finally {
+      setSlackSaving(false);
+    }
+  };
+
+  const handleTestSlack = async () => {
+    setSlackTestSending(true);
+    setSlackMsg(null);
+    try {
+      const res = await fetch("/api/user/digest?send=1", { method: "POST", body: JSON.stringify({}), headers: { "Content-Type": "application/json" } });
+      if (res.ok) {
+        setSlackMsg({ type: "success", text: "Test digest sent to Slack!" });
+      } else {
+        const d = await res.json();
+        setSlackMsg({ type: "error", text: d.error ?? "Failed to send test." });
+      }
+    } catch {
+      setSlackMsg({ type: "error", text: "An error occurred." });
+    } finally {
+      setSlackTestSending(false);
+    }
+  };
+
+  const handleToggleDigest = async (enabled: boolean) => {
+    setWeeklyDigest(enabled);
+    setDigestMsg(null);
+    try {
+      const res = await fetch("/api/user/digest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weeklyDigestEnabled: enabled }),
+      });
+      if (!res.ok) {
+        const d = await res.json();
+        if (d.upgradeRequired) {
+          setDigestMsg({ type: "error", text: "Weekly digest requires Professional plan or higher." });
+          setWeeklyDigest(false);
+        }
+      }
+    } catch {
+      setDigestMsg({ type: "error", text: "An error occurred." });
+    }
+  };
+
+  const handleSendDigestNow = async () => {
+    setDigestSending(true);
+    setDigestMsg(null);
+    try {
+      const res = await fetch("/api/user/digest?send=1", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setDigestMsg({ type: "success", text: `Digest sent! ${data.repoCount} repos, avg score ${data.avgScore}.` });
+        setDigestLastSent(new Date().toISOString());
+      } else {
+        setDigestMsg({ type: "error", text: data.error ?? "Failed to send digest." });
+      }
+    } catch {
+      setDigestMsg({ type: "error", text: "An error occurred." });
+    } finally {
+      setDigestSending(false);
+    }
+  };
+
+  const handleSaveGhApp = async (clear = false) => {
+    setGhAppSaving(true);
+    setGhAppMsg(null);
+    try {
+      const res = await fetch("/api/github-app/status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ installationId: clear ? null : ghInstallIdInput.trim() }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGhAppMsg({ type: "success", text: clear ? "GitHub App disconnected." : "Installation ID saved." });
+        setGhAppInstalled(!clear);
+        if (clear) setGhInstallIdInput("");
+      } else {
+        setGhAppMsg({ type: "error", text: data.error ?? "Failed to save." });
+      }
+    } catch {
+      setGhAppMsg({ type: "error", text: "An error occurred." });
+    } finally {
+      setGhAppSaving(false);
     }
   };
 
@@ -1250,6 +1399,220 @@ export function SettingsPanel() {
               )}
             </div>
           )}
+        </div>
+      )}
+
+      {/* ── Integrations Tab ── */}
+      {activeTab === "integrations" && (
+        <div className="space-y-6">
+
+          {/* Slack */}
+          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-[#4A154B]/20 border border-[#4A154B]/30">
+                <svg viewBox="0 0 54 54" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19.712 34.138a3.853 3.853 0 0 1-3.853 3.853 3.853 3.853 0 0 1-3.854-3.853 3.853 3.853 0 0 1 3.854-3.854h3.853v3.854z" fill="#E01E5A"/>
+                  <path d="M21.587 34.138a3.853 3.853 0 0 1 3.853-3.854 3.853 3.853 0 0 1 3.854 3.854v9.634a3.853 3.853 0 0 1-3.854 3.853 3.853 3.853 0 0 1-3.853-3.853v-9.634z" fill="#E01E5A"/>
+                  <path d="M25.44 19.712a3.853 3.853 0 0 1-3.853-3.853 3.853 3.853 0 0 1 3.853-3.854 3.853 3.853 0 0 1 3.854 3.854v3.853H25.44z" fill="#36C5F0"/>
+                  <path d="M25.44 21.587a3.853 3.853 0 0 1 3.854 3.853 3.853 3.853 0 0 1-3.854 3.854h-9.634a3.853 3.853 0 0 1-3.853-3.854 3.853 3.853 0 0 1 3.853-3.853h9.634z" fill="#36C5F0"/>
+                  <path d="M40.166 25.44a3.853 3.853 0 0 1 3.853 3.853 3.853 3.853 0 0 1-3.853 3.854 3.853 3.853 0 0 1-3.854-3.854V25.44h3.854z" fill="#2EB67D"/>
+                  <path d="M38.291 25.44a3.853 3.853 0 0 1-3.853-3.853 3.853 3.853 0 0 1 3.853-3.854h9.634a3.853 3.853 0 0 1 3.854 3.854 3.853 3.853 0 0 1-3.854 3.853h-9.634z" fill="#2EB67D"/>
+                  <path d="M34.438 40.166a3.853 3.853 0 0 1-3.854 3.853 3.853 3.853 0 0 1-3.853-3.853 3.853 3.853 0 0 1 3.853-3.854h3.854v3.854z" fill="#ECB22E"/>
+                  <path d="M34.438 38.291a3.853 3.853 0 0 1 3.854-3.853 3.853 3.853 0 0 1 3.853 3.853v9.634a3.853 3.853 0 0 1-3.853 3.854 3.853 3.853 0 0 1-3.854-3.854v-9.634z" fill="#ECB22E"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-foreground">Slack Notifications</h3>
+                <p className="text-xs text-muted-foreground">Get scan alerts, PR reviews, and weekly digests in Slack.</p>
+              </div>
+              {slackSaved && (
+                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                  <span className="size-1.5 rounded-full bg-current" /> Connected
+                </span>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Setup Guide</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                <li>In Slack: <strong className="text-foreground">Apps</strong> → search <em>Incoming Webhooks</em> → Add to Slack</li>
+                <li>Choose a channel and click <strong className="text-foreground">Add Incoming Webhooks Integration</strong></li>
+                <li>Copy the Webhook URL and paste it below</li>
+              </ol>
+            </div>
+
+            {slackSaved ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                  <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
+                  <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">Webhook active — alerts will post to your Slack channel</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" disabled={slackTestSending} onClick={handleTestSlack} className="font-mono text-[10px] uppercase tracking-widest">
+                    {slackTestSending ? "Sending..." : "Send Test Message"}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" disabled={slackSaving} onClick={() => handleSaveSlack(true)} className="text-destructive border-destructive/30 hover:bg-destructive/10 font-mono text-[10px] uppercase tracking-widest">
+                    {slackSaving ? "Removing..." : "Disconnect"}
+                  </Button>
+                </div>
+                {slackMsg && <p className={cn("font-mono text-xs", slackMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{slackMsg.text}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3 max-w-lg">
+                <input
+                  type="url"
+                  value={slackWebhook}
+                  onChange={(e) => setSlackWebhook(e.target.value)}
+                  placeholder="https://hooks.slack.com/services/T.../B.../..."
+                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-xs text-foreground focus:border-primary/50 focus:outline-none"
+                />
+                <Button type="button" size="sm" disabled={slackSaving || !slackWebhook.trim().startsWith("https://hooks.slack.com")} onClick={() => handleSaveSlack(false)} className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest">
+                  {slackSaving ? "Saving..." : "Connect Slack"}
+                </Button>
+                {slackMsg && <p className={cn("font-mono text-xs", slackMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{slackMsg.text}</p>}
+              </div>
+            )}
+          </div>
+
+          {/* Weekly Digest */}
+          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+            <div className="flex items-center gap-3">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                <MaterialIcon name="mail" size={18} className="text-indigo-400" />
+              </div>
+              <div className="flex-1">
+                <h3 className="font-heading text-lg font-bold text-foreground">Weekly Digest Email</h3>
+                <p className="text-xs text-muted-foreground">A fleet health summary sent every Monday morning.</p>
+              </div>
+              <Switch
+                id="digest-switch"
+                checked={weeklyDigest}
+                onCheckedChange={handleToggleDigest}
+              />
+            </div>
+
+            {weeklyDigest && (
+              <div className="space-y-3 pl-12">
+                <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-4 py-3 space-y-1">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-indigo-400">What's Included</p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
+                    <li>Average fleet health score and week-over-week delta</li>
+                    <li>Top performing repos and at-risk repos</li>
+                    <li>Total scans run in the past week</li>
+                    <li>Link to open the full dashboard</li>
+                  </ul>
+                </div>
+                {digestLastSent && (
+                  <p className="font-mono text-[9px] text-muted-foreground">
+                    Last sent: {new Date(digestLastSent).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
+                  </p>
+                )}
+                <Button type="button" variant="outline" size="sm" disabled={digestSending} onClick={handleSendDigestNow} className="font-mono text-[10px] uppercase tracking-widest">
+                  {digestSending ? "Sending..." : "Send Digest Now"}
+                </Button>
+                {digestMsg && <p className={cn("font-mono text-xs mt-1", digestMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{digestMsg.text}</p>}
+              </div>
+            )}
+
+            {!weeklyDigest && (
+              <p className="font-mono text-[9px] text-muted-foreground pl-12">
+                Toggle on to start receiving weekly email reports. Requires Professional plan or higher.
+              </p>
+            )}
+            {digestMsg && !weeklyDigest && (
+              <p className={cn("font-mono text-xs pl-12", digestMsg.type === "error" ? "text-destructive" : "text-tertiary")}>{digestMsg.text}</p>
+            )}
+          </div>
+
+          {/* GitHub App */}
+          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-foreground/5 border border-outline-variant/20">
+                <MaterialIcon name="integration_instructions" size={18} className="text-foreground/70" />
+              </div>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-foreground">GitHub App</h3>
+                <p className="text-xs text-muted-foreground">Auto-review PRs and post AI analysis as GitHub review comments.</p>
+              </div>
+              {ghAppInstalled && (
+                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                  <span className="size-1.5 rounded-full bg-current" /> Installed
+                </span>
+              )}
+            </div>
+
+            {!ghAppConfigured ? (
+              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400 mb-2">Server Setup Required</p>
+                <p className="text-xs text-muted-foreground">
+                  The GitScope GitHub App needs to be registered. Ask your admin to set{" "}
+                  <code className="font-mono text-[10px] text-foreground bg-surface-container-highest px-1 py-0.5 rounded">GITHUB_APP_ID</code>,{" "}
+                  <code className="font-mono text-[10px] text-foreground bg-surface-container-highest px-1 py-0.5 rounded">GITHUB_APP_PRIVATE_KEY</code>, and{" "}
+                  <code className="font-mono text-[10px] text-foreground bg-surface-container-highest px-1 py-0.5 rounded">GITHUB_WEBHOOK_SECRET</code> env vars.
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">What you get</p>
+                  <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
+                    <li>AI review posted automatically on every PR open/update</li>
+                    <li>Verdict (Approve / Request Changes / Comment) as GitHub review</li>
+                    <li>Slack notification with PR review summary (if Slack connected)</li>
+                  </ul>
+                </div>
+
+                {ghAppInstalled ? (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                      <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
+                      <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">GitHub App installed — PR reviews are active</span>
+                    </div>
+                    <Button type="button" variant="outline" size="sm" disabled={ghAppSaving} onClick={() => handleSaveGhApp(true)} className="text-destructive border-destructive/30 hover:bg-destructive/10 font-mono text-[10px] uppercase tracking-widest">
+                      {ghAppSaving ? "Removing..." : "Disconnect App"}
+                    </Button>
+                    {ghAppMsg && <p className={cn("font-mono text-xs", ghAppMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{ghAppMsg.text}</p>}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {ghAppInstallUrl && (
+                      <a
+                        href={ghAppInstallUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold hover:bg-foreground/90 transition-colors"
+                      >
+                        <MaterialIcon name="add" size={16} />
+                        Install GitHub App
+                      </a>
+                    )}
+                    <div className="space-y-2">
+                      <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
+                        Or enter Installation ID manually
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        After installing, find the ID in your GitHub App installation URL:{" "}
+                        <code className="font-mono text-[10px]">github.com/settings/installations/{'<ID>'}</code>
+                      </p>
+                      <div className="flex gap-2 max-w-xs">
+                        <input
+                          type="text"
+                          value={ghInstallIdInput}
+                          onChange={(e) => setGhInstallIdInput(e.target.value.replace(/\D/g, ""))}
+                          placeholder="12345678"
+                          className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                        />
+                        <Button type="button" size="sm" disabled={ghAppSaving || !ghInstallIdInput.trim()} onClick={() => handleSaveGhApp(false)} className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest">
+                          {ghAppSaving ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
+                      {ghAppMsg && <p className={cn("font-mono text-xs", ghAppMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{ghAppMsg.text}</p>}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </div>
       )}
 

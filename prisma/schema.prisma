@@ -20,6 +20,12 @@ enum AiJobType {
   repoScan
 }
 
+enum ScheduleFrequency {
+  daily
+  weekly
+  monthly
+}
+
 enum AiJobStatus {
   queued
   running
@@ -80,6 +86,12 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
   
+  // Integrations
+  slackWebhookUrl      String?  @map("slack_webhook_url")   // Slack incoming webhook for alerts
+  weeklyDigestEnabled  Boolean  @default(false) @map("weekly_digest_enabled")
+  weeklyDigestLastSent DateTime? @map("weekly_digest_last_sent")
+  githubAppInstallId   String?  @map("github_app_install_id") // GitHub App installation ID
+
   accounts        Account[]
   sessions        Session[]
   searchHistories SearchHistory[]
@@ -89,6 +101,9 @@ model User {
   bookmarks       Bookmark[]
   codeReviewScans CodeReviewScan[]
   repoKnowledge   RepoKnowledge[]
+  repoScanHistory RepoScanHistory[]
+  scheduledScans  ScheduledScan[]
+  customScanRules CustomScanRule[]
 
   @@map("users")
 }
@@ -259,7 +274,99 @@ model RepoKnowledge {
   @@map("repo_knowledge")
 }
 
+// ── Scan History ───────────────────────────────────────────────────────────────
+// One row per completed repo scan. Used for health trend charts.
+// Pro: 30d retention  |  Team: 90d  |  Enterprise: unlimited
+model RepoScanHistory {
+  id               String   @id @default(cuid())
+  userId           String   @map("user_id")
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repo             String
+  scanMode         String   @default("quick") @map("scan_mode")
+  healthScore      Int      @map("health_score")
+  securityScore    Int      @map("security_score")
+  qualityScore     Int      @map("quality_score")
+  performanceScore Int      @default(0) @map("performance_score")
+  criticalCount    Int      @default(0) @map("critical_count")
+  highCount        Int      @default(0) @map("high_count")
+  mediumCount      Int      @default(0) @map("medium_count")
+  locEstimate      String?  @map("loc_estimate")
+  filesScanned     Int      @default(0) @map("files_scanned")
+  summary          String   @db.Text
+  model            String?
+  tokensUsed       Int      @default(0) @map("tokens_used")
+  createdAt        DateTime @default(now()) @map("created_at")
+
+  @@index([userId, repo, createdAt])
+  @@index([userId, createdAt])
+  @@map("repo_scan_history")
+}
+
+// ── Scheduled Scans ────────────────────────────────────────────────────────────
+// Pro+ feature: run scans on a schedule and email alerts on score drops.
+model ScheduledScan {
+  id          String            @id @default(cuid())
+  userId      String            @map("user_id")
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repo        String
+  scanMode    String            @default("quick") @map("scan_mode")
+  schedule    ScheduleFrequency
+  alertOnDrop Int?              @map("alert_on_drop") // send alert if score drops by ≥ this many points
+  alertEmail  String?           @map("alert_email")   // where to send alerts
+  lastRunAt   DateTime?         @map("last_run_at")
+  lastScore   Int?              @map("last_score")
+  nextRunAt   DateTime          @map("next_run_at")
+  enabled     Boolean           @default(true)
+  createdAt   DateTime          @default(now()) @map("created_at")
+  updatedAt   DateTime          @updatedAt @map("updated_at")
+
+  @@unique([userId, repo])
+  @@index([nextRunAt, enabled])
+  @@map("scheduled_scans")
+}
+
+// ── Custom Scan Rules ──────────────────────────────────────────────────────────
+// Team+ feature: user-defined regex rules applied during static analysis.
+model CustomScanRule {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?  @db.Text
+  pattern     String   @db.Text  // JS-compatible regex pattern string (no delimiters)
+  fileGlob    String?  @map("file_glob")  // optional file filter e.g. "**/*.ts"
+  severity    String   @default("medium") // critical|high|medium|low
+  category    String   @default("quality")
+  suggestion  String   @db.Text
+  enabled     Boolean  @default(true)
+  hitCount    Int      @default(0) @map("hit_count") // incremented when rule fires
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("custom_scan_rules")
+}
+
+// ── Benchmark Stats ────────────────────────────────────────────────────────────
+// Aggregated anonymous score statistics for benchmark comparisons ("your repo vs median").
+// Populated by a background job that computes percentiles across all scan history rows.
+model BenchmarkStat {
+  id          String   @id @default(cuid())
+  language    String   @default("all")     // "all" | "typescript" | "python" | etc.
+  sizeClass   String   @default("all")     // "all" | "small" | "medium" | "large"
+  metric      String                       // "healthScore" | "securityScore" | "qualityScore" | "performanceScore"
+  p25         Float                        // 25th percentile
+  p50         Float                        // median
+  p75         Float                        // 75th percentile
+  p90         Float                        // 90th percentile
+  sampleCount Int      @map("sample_count")
+  computedAt  DateTime @default(now()) @map("computed_at")
+
+  @@unique([language, sizeClass, metric])
+  @@index([metric])
+  @@map("benchmark_stats")
+}
+
 // identifier prefixes:
 //   "verify:{email}"  — email address verification (expires 24h)
 //   "reset:{email}"   — password reset (expires 1h)
-// Prisma schema v2 - Bookmark model added
+// Prisma schema v4 - slackWebhookUrl, weeklyDigest, githubAppInstallId, BenchmarkStat added

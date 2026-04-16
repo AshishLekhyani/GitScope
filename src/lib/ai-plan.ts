@@ -18,60 +18,143 @@ export interface AiCapabilities {
   aiRequestsPerHour: number;
   allowsPrivateRepoAnalysis: boolean;
   allowSharedTokenFallback: boolean;
+  // Scan-specific gates
+  deepScanAllowed: boolean;
+  fixDiffsAllowed: boolean;
+  scanHistoryDays: number;       // 0 = no history stored
+  scheduledScansAllowed: boolean;
+  maxScheduledScans: number;
+  customRulesAllowed: boolean;
+  maxCustomRules: number;
+  dailyScanLimit: number;
+  generateReadmeAllowed: boolean;
+  generateChangelogAllowed: boolean;
+  dailyGenerateLimit: number;
+  // Integration gates
+  slackNotificationsAllowed: boolean;
+  githubAppPrReviewsAllowed: boolean;
+  weeklyDigestAllowed: boolean;
+  benchmarkComparisonAllowed: boolean;
+  // Free monthly PR review allowance (GitHub App)
+  monthlyPrReviewLimit: number;
 }
 
 const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
   free: {
     plan: "free",
     label: "Explorer",
-    maxReposInWorkspace: 3,
-    maxReposPerRequest: 3,
-    maxOpenPRsPerRepo: 4,
+    maxReposInWorkspace: 5,            // bumped from 3 → more generous free tier
+    maxReposPerRequest: 5,
+    maxOpenPRsPerRepo: 5,
     maxFilesPerDeepScan: 4,
-    maxPackagesPerSecurityScan: 80,
+    maxPackagesPerSecurityScan: 100,   // CVE scan available free — bumped from 80
     aiAgentDepth: 1,
     aiRequestsPerHour: 20,
     allowsPrivateRepoAnalysis: false,
     allowSharedTokenFallback: false,
+    deepScanAllowed: false,
+    fixDiffsAllowed: false,
+    scanHistoryDays: 0,
+    scheduledScansAllowed: false,
+    maxScheduledScans: 0,
+    customRulesAllowed: false,
+    maxCustomRules: 0,
+    dailyScanLimit: 5,                 // bumped from 3
+    generateReadmeAllowed: false,
+    generateChangelogAllowed: false,
+    dailyGenerateLimit: 0,
+    slackNotificationsAllowed: false,
+    githubAppPrReviewsAllowed: true,   // 5 free PR reviews/month via GitHub App
+    weeklyDigestAllowed: false,
+    benchmarkComparisonAllowed: false,
+    monthlyPrReviewLimit: 5,
   },
   professional: {
     plan: "professional",
     label: "Professional",
-    maxReposInWorkspace: 10,
-    maxReposPerRequest: 10,
+    maxReposInWorkspace: 15,           // bumped from 10
+    maxReposPerRequest: 15,
     maxOpenPRsPerRepo: 10,
-    maxFilesPerDeepScan: 10,
-    maxPackagesPerSecurityScan: 220,
+    maxFilesPerDeepScan: 12,
+    maxPackagesPerSecurityScan: 300,   // bumped from 220
     aiAgentDepth: 2,
-    aiRequestsPerHour: 80,
+    aiRequestsPerHour: 100,
     allowsPrivateRepoAnalysis: true,
     allowSharedTokenFallback: false,
+    deepScanAllowed: true,
+    fixDiffsAllowed: true,
+    scanHistoryDays: 30,
+    scheduledScansAllowed: true,
+    maxScheduledScans: 5,              // bumped from 3
+    customRulesAllowed: false,
+    maxCustomRules: 0,
+    dailyScanLimit: 25,
+    generateReadmeAllowed: true,
+    generateChangelogAllowed: true,
+    dailyGenerateLimit: 10,
+    slackNotificationsAllowed: true,
+    githubAppPrReviewsAllowed: true,
+    weeklyDigestAllowed: true,
+    benchmarkComparisonAllowed: true,
+    monthlyPrReviewLimit: 50,
   },
   team: {
     plan: "team",
     label: "Team",
-    maxReposInWorkspace: 20,
-    maxReposPerRequest: 20,
-    maxOpenPRsPerRepo: 18,
-    maxFilesPerDeepScan: 20,
-    maxPackagesPerSecurityScan: 500,
+    maxReposInWorkspace: 30,           // bumped from 20
+    maxReposPerRequest: 25,
+    maxOpenPRsPerRepo: 20,
+    maxFilesPerDeepScan: 25,
+    maxPackagesPerSecurityScan: 600,   // bumped from 500
     aiAgentDepth: 3,
-    aiRequestsPerHour: 240,
+    aiRequestsPerHour: 300,
     allowsPrivateRepoAnalysis: true,
     allowSharedTokenFallback: false,
+    deepScanAllowed: true,
+    fixDiffsAllowed: true,
+    scanHistoryDays: 90,
+    scheduledScansAllowed: true,
+    maxScheduledScans: 30,             // bumped from 20
+    customRulesAllowed: true,
+    maxCustomRules: 30,                // bumped from 25
+    dailyScanLimit: 80,
+    generateReadmeAllowed: true,
+    generateChangelogAllowed: true,
+    dailyGenerateLimit: 40,
+    slackNotificationsAllowed: true,
+    githubAppPrReviewsAllowed: true,
+    weeklyDigestAllowed: true,
+    benchmarkComparisonAllowed: true,
+    monthlyPrReviewLimit: 200,
   },
   enterprise: {
     plan: "enterprise",
     label: "Enterprise",
-    maxReposInWorkspace: 50,
-    maxReposPerRequest: 40,
-    maxOpenPRsPerRepo: 30,
-    maxFilesPerDeepScan: 35,
-    maxPackagesPerSecurityScan: 1200,
+    maxReposInWorkspace: 100,          // bumped from 50
+    maxReposPerRequest: 50,
+    maxOpenPRsPerRepo: 40,
+    maxFilesPerDeepScan: 50,
+    maxPackagesPerSecurityScan: 2000,  // bumped from 1200
     aiAgentDepth: 3,
-    aiRequestsPerHour: 1000,
+    aiRequestsPerHour: 2000,
     allowsPrivateRepoAnalysis: true,
     allowSharedTokenFallback: true,
+    deepScanAllowed: true,
+    fixDiffsAllowed: true,
+    scanHistoryDays: 365,
+    scheduledScansAllowed: true,
+    maxScheduledScans: 200,            // bumped from 100
+    customRulesAllowed: true,
+    maxCustomRules: 150,               // bumped from 100
+    dailyScanLimit: 500,
+    generateReadmeAllowed: true,
+    generateChangelogAllowed: true,
+    dailyGenerateLimit: 200,
+    slackNotificationsAllowed: true,
+    githubAppPrReviewsAllowed: true,
+    weeklyDigestAllowed: true,
+    benchmarkComparisonAllowed: true,
+    monthlyPrReviewLimit: 10000,       // effectively unlimited
   },
 };
 

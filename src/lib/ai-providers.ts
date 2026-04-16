@@ -55,61 +55,52 @@ async function callAnthropic(opts: AICallOptions): Promise<AICallResult | null> 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   const model = anthropicModel(opts.plan);
-  try {
-    const client = new Anthropic({ apiKey });
-    const msg = await client.messages.create({
-      model,
-      max_tokens: opts.maxTokens ?? 4096,
-      system: opts.systemPrompt,
-      messages: [{ role: "user", content: opts.userPrompt }],
-    });
-    const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
-    return { text, model, provider: "anthropic", inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens };
-  } catch {
-    return null;
-  }
+  // Key is present — let errors propagate so callers can see bad key / rate limit / etc.
+  const client = new Anthropic({ apiKey });
+  const msg = await client.messages.create({
+    model,
+    max_tokens: opts.maxTokens ?? 4096,
+    system: opts.systemPrompt,
+    messages: [{ role: "user", content: opts.userPrompt }],
+  });
+  const text = msg.content[0]?.type === "text" ? msg.content[0].text : "";
+  return { text, model, provider: "anthropic", inputTokens: msg.usage.input_tokens, outputTokens: msg.usage.output_tokens };
 }
 
 async function callOpenAI(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   const model = openaiModel(opts.plan);
-  try {
-    const client = new OpenAI({ apiKey });
-    const res = await client.chat.completions.create({
-      model,
-      max_tokens: opts.maxTokens ?? 4096,
-      messages: [
-        { role: "system", content: opts.systemPrompt },
-        { role: "user", content: opts.userPrompt },
-      ],
-    });
-    const text = res.choices[0]?.message.content ?? "";
-    return { text, model, provider: "openai", inputTokens: res.usage?.prompt_tokens ?? 0, outputTokens: res.usage?.completion_tokens ?? 0 };
-  } catch {
-    return null;
-  }
+  // Key is present — let errors propagate so callers can see bad key / rate limit / etc.
+  const client = new OpenAI({ apiKey });
+  const res = await client.chat.completions.create({
+    model,
+    max_tokens: opts.maxTokens ?? 4096,
+    messages: [
+      { role: "system", content: opts.systemPrompt },
+      { role: "user", content: opts.userPrompt },
+    ],
+  });
+  const text = res.choices[0]?.message.content ?? "";
+  return { text, model, provider: "openai", inputTokens: res.usage?.prompt_tokens ?? 0, outputTokens: res.usage?.completion_tokens ?? 0 };
 }
 
 async function callGemini(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const model = geminiModel(opts.plan);
-  try {
-    const client = new OpenAI({ apiKey, baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
-    const res = await client.chat.completions.create({
-      model,
-      max_tokens: opts.maxTokens ?? 4096,
-      messages: [
-        { role: "system", content: opts.systemPrompt },
-        { role: "user", content: opts.userPrompt },
-      ],
-    });
-    const text = res.choices[0]?.message.content ?? "";
-    return { text, model: `gemini/${model}`, provider: "gemini", inputTokens: res.usage?.prompt_tokens ?? 0, outputTokens: res.usage?.completion_tokens ?? 0 };
-  } catch {
-    return null;
-  }
+  // Key is present — let errors propagate so callers can see bad key / rate limit / etc.
+  const client = new OpenAI({ apiKey, baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/" });
+  const res = await client.chat.completions.create({
+    model,
+    max_tokens: opts.maxTokens ?? 4096,
+    messages: [
+      { role: "system", content: opts.systemPrompt },
+      { role: "user", content: opts.userPrompt },
+    ],
+  });
+  const text = res.choices[0]?.message.content ?? "";
+  return { text, model: `gemini/${model}`, provider: "gemini", inputTokens: res.usage?.prompt_tokens ?? 0, outputTokens: res.usage?.completion_tokens ?? 0 };
 }
 
 // ── Ensemble merger (enterprise only) ─────────────────────────────────────────
@@ -159,14 +150,20 @@ export async function callAI(opts: AICallOptions): Promise<AICallResult | null> 
   if (plan === "free") return null;
 
   if (plan === "enterprise") {
-    const [ar, or_] = await Promise.all([callAnthropic(opts), callOpenAI(opts)]);
+    // Run both in parallel; if one fails, still use the other
+    const [ar, or_] = await Promise.all([
+      callAnthropic(opts).catch(() => null),
+      callOpenAI(opts).catch(() => null),
+    ]);
     if (ar && or_) {
       return { ...ar, text: mergeJSON(ar.text, or_.text, ar.model, or_.model), model: `${ar.model} + ${or_.model} (ensemble)` };
     }
-    return ar ?? or_ ?? await callGemini(opts);
+    const single = ar ?? or_;
+    if (single) return single;
+    return callGemini(opts).catch(() => null);
   }
 
-  // Pro / Professional / Team: Anthropic → OpenAI → Gemini
+  // Pro / Professional / Team: Anthropic → OpenAI → Gemini (errors propagate to caller)
   return await callAnthropic(opts) ?? await callOpenAI(opts) ?? await callGemini(opts);
 }
 

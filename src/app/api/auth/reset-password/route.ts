@@ -66,5 +66,5 @@ async function postHandler(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// Apply security middleware for password reset (sensitive operation)
-export const POST = withRouteSecurity(postHandler, SecurityPresets.sensitive);
+// CSRF + strict rate limiting — no signature requirement (browser-originated flow)
+export const POST = withRouteSecurity(postHandler, { csrf: true, rateLimit: "sensitive", requireSignature: false, auditAuth: true });

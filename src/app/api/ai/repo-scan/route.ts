@@ -11,6 +11,8 @@ import { prisma } from "@/lib/prisma";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
 import { callAI, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
 import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "@/lib/repo-knowledge";
+import { sendEmail, buildScanAlertEmail } from "@/lib/email";
+import { sendScanAlert as sendSlackScanAlert } from "@/lib/slack";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -143,12 +145,20 @@ const REPO_SCAN_SYSTEM_PROMPT = `You are GitScope's principal codebase auditor �
 • Dependencies: semver risks, deprecated packages, large bundle weight, known CVE patterns, lock file hygiene
 
 CRITICAL RULES — follow exactly:
-1. Every finding MUST cite the EXACT filename from the file tree or contents provided (e.g. "src/lib/auth.ts", not just "auth file")
-2. Every finding description MUST reference the SPECIFIC code pattern, function name, or line — not a generic summary. BAD: "3 console.log calls". GOOD: "console.log(user.password) in src/components/login-form.tsx line ~42 leaks sensitive data to browser console"
-3. Every suggestion MUST be a CONCRETE fix — include corrected code snippet or exact command where possible. BAD: "Remove debug logs". GOOD: "Remove the console.log on line ~42; if logging is needed use a structured logger: logger.debug({ userId: user.id }, 'login attempt')"
+1. Every finding MUST cite the EXACT filename from the file tree or contents provided (e.g. "src/lib/auth.ts", not just "auth file").
+2. Every finding description MUST reference the SPECIFIC code pattern, function name, or line — not a generic summary. BAD: "3 console.log calls". GOOD: "console.log(user.password) in src/components/login-form.tsx line ~42 leaks sensitive data to browser console".
+3. Every suggestion MUST be a CONCRETE fix — include corrected code snippet or exact command where possible. BAD: "Remove debug logs". GOOD: "Remove the console.log on line ~42; if logging is needed use a structured logger: logger.debug({ userId: user.id }, 'login attempt')".
 4. Do NOT duplicate findings. If the same issue appears in 3 files, write ONE finding that lists all 3 files in the description.
 5. Prioritise findings by real-world impact. Only include "low" severity if it is a genuine quality concern, not a style preference.
-6. You return ONLY valid JSON. No markdown, no preamble, no trailing text.`;
+6. You return ONLY valid JSON. No markdown, no preamble, no trailing text.
+
+CODE FIX RULES — every finding that has a fixable code pattern MUST include a "fix" object:
+• "fix.before": Show 4–8 lines of ACTUAL CODE from the file (not pseudocode). Include 1–2 lines of context before and after the problem line so the developer knows exactly where to look. The broken code must be verbatim as it appears in the file.
+• "fix.after": Show the corrected replacement for those same lines. Must be complete, copy-paste-ready code. Add inline comments (// why this matters) on changed lines.
+• "fix.language": The programming language of the file (typescript, javascript, python, go, rust, java, etc.).
+• NEVER use placeholder text like "your code here", "...", or "// existing code". Show REAL code derived from what was fetched.
+• If the exact before-code was not in the fetched file contents, write the most realistic representation of the anti-pattern based on the file's actual style and context.
+• For security fixes: the "after" code must be production-grade — include imports if a new library is needed, add error handling, preserve the function signature.`;
 
 function buildRepoScanPrompt(params: {
   repo: string;
@@ -248,7 +258,12 @@ ${keyFilesStr || "(no file contents available — analyse from file tree only)"}
         "category": "security"|"config",
         "file": "<exact filename from the file tree — e.g. src/lib/auth.ts>",
         "description": "<MUST name exact function/pattern — e.g. 'hashPassword() in src/lib/auth.ts uses MD5 which is cryptographically broken'>",
-        "suggestion": "<MUST include corrected code — e.g. 'Replace with: const hash = await bcrypt.hash(password, 12)' >"
+        "suggestion": "<MUST include corrected code — e.g. 'Replace with: const hash = await bcrypt.hash(password, 12)'>",
+        "fix": {
+          "before": "<4-8 lines of ACTUAL CODE from the file showing the vulnerability. Include surrounding context lines. Must be verbatim or close to actual code.>",
+          "after": "<the corrected replacement — complete, production-ready, with comments explaining why on changed lines>",
+          "language": "<typescript|javascript|python|go|rust|java|etc>"
+        }
       }
     ],
     "positives": ["<specific good security practice observed with evidence>"]
@@ -259,13 +274,37 @@ ${keyFilesStr || "(no file contents available — analyse from file tree only)"}
     "issues": [
       {
         "severity": "medium"|"low",
-        "category": "quality"|"performance"|"style",
+        "category": "quality"|"performance"|"architecture",
         "file": "<exact filename from file tree>",
         "description": "<MUST name exact function/variable/pattern — e.g. 'fetchUser() in src/lib/db.ts makes an unbounded SELECT * without pagination, risking OOM on large datasets'>",
-        "suggestion": "<MUST include concrete fix with code — e.g. 'Add: .take(100).skip(offset) to the Prisma query, and accept a page parameter in the function signature'>"
+        "suggestion": "<MUST include concrete fix with code — e.g. 'Add: .take(100).skip(offset) to the Prisma query, and accept a page parameter in the function signature'>",
+        "fix": {
+          "before": "<4-8 lines of ACTUAL CODE showing the quality issue with context lines>",
+          "after": "<corrected replacement with comments on changed lines>",
+          "language": "<typescript|javascript|python|go|etc>"
+        }
       }
     ],
     "strengths": ["<specific quality strength with evidence>"]
+  },
+  "performance": {
+    "score": <0-100, higher=faster>,
+    "grade": "A"|"B"|"C"|"D"|"F",
+    "issues": [
+      {
+        "severity": "high"|"medium"|"low",
+        "category": "performance",
+        "file": "<exact filename>",
+        "description": "<specific perf issue — e.g. 'getProducts() in src/lib/db.ts runs N+1 queries in a loop, fetching relations one-by-one'>",
+        "suggestion": "<concrete fix with code>",
+        "fix": {
+          "before": "<4-8 lines of actual code showing the performance problem>",
+          "after": "<optimised replacement with comments>",
+          "language": "<typescript|javascript|python|etc>"
+        }
+      }
+    ],
+    "positives": ["<specific performance strength with evidence>"]
   },
   "testability": {
     "score": <0-100>,
@@ -352,6 +391,14 @@ export async function POST(req: NextRequest) {
     return new Response(
       JSON.stringify({ error: "Repo scan limit reached. Deep scans use 3× budget. Upgrade for more capacity." }),
       { status: 429, headers: { "Content-Type": "application/json" } }
+    );
+  }
+
+  // Deep scan is Pro+ only
+  if (scanMode === "deep" && !caps.deepScanAllowed) {
+    return new Response(
+      JSON.stringify({ error: "Deep scan requires a Professional plan or higher.", upgradeRequired: true, requiredPlan: "professional" }),
+      { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }
 
@@ -586,13 +633,55 @@ export async function POST(req: NextRequest) {
               plan: plan as AIPlan,
               systemPrompt: REPO_SCAN_SYSTEM_PROMPT,
               userPrompt: basePrompt,
-              maxTokens: 5120,
+              // 8192 gives the AI enough room to write real, detailed code diffs
+              // for each finding without truncation. Deep scans get the full budget.
+              maxTokens: scanMode === "deep" ? 8192 : 6144,
             });
             if (aiRes) {
               const cleaned = aiRes.text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-              result = JSON.parse(cleaned) as RepoScanResult;
-              result.model = aiRes.model;
-              result.isDemo = false;
+              const parsed = JSON.parse(cleaned) as RepoScanResult;
+
+              // ── Defensive backfill ───────────────────────────────────────
+              // If the AI omits any required section (e.g. performance), use
+              // internal AI's value so the UI never crashes on undefined.
+              result = {
+                ...internalScanResult,   // base: all fields guaranteed
+                ...parsed,               // AI overrides everything it returned
+                // Per-section: prefer AI but fall back to internal if the AI
+                // didn't return a valid object for that section.
+                performance: parsed.performance?.score != null
+                  ? parsed.performance
+                  : internalScanResult.performance,
+                security: parsed.security?.score != null
+                  ? parsed.security
+                  : internalScanResult.security,
+                codeQuality: parsed.codeQuality?.score != null
+                  ? parsed.codeQuality
+                  : internalScanResult.codeQuality,
+                testability: parsed.testability?.score != null
+                  ? parsed.testability
+                  : internalScanResult.testability,
+                dependencies: parsed.dependencies?.score != null
+                  ? parsed.dependencies
+                  : internalScanResult.dependencies,
+                techDebt: parsed.techDebt?.level
+                  ? parsed.techDebt
+                  : internalScanResult.techDebt,
+                architecture: parsed.architecture?.summary
+                  ? parsed.architecture
+                  : internalScanResult.architecture,
+                recommendations: parsed.recommendations?.length
+                  ? parsed.recommendations
+                  : internalScanResult.recommendations,
+                metrics: {
+                  ...internalScanResult.metrics,
+                  ...(parsed.metrics ?? {}),
+                },
+                model: aiRes.model,
+                isDemo: false,
+              };
+
+              // Merge unique internal security findings the AI missed
               const llmDescs = new Set(result.security.issues.map((i) => i.description.slice(0, 40)));
               const extra = internalScanResult.security.issues.filter((i) => !llmDescs.has(i.description.slice(0, 40)));
               result.security.issues = [...result.security.issues, ...extra].slice(0, 8);
@@ -605,7 +694,6 @@ export async function POST(req: NextRequest) {
                     tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
                   },
                 }),
-                // Save knowledge for future scans
                 saveRepoKnowledge(session.user.id, repo, plan, {
                   summary: result.summary,
                   patterns: result.architecture.patterns,
@@ -621,14 +709,113 @@ export async function POST(req: NextRequest) {
                 }),
               ]);
             } else {
+              // callAI returns null when no provider key is set (free plan handled above).
+              // Any actual API error will be thrown and caught below.
               result = internalScanResult;
             }
-          } catch {
+          } catch (aiErr) {
+            // If the AI call failed with an actual error (bad key, rate limit, network),
+            // emit a warning in dev but still serve internal AI results so the scan
+            // completes. The model field will reveal it fell back.
+            if (process.env.NODE_ENV !== "production") {
+              console.error("[repo-scan] AI provider error — falling back to internal:", aiErr);
+            }
             result = internalScanResult;
           }
         }
 
         emit({ type: "progress", step: "Compiling report…", percent: 95 });
+
+        // ── Save scan history (Pro+ only) ─────────────────────────────────
+        if (caps.scanHistoryDays > 0) {
+          try {
+            const secIssues = result.security?.issues ?? [];
+            const critCount = secIssues.filter((i) => i.severity === "critical").length;
+            const highCount = secIssues.filter((i) => i.severity === "high").length;
+            const medCount  = secIssues.filter((i) => i.severity === "medium").length;
+
+            await prisma.repoScanHistory.create({
+              data: {
+                userId: session.user.id,
+                repo,
+                scanMode,
+                healthScore:      result.healthScore ?? 0,
+                securityScore:    result.security?.score ?? 0,
+                qualityScore:     result.codeQuality?.score ?? 0,
+                performanceScore: result.performance?.score ?? 0,
+                criticalCount:    critCount,
+                highCount:        highCount,
+                mediumCount:      medCount,
+                locEstimate:      result.metrics?.estimatedLoc ?? null,
+                filesScanned:     filesRead,
+                summary:          result.summary ?? "",
+                model:            result.model ?? null,
+                tokensUsed:       0,
+              },
+            });
+
+            // Prune entries older than the plan's retention window
+            const cutoff = new Date();
+            cutoff.setDate(cutoff.getDate() - caps.scanHistoryDays);
+            await prisma.repoScanHistory.deleteMany({
+              where: { userId: session.user.id, repo, createdAt: { lt: cutoff } },
+            });
+
+            // ── Check scheduled scan alert threshold ──────────────────────
+            if (caps.scheduledScansAllowed) {
+              const [scheduled, userForSlack] = await Promise.all([
+                prisma.scheduledScan.findUnique({
+                  where: { userId_repo: { userId: session.user.id, repo } },
+                }),
+                prisma.user.findUnique({
+                  where: { id: session.user.id },
+                  select: { slackWebhookUrl: true },
+                }),
+              ]);
+              if (scheduled?.enabled && scheduled.alertOnDrop && scheduled.lastScore !== null) {
+                const prevScore = scheduled.lastScore;
+                const newScore  = result.healthScore ?? 0;
+                const drop      = prevScore - newScore;
+                if (drop >= scheduled.alertOnDrop) {
+                  const alertPayload = {
+                    repo,
+                    prevScore,
+                    newScore,
+                    drop,
+                    criticalCount: critCount,
+                    highCount:     highCount,
+                    summary:       result.summary ?? "",
+                    scanMode,
+                  };
+                  if (scheduled.alertEmail) {
+                    sendEmail({
+                      to: scheduled.alertEmail,
+                      ...buildScanAlertEmail(alertPayload),
+                    }).catch(() => { /* non-blocking */ });
+                  }
+                  if (userForSlack?.slackWebhookUrl && caps.slackNotificationsAllowed) {
+                    sendSlackScanAlert(userForSlack.slackWebhookUrl, alertPayload)
+                      .catch(() => { /* non-blocking */ });
+                  }
+                }
+              }
+              // Update lastRunAt + lastScore on scheduled scan if one exists
+              if (scheduled) {
+                const next = new Date();
+                if (scheduled.schedule === "daily")   next.setDate(next.getDate() + 1);
+                if (scheduled.schedule === "weekly")  next.setDate(next.getDate() + 7);
+                if (scheduled.schedule === "monthly") next.setMonth(next.getMonth() + 1);
+                await prisma.scheduledScan.update({
+                  where: { id: scheduled.id },
+                  data:  { lastRunAt: new Date(), lastScore: result.healthScore ?? 0, nextRunAt: next },
+                });
+              }
+            }
+          } catch {
+            // History/alert errors are non-fatal — never fail the scan response
+          }
+        }
+
         done(result);
       } catch (err) {
         if (process.env.NODE_ENV !== "production") {

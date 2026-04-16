@@ -49,11 +49,24 @@ async function patchHandler(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { newPassword?: string; currentPassword?: string; githubApiKey?: string | null };
+  let body: { newPassword?: string; currentPassword?: string; githubApiKey?: string | null; slackWebhookUrl?: string | null };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+
+  // Update Slack webhook URL
+  if ("slackWebhookUrl" in body) {
+    const url = body.slackWebhookUrl?.trim() || null;
+    if (url && !url.startsWith("https://hooks.slack.com/")) {
+      return NextResponse.json({ error: "Invalid Slack webhook URL." }, { status: 400 });
+    }
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { slackWebhookUrl: url },
+    });
+    return NextResponse.json({ success: true });
   }
 
   // Update GitHub API key
@@ -131,7 +144,9 @@ async function deleteHandler() {
   return NextResponse.json({ success: true });
 }
 
-// Apply security middleware - GET is read-only, PATCH/DELETE require CSRF and stricter rate limiting
+// Apply security middleware
+// PATCH/DELETE: CSRF + strict rate limiting, but no request-signature requirement
+// (signature is for service-to-service; browser clients can't hold the server secret)
 export const GET = withRouteSecurity(getHandler, { ...SecurityPresets.public, csrf: false });
-export const PATCH = withRouteSecurity(patchHandler, SecurityPresets.sensitive);
-export const DELETE = withRouteSecurity(deleteHandler, SecurityPresets.sensitive);
+export const PATCH = withRouteSecurity(patchHandler, { csrf: true, rateLimit: "sensitive", requireSignature: false, auditAuth: true });
+export const DELETE = withRouteSecurity(deleteHandler, { csrf: true, rateLimit: "sensitive", requireSignature: false, auditAuth: true });
