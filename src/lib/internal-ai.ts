@@ -57,8 +57,11 @@ const SECURITY_RULES: SecurityRule[] = [
   },
   {
     id: "hardcoded-secret-generic",
+    // ^\s* anchored only via [^\s"'] in the value: real credentials (API keys, tokens,
+    // passwords) never contain spaces. Error messages, JSX labels and UI strings always do.
+    // This eliminates the most common false-positive class: token: "The link is missing a token."
     pattern:
-      /(?:password|passwd|secret|api_key|apikey|token|private_key|client_secret)\s*[:=]\s*["'][^"']{8,}["']/gi,
+      /(?:password|passwd|secret|api_key|apikey|token|private_key|client_secret)\s*[:=]\s*["'][^\s"']{8,}["']/gi,
     severity: "critical",
     description: (match, file) =>
       `Potential hardcoded credential in ${file}: \`${match.slice(0, 50)}\`. Secrets in source code are a critical risk.`,
@@ -381,13 +384,16 @@ const SECURITY_RULES: SecurityRule[] = [
   // ── Info disclosure ────────────────────────────────────────────────────────
   {
     id: "console-log-secret",
+    // Matches console.log calls where a credential-named identifier appears — but this
+    // can also match on string message content ("No token provided"), so confidence is
+    // kept below 0.70 to auto-downgrade severity from high → medium for ambiguous hits.
     pattern: /console\.(log|debug|info|warn)\s*\([^)]*(?:password|token|secret|key|auth|credential)/gi,
     severity: "high",
     description: (_, file) =>
-      `Sensitive value logged to console in ${file}. Credentials in logs are exposed in log aggregators and stdout.`,
+      `Sensitive value potentially logged to console in ${file}. Credentials in logs are exposed in log aggregators and stdout.`,
     suggestion: "Remove sensitive values from logs. Use a structured logger with field masking for any secrets.",
     category: "security",
-    confidence: 0.80,
+    confidence: 0.65,
     fix: {
       before: `console.log("User login:", { email, password, token }); // exposes credentials in logs`,
       after: `// Log only non-sensitive fields\nconsole.log("User login:", { email }); // never log password or token\n// Use a structured logger that redacts secrets automatically:\nimport pino from "pino";\nconst logger = pino({ redact: ["password", "token", "secret"] });\nlogger.info({ email, password }, "login"); // password will be [Redacted]`,
@@ -781,6 +787,91 @@ const SECURITY_RULES: SecurityRule[] = [
       language: "typescript",
     },
   },
+  // ── TLS verification disabled ─────────────────────────────────────────────
+  {
+    id: "tls-reject-unauthorized",
+    pattern: /rejectUnauthorized\s*:\s*false/gi,
+    severity: "critical",
+    description: (_, file) =>
+      `TLS certificate verification disabled in ${file}. rejectUnauthorized: false accepts any certificate including attacker-issued ones — all traffic is vulnerable to MITM interception.`,
+    suggestion:
+      "Remove rejectUnauthorized: false entirely (true is the default). For self-signed certs in dev, use ca: fs.readFileSync('ca.pem') to pin your own CA instead.",
+    category: "security",
+    confidence: 0.96,
+    fix: {
+      before: `https.request({\n  hostname: "api.example.com",\n  rejectUnauthorized: false, // attacker reads all traffic\n});`,
+      after: `// SAFE — default rejectUnauthorized: true verifies the cert\nhttps.request({ hostname: "api.example.com" });\n// For self-signed CA in dev:\nhttps.request({ ca: fs.readFileSync("./certs/ca.pem") });`,
+      language: "typescript",
+    },
+  },
+  // ── Credentials embedded in connection URLs ───────────────────────────────
+  {
+    id: "credentials-in-url",
+    pattern: /["'](?:https?|mongodb(?:\+srv)?|postgresql|mysql|redis):\/\/[^:/"'\s]+:[^@/"'\s]+@[^"'\s]/gi,
+    severity: "critical",
+    description: (_, file) =>
+      `Credentials embedded in a connection URL in ${file}. Passwords in URLs appear in HTTP logs, load balancer access logs, and browser history.`,
+    suggestion:
+      "Use separate env vars: process.env.DB_USER and process.env.DB_PASS. Build the URL from parts or pass host/user/password as separate connection options.",
+    category: "security",
+    confidence: 0.95,
+    fix: {
+      before: `const db = new Client("postgresql://admin:s3cr3tp@ss@localhost/mydb");`,
+      after: `const db = new Client({\n  host: process.env.DB_HOST,\n  user: process.env.DB_USER,\n  password: process.env.DB_PASS,\n  database: process.env.DB_NAME,\n});`,
+      language: "typescript",
+    },
+  },
+  // ── UUID v1 predictability ─────────────────────────────────────────────────
+  {
+    id: "uuid-v1-predictable",
+    pattern: /(?:uuidv1|uuid\.v1)\s*\(/gi,
+    severity: "medium",
+    description: (_, file) =>
+      `UUID v1 used in ${file}. UUID v1 is time-based and encodes the MAC address — highly predictable. Unsuitable for session tokens, CSRF nonces, or any value that must be unguessable.`,
+    suggestion:
+      "Use UUID v4 (random): import { v4 as uuidv4 } from 'uuid'; or the native crypto.randomUUID() (Node 14.17+, all modern browsers).",
+    category: "security",
+    confidence: 0.88,
+    fix: {
+      before: `import { v1 as uuidv1 } from "uuid";\nconst sessionId = uuidv1(); // predictable — encodes timestamp + MAC address`,
+      after: `import { v4 as uuidv4 } from "uuid";\nconst sessionId = uuidv4(); // 122 bits of cryptographic randomness\n// Or native (no package needed):\nconst sessionId = crypto.randomUUID();`,
+      language: "typescript",
+    },
+  },
+  // ── Client-side open redirect ─────────────────────────────────────────────
+  {
+    id: "client-redirect-injection",
+    pattern: /(?:window\.location|location\.href|location\.replace|location\.assign)\s*=\s*[^;]*(?:searchParams\.get|URLSearchParams|location\.search)/gi,
+    severity: "high",
+    description: (_, file) =>
+      `Client-side open redirect in ${file}: window.location/href set from URL parameters. Attackers craft malicious redirect URLs to steal tokens or phish users after OAuth callbacks.`,
+    suggestion:
+      "Allow only relative paths: if (!target.startsWith('/') || target.startsWith('//')) target = '/'. Never redirect to an arbitrary URL from a query parameter.",
+    category: "security",
+    confidence: 0.78,
+    fix: {
+      before: `// VULNERABLE — attacker: /callback?next=https://evil.com/steal-token\nconst next = new URLSearchParams(location.search).get("next");\nwindow.location.href = next;`,
+      after: `const next = new URLSearchParams(location.search).get("next") ?? "/";\n// Only allow safe relative paths (no protocol-relative //)\nconst safe = next.startsWith("/") && !next.startsWith("//") ? next : "/";\nwindow.location.href = safe;`,
+      language: "typescript",
+    },
+  },
+  // ── TOCTOU in filesystem operations ──────────────────────────────────────
+  {
+    id: "toctou-fs",
+    pattern: /existsSync\s*\([^)]+\)[^;]*\n(?:[^\n]*\n){0,4}[^\n]*(?:readFileSync|writeFileSync|readFile|writeFile|createReadStream|unlink|rename)\s*\(/gm,
+    severity: "medium",
+    description: (_, file) =>
+      `TOCTOU (Time-of-Check/Time-of-Use) pattern in ${file}: file existence check followed by file operation. Another process can modify the path between the check and the use.`,
+    suggestion:
+      "Attempt the file operation directly and handle ENOENT. Use try/catch around readFile rather than existsSync before it — the check-then-act pattern is inherently racy.",
+    category: "security",
+    confidence: 0.68,
+    fix: {
+      before: `if (fs.existsSync(filePath)) {\n  const data = fs.readFileSync(filePath);\n}`,
+      after: `try {\n  const data = await fs.promises.readFile(filePath, "utf8");\n} catch (err) {\n  if ((err as NodeJS.ErrnoException).code !== "ENOENT") throw err;\n  // file doesn't exist — handle gracefully\n}`,
+      language: "typescript",
+    },
+  },
 ];
 
 // ── Unified quality rules ─────────────────────────────────────────────────────
@@ -1101,6 +1192,70 @@ const QUALITY_RULES: QualityRule[] = [
       language: "typescript",
     },
   },
+  // ── for...in on arrays ────────────────────────────────────────────────────
+  {
+    id: "for-in-array",
+    pattern: /for\s*\(\s*(?:const|let|var)\s+\w+\s+in\s+\w+/g,
+    severity: "low",
+    description: (file, count) =>
+      `${count} for...in loop${count > 1 ? "s" : ""} in ${file}. for...in iterates enumerable properties (including inherited ones) — incorrect for arrays and slower than for...of.`,
+    suggestion:
+      "Use for...of for arrays: for (const item of arr). Use Object.entries/keys/values for objects: for (const [k, v] of Object.entries(obj)).",
+    scanLabel: "for...in loops — should use for...of for arrays, Object.entries for objects",
+    fix: {
+      before: `// iterates inherited properties too, index order not guaranteed\nfor (const i in myArray) {\n  process(myArray[i]);\n}`,
+      after: `// for...of — values in guaranteed order\nfor (const item of myArray) {\n  process(item);\n}\n// For plain objects:\nfor (const [key, value] of Object.entries(myObj)) {\n  console.log(key, value);\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Array mutation on sort ────────────────────────────────────────────────
+  {
+    id: "sort-mutation",
+    pattern: /(?:const|let)\s+\w+\s*=\s*\w+\.sort\s*\(/g,
+    severity: "low",
+    description: (file, count) =>
+      `${count} .sort() assignment${count > 1 ? "s" : ""} in ${file}. Array.sort() mutates the original array AND returns it — assigning the return value creates a false impression of a copy.`,
+    suggestion:
+      "Spread before sorting to avoid mutating the source: const sorted = [...original].sort((a, b) => a - b).",
+    scanLabel: "Array.sort() mutates the original — spread first to get a copy",
+    fix: {
+      before: `const sorted = items.sort((a, b) => a.date - b.date);\n// 'items' is now also sorted — unexpected mutation`,
+      after: `const sorted = [...items].sort((a, b) => a.date - b.date);\n// 'items' is unchanged`,
+      language: "typescript",
+    },
+  },
+  // ── Non-strict equality ───────────────────────────────────────────────────
+  {
+    id: "loose-equality",
+    pattern: /(?<![=!<>])==(?![=>])/g,
+    severity: "low",
+    description: (file, count) =>
+      `${count} loose equality (==) comparison${count > 1 ? "s" : ""} in ${file}. JavaScript's == performs type coercion: "1" == 1 and 0 == "" are both true, causing subtle bugs.`,
+    suggestion:
+      "Use strict equality (===) everywhere. The single accepted exception is x == null as a shorthand for x === null || x === undefined.",
+    scanLabel: "Loose equality (==) — use === to avoid type coercion surprises",
+    fix: {
+      before: `if (userId == "123") { } // "123" == 123 is true\nif (status == 200) { }   // type coercion risk`,
+      after: `if (userId === "123") { } // strict — no coercion\nif (status === 200) { }   // explicit\nif (value == null) { }    // this one exception is intentional`,
+      language: "typescript",
+    },
+  },
+  // ── Object spread overwriting unknown keys ────────────────────────────────
+  {
+    id: "unsafe-object-spread",
+    pattern: /(?:useState|useReducer|setState)\s*\([^)]*\{[^}]*\.\.\.\w+(?:req\.body|req\.params|params|body|data)\b/gi,
+    severity: "medium",
+    description: (file) =>
+      `Unsafe state update via object spread in ${file}: spreading untrusted/external data directly into state. Attacker-supplied keys can overwrite security-sensitive properties.`,
+    suggestion:
+      "Explicitly pick only the fields you trust: setState({ name: data.name, bio: data.bio }). Never spread external objects directly into state.",
+    scanLabel: "Unsafe object spread from external data into state",
+    fix: {
+      before: `setState({ ...prev, ...req.body }); // attacker can set isAdmin, role, etc.`,
+      after: `// Explicitly pick safe, known fields only\nsetState({ ...prev, name: data.name, bio: data.bio });`,
+      language: "typescript",
+    },
+  },
 ];
 
 // ── Performance rules ─────────────────────────────────────────────────────────
@@ -1318,19 +1473,39 @@ const PERFORMANCE_RULES: PerformanceRule[] = [
 // ── False-positive suppressor ─────────────────────────────────────────────────
 
 /**
- * Removes comment-only lines, regex pattern definitions, and rule prose fields
- * before scanning — prevents false positives when a PR touches files that *define*
- * detection rules (e.g., internal-ai.ts itself, vuln_patterns.py).
+ * Removes comment-only lines, regex pattern definitions, rule prose fields, and
+ * fix.before/fix.after example-code strings before scanning — prevents false positives
+ * when a PR touches files that *define* detection rules (e.g., internal-ai.ts itself,
+ * vuln_patterns.py). The `before`/`after` blocks contain intentionally bad code that
+ * would otherwise trigger the very rules they demonstrate.
  */
 function stripNonExecutable(code: string): string {
+  let inTemplateLiteralFix = false;
   return code
     .split("\n")
     .map((line) => {
       const t = line.trim();
       if (!t) return line;
+      // Track entry into fix.before / fix.after multi-line template literals
+      if (/^\s*(?:"?(?:before|after)"?)\s*[:=]\s*`/.test(t)) {
+        // If it doesn't close on the same line, mark as in-template
+        const backtickCount = (t.match(/`/g) ?? []).length;
+        if (backtickCount < 2) inTemplateLiteralFix = true;
+        return "";
+      }
+      if (inTemplateLiteralFix) {
+        if (t.includes("`")) inTemplateLiteralFix = false;
+        return "";
+      }
+      // Strip pure comment lines
       if (/^(?:\/\/|\/\*|\*(?!\/)|#)/.test(t)) return "";
+      // Strip regex pattern definition lines
       if (/\bpattern\s*[=:]\s*(?:r['"\/]|\/)/.test(t)) return "";
-      if (/^\s*(?:"?description"?|"?suggestion"?|"?scanLabel"?|"?id"?|"?cve_id"?)\s*[:(]/.test(t)) return "";
+      // Strip rule prose and example-code fields (including fix.before / fix.after)
+      if (/^\s*(?:"?(?:description|suggestion|scanLabel|id|cve_id|before|after|fix|language)"?)\s*[:(]/.test(t)) return "";
+      // Strip JSDoc / TypeDoc lines
+      if (/^@\w+/.test(t)) return "";
+      // Replace inline regex literals with a safe placeholder
       return line.replace(/\/(?:[^/\\\n]|\\.)+\/[gimsuy]*/g, '"REGEX_LITERAL"');
     })
     .join("\n");
@@ -2133,6 +2308,12 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
 
   for (const [filename, content] of Object.entries(keyFileContents)) {
     if (!content || NON_CODE_EXTENSIONS.test(filename)) continue;
+    // Skip files that define security/analysis rules — scanning them would flag their own
+    // example code (intentionally bad patterns) and regex pattern strings as real issues.
+    if (/(?:internal-ai|security-rules?|vuln[_-]patterns?|rule[_-]definitions?|static[_-]analysis)\.(ts|js|py)$/.test(filename)) continue;
+    // Skip test/spec files — intentional mocks, hardcoded fixtures, and test credentials
+    // are normal in test code and should not be flagged as production security issues.
+    if (/\.(test|spec)\.(ts|tsx|js|jsx|py|go|rs)$/.test(filename)) continue;
     const stripped = stripNonExecutable(content);
 
     for (const rule of SECURITY_RULES) {
@@ -2167,6 +2348,9 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
 
   for (const [filename, content] of Object.entries(keyFileContents)) {
     if (!content || !/\.(ts|tsx|js|jsx|py|go|rs|java|cs|rb|php)$/.test(filename)) continue;
+    // Skip rule-definition and test files from quality scanning too
+    if (/(?:internal-ai|security-rules?|vuln[_-]patterns?)\.(ts|js|py)$/.test(filename)) continue;
+    if (/\.(test|spec)\.(ts|tsx|js|jsx|py|go|rs)$/.test(filename)) continue;
     const stripped = stripNonExecutable(content);
 
     for (const rule of QUALITY_RULES) {

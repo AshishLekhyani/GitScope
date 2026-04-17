@@ -9,7 +9,8 @@ import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-pla
 import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
-import { callAI, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
+import { callAI, hasAnyAIProvider, hasByokKey, type AIPlan, type UserBYOKKeys } from "@/lib/ai-providers";
+import { safeDecrypt } from "@/lib/encrypt";
 import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "@/lib/repo-knowledge";
 import { sendEmail, buildScanAlertEmail } from "@/lib/email";
 import { sendScanAlert as sendSlackScanAlert } from "@/lib/slack";
@@ -151,6 +152,13 @@ CRITICAL RULES — follow exactly:
 4. Do NOT duplicate findings. If the same issue appears in 3 files, write ONE finding that lists all 3 files in the description.
 5. Prioritise findings by real-world impact. Only include "low" severity if it is a genuine quality concern, not a style preference.
 6. You return ONLY valid JSON. No markdown, no preamble, no trailing text.
+7. FALSE POSITIVE AVOIDANCE — never flag as security issues:
+   • Error message strings or UI display text containing words like "token", "key", "password", "secret" — e.g. const msg = "The token is invalid" is not a hardcoded credential. Real credentials contain no spaces and are hex/base64/alphanumeric characters only.
+   • Security analysis or rule-definition files (e.g. internal-ai.ts, security-rules.ts, vuln_patterns.py) — regex patterns and intentional bad-code examples in these files are documentation, not vulnerabilities.
+   • Test files (*.test.ts, *.spec.ts, **/__tests__/**) — fixture values, mock tokens, test passwords, and stub credentials in tests are expected and intentional.
+   • TypeScript interface or type fields (e.g. interface User { password?: string }) — these are type definitions, not data storage.
+   • Import paths that contain credential-sounding words — these are module names, not sensitive values.
+   • Configuration schemas or validation code that checks for the presence of secrets — code like if (!process.env.API_KEY) is checking for a missing key, not hardcoding one.
 
 CODE FIX RULES — every finding that has a fixable code pattern MUST include a "fix" object:
 • "fix.before": Show 4–8 lines of ACTUAL CODE from the file (not pseudocode). Include 1–2 lines of context before and after the problem line so the developer knows exactly where to look. The broken code must be verbatim as it appears in the file.
@@ -356,7 +364,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let body: { repo?: string; scanMode?: string };
+  let body: { repo?: string; scanMode?: string; branch?: string };
   try {
     body = await req.json();
   } catch {
@@ -366,7 +374,8 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const { repo, scanMode = "quick" } = body;
+  const { repo, scanMode = "quick", branch } = body;
+  const targetBranch = typeof branch === "string" && branch.trim() ? branch.trim() : undefined;
 
   if (!repo || typeof repo !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(repo)) {
     return new Response(JSON.stringify({ error: "Invalid repo format. Use owner/repo" }), {
@@ -377,6 +386,18 @@ export async function POST(req: NextRequest) {
 
   const plan = await resolveAiPlanFromSessionDb(session);
   const caps = getCapabilitiesForPlan(plan);
+
+  // Fetch BYOK keys (decrypted) — BYOK bypasses daily LLM caps entirely
+  const userRecord = await prisma.user.findUnique({
+    where: { id: session.user.id },
+    select: { byokAnthropicKey: true, byokOpenAIKey: true, byokGeminiKey: true },
+  });
+  const byokKeys: UserBYOKKeys = {
+    anthropic: safeDecrypt(userRecord?.byokAnthropicKey),
+    openai:    safeDecrypt(userRecord?.byokOpenAIKey),
+    gemini:    safeDecrypt(userRecord?.byokGeminiKey),
+  };
+  const userHasByok = hasByokKey(byokKeys);
 
   const budget = await consumeUsageBudget({
     userId: session.user.id,
@@ -438,7 +459,7 @@ export async function POST(req: NextRequest) {
 
         const [treeData, commitsData, contributorsData, pullsData] = await Promise.all([
           ghFetch<{ tree: Array<{ path: string; type: string }> }>(
-            `/repos/${repo}/git/trees/${meta.default_branch ?? "HEAD"}?recursive=1`,
+            `/repos/${repo}/git/trees/${targetBranch ?? (meta.default_branch as string | undefined) ?? "HEAD"}?recursive=1`,
             ghToken
           ),
           ghFetch<Array<{ commit: { message: string } }>>(
@@ -550,7 +571,8 @@ export async function POST(req: NextRequest) {
             const actualPath = CONFIG_FILES.includes(f)
               ? (fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f)
               : f;
-            const content = await ghFetchText(`/repos/${repo}/contents/${actualPath}`, ghToken);
+            const contentUrl = `/repos/${repo}/contents/${actualPath}${targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : ""}`;
+            const content = await ghFetchText(contentUrl, ghToken);
             if (!content) return;
 
             if (f === "package.json") {
@@ -614,7 +636,54 @@ export async function POST(req: NextRequest) {
 
         let result: RepoScanResult;
 
-        if (!hasAnyAIProvider()) {
+        // ── Daily LLM cost gate ───────────────────────────────────────────────
+        // BYOK users bypass this check entirely — they pay their own API bills.
+        // For server-key users: check the daily LLM budget before calling the provider.
+        let useLlm: boolean;
+
+        if (!hasAnyAIProvider(byokKeys)) {
+          // No API keys at all — internal AI only
+          useLlm = false;
+        } else if (userHasByok) {
+          // BYOK — no daily limits, always use LLM
+          useLlm = true;
+        } else if (caps.dailyLlmScanLimit === 0) {
+          // Free plan — internal AI only
+          useLlm = false;
+        } else {
+          const llmBudget = await consumeUsageBudget({
+            userId: session.user.id,
+            feature: "repo-scan-llm",
+            plan,
+            limit: caps.dailyLlmScanLimit,
+            units: scanMode === "deep" ? 2 : 1,
+            windowMs: 24 * 60 * 60 * 1000,
+            metadata: { repo, scanMode },
+          });
+
+          if (llmBudget.allowed) {
+            useLlm = true;
+          } else {
+            // Limit hit — enterprise/team get an error (internal AI is too basic for them).
+            // Professional and below fall back gracefully to internal AI.
+            if (plan === "enterprise" || plan === "team") {
+              emit({
+                type: "done",
+                error: `Daily AI scan limit reached (${caps.dailyLlmScanLimit} LLM scans/day on ${plan} plan). Add your own API key in Settings → Integrations → BYOK to remove this limit, or wait until midnight UTC for reset.`,
+              });
+              try { controller.close(); } catch { /* already closed */ }
+              return;
+            }
+            useLlm = false;
+            emit({
+              type: "progress",
+              step: `Daily AI limit reached — serving static analysis…`,
+              percent: 64,
+            });
+          }
+        }
+
+        if (!useLlm) {
           emit({ type: "progress", step: "Analysis complete…", percent: 90 });
           result = internalScanResult;
         } else {
@@ -622,6 +691,7 @@ export async function POST(req: NextRequest) {
 
           // Build prompt — inject cached knowledge if available so AI builds on prior findings
           let basePrompt = buildRepoScanPrompt({ repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode, realLoc, filesRead, importGraph });
+          if (targetBranch) basePrompt = `Branch under analysis: ${targetBranch}\n${basePrompt}`;
           if (cachedKnowledge) {
             emit({ type: "progress", step: "Loading memory from previous scan…", percent: 67 });
             basePrompt = formatKnowledgeForPrompt(cachedKnowledge) + "\n\n" + basePrompt;
@@ -633,9 +703,8 @@ export async function POST(req: NextRequest) {
               plan: plan as AIPlan,
               systemPrompt: REPO_SCAN_SYSTEM_PROMPT,
               userPrompt: basePrompt,
-              // 8192 gives the AI enough room to write real, detailed code diffs
-              // for each finding without truncation. Deep scans get the full budget.
               maxTokens: scanMode === "deep" ? 8192 : 6144,
+              byokKeys,
             });
             if (aiRes) {
               const cleaned = aiRes.text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();

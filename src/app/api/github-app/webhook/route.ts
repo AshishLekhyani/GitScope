@@ -14,8 +14,10 @@ import {
   postPRComment,
   formatReviewComment,
   isGitHubAppConfigured,
+  getInstallationToken,
 } from "@/lib/github-app";
 import { sendSlackMessage } from "@/lib/slack";
+import { analyzeWithInternalAI } from "@/lib/internal-ai";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -131,13 +133,21 @@ async function handleInstallation(p: InstallationPayload) {
 
 // ── PR Review handler ──────────────────────────────────────────────────────────
 
+// Safe GitHub name pattern — only alphanumeric, hyphens, underscores, dots
+const SAFE_GH_NAME = /^[a-zA-Z0-9_.-]{1,100}$/;
+
 async function handlePRReview(p: PullRequestPayload) {
   const { repository, pull_request: pr, installation } = p;
   if (!installation?.id) return;
 
   const installId  = String(installation.id);
   const repoFull   = repository.full_name;
-  const [owner, repo] = repoFull.split("/");
+  const parts = repoFull.split("/");
+  if (parts.length !== 2) return;
+  const [owner, repo] = parts;
+
+  // Validate owner/repo to prevent malformed API calls
+  if (!SAFE_GH_NAME.test(owner) || !SAFE_GH_NAME.test(repo)) return;
 
   // Find user that owns this installation
   const user = await prisma.user.findFirst({
@@ -152,32 +162,38 @@ async function handlePRReview(p: PullRequestPayload) {
   });
 
   if (!user) {
-    // No user associated — still post a basic static analysis comment
+    // No user associated — post a basic static analysis comment
     await postBasicComment({ owner, repo, pr, installId });
     return;
   }
 
-  // Call internal AI review route
-  const baseUrl = process.env.NEXTAUTH_URL ?? "http://localhost:3000";
-  let reviewResult: Record<string, unknown> | null = null;
+  // ── Direct analysis — no HTTP round-trip (code-review route is SSE, not JSON) ──
+  let reviewResult: ReturnType<typeof analyzeWithInternalAI> | null = null;
 
   try {
-    const res = await fetch(`${baseUrl}/api/ai/code-review`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        // Internal call — use a shared secret so the route trusts it
-        "x-internal-secret": process.env.INTERNAL_API_SECRET ?? "",
+    // Fetch PR files with diffs using the installation token
+    const token = await getInstallationToken(installId);
+    const filesRes = await fetch(
+      `https://api.github.com/repos/${repoFull}/pulls/${pr.number}/files?per_page=25`,
+      { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
+    );
+
+    interface GHFile { filename: string; status: string; additions: number; deletions: number; patch?: string; }
+    const files: GHFile[] = filesRes.ok ? (await filesRes.json() as GHFile[]) : [];
+
+    // Run internal static analysis directly (avoids the SSE code-review route)
+    reviewResult = analyzeWithInternalAI({
+      repo: repoFull,
+      analysisType: "pr",
+      prMeta: {
+        title: pr.title, body: pr.body, user: pr.user,
+        additions: pr.additions, deletions: pr.deletions,
+        changed_files: pr.changed_files, draft: pr.draft,
+        labels: [],
       },
-      body: JSON.stringify({
-        repo: repoFull,
-        prNumber: pr.number,
-        userId: user.id,
-        plan: user.aiTier,
-        internalCall: true,
-      }),
+      files,
+      prNumber: pr.number,
     });
-    if (res.ok) reviewResult = await res.json() as Record<string, unknown>;
   } catch { /* fall through to static comment */ }
 
   const comment = reviewResult

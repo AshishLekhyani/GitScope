@@ -11,7 +11,7 @@ import { CodeReviewHub } from "@/features/intelligence/code-review-hub";
 import { cn } from "@/lib/utils";
 
 interface CapabilitiesResponse {
-  plan: "free" | "professional" | "team" | "enterprise";
+  plan: "free" | "professional" | "developer" | "team" | "enterprise";
   capabilities: {
     label: string;
     maxReposInWorkspace: number;

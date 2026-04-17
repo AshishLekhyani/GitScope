@@ -35,21 +35,26 @@ async function patchHandler(req: Request) {
 
   const { displayName, bio, gitHandle, avatarUrl } = body;
 
-  // Avatar URL: must be https and from a trusted image host
-  const ALLOWED_AVATAR_HOSTS = [
-    "avatars.githubusercontent.com",
-    "lh3.googleusercontent.com",
+  // Avatar URL: https only, trusted image CDN hosts only, image extension only.
+  // github.com is intentionally excluded — it can serve HTML pages, not just images.
+  const ALLOWED_AVATAR_HOSTS = new Set([
+    "avatars.githubusercontent.com",     // GitHub avatars
+    "lh3.googleusercontent.com",         // Google profile photos
     "lh4.googleusercontent.com",
     "lh5.googleusercontent.com",
     "lh6.googleusercontent.com",
-    "api.dicebear.com",
-    "github.com",
-  ];
+    "api.dicebear.com",                  // DiceBear avatar generator
+  ]);
+  const ALLOWED_AVATAR_EXTS = /\.(png|jpg|jpeg|webp|gif|svg)(\?|$)/i;
   let sanitizedAvatar: string | undefined;
   if (avatarUrl) {
     try {
       const parsed = new URL(avatarUrl);
-      if (parsed.protocol === "https:" && ALLOWED_AVATAR_HOSTS.includes(parsed.hostname)) {
+      if (
+        parsed.protocol === "https:" &&
+        ALLOWED_AVATAR_HOSTS.has(parsed.hostname) &&
+        (ALLOWED_AVATAR_EXTS.test(parsed.pathname) || parsed.hostname === "api.dicebear.com")
+      ) {
         sanitizedAvatar = avatarUrl.slice(0, 500);
       }
     } catch {

@@ -58,7 +58,7 @@ export function ShortcutsModal() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-2xl shadow-2xl p-6 sm:p-8"
+        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-background/95 backdrop-blur-2xl shadow-2xl p-6 sm:p-8"
       >
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -94,7 +94,7 @@ export function ShortcutsModal() {
                   { label: "Palette", icon: Terminal },
                   { label: "Settings", icon: HelpCircle }
                 ].map(item => (
-                   <div key={item.label} className="p-4 rounded-xl border border-border bg-white/50 dark:bg-slate-900/50 flex flex-col items-center gap-2">
+                   <div key={item.label} className="p-4 rounded-xl border border-border bg-muted/40 flex flex-col items-center gap-2">
                       <item.icon className="size-5 text-indigo-500" />
                       <span className="text-xs font-bold">{item.label}</span>
                    </div>
@@ -106,7 +106,7 @@ export function ShortcutsModal() {
             {shortcuts.map((s) => (
               <div 
                 key={s.action} 
-                className="group flex flex-col gap-2 rounded-2xl border border-white/5 bg-white/40 dark:bg-slate-900/40 p-3 hover:bg-indigo-500/5 hover:border-indigo-500/20 transition-all duration-300"
+                className="group flex flex-col gap-2 rounded-2xl border border-border bg-muted/30 p-3 hover:bg-indigo-500/5 hover:border-indigo-500/20 transition-all duration-300"
               >
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">

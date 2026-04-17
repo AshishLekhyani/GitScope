@@ -8,7 +8,7 @@ import {
   updateUserAiPlan,
 } from "@/lib/ai-plan";
 
-const VALID_PLANS: AiPlan[] = ["free", "professional", "team", "enterprise"];
+const VALID_PLANS: AiPlan[] = ["free", "professional", "developer", "team", "enterprise"];
 
 function parseAdminEmails() {
   return new Set(

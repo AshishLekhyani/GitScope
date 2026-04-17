@@ -815,7 +815,7 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
                     {block.label}
                   </span>
                 </div>
-                <pre className="overflow-x-auto rounded-2xl border border-white/5 bg-[#0d152a] p-6 font-mono text-xs leading-relaxed text-emerald-400/90 shadow-2xl">
+                <pre className="overflow-x-auto rounded-2xl border border-border bg-[#0d152a] dark:bg-[#0d152a] p-6 font-mono text-xs leading-relaxed text-emerald-400/90 shadow-2xl">
                   <code>{block.code}</code>
                 </pre>
               </div>
@@ -829,10 +829,10 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
                     {block.heading}
                   </p>
                 )}
-                <div className="overflow-x-auto rounded-xl border border-white/5">
+                <div className="overflow-x-auto rounded-xl border border-border">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-indigo-500/10 border-b border-white/5">
+                      <tr className="bg-indigo-500/10 border-b border-border">
                         {block.headers.map((h, j) => (
                           <th
                             key={j}
@@ -848,8 +848,8 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
                         <tr
                           key={j}
                           className={cn(
-                            "border-b border-white/5 last:border-0",
-                            j % 2 === 0 ? "bg-[#171f33]/30" : "bg-[#171f33]/60"
+                            "border-b border-border last:border-0",
+                            j % 2 === 0 ? "bg-muted/20" : "bg-muted/40"
                           )}
                         >
                           {row.map((cell, k) => (

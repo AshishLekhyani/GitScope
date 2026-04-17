@@ -57,8 +57,21 @@ export async function GET(req: Request) {
     );
 
     if (!pullsRes.ok) {
+      // 401 means the token expired or was revoked — give the user a clear action
+      if (pullsRes.status === 401) {
+        return NextResponse.json(
+          { error: "Your GitHub token has expired or been revoked. Reconnect your GitHub account in Settings → Account.", tokenExpired: true },
+          { status: 401 }
+        );
+      }
+      if (pullsRes.status === 404) {
+        return NextResponse.json(
+          { error: "Repository not found or you don't have access to it." },
+          { status: 404 }
+        );
+      }
       return NextResponse.json(
-        { error: "Failed to fetch PRs", githubStatus: pullsRes.status },
+        { error: "Failed to fetch pull requests from GitHub.", githubStatus: pullsRes.status },
         { status: pullsRes.status }
       );
     }

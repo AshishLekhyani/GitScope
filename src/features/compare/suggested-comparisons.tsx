@@ -14,9 +14,9 @@ const SUGGESTED_PAIRS = [
     icon: "web",
     color: "from-blue-500 to-cyan-500",
     repos: [
-      { owner: "facebook", repo: "react", avatar: "https://github.com/facebook.png", stars: "230k", desc: "A declarative, efficient, and flexible JavaScript library" },
-      { owner: "vuejs", repo: "core", avatar: "https://github.com/vuejs.png", stars: "48k", desc: "The progressive JavaScript framework" },
-      { owner: "sveltejs", repo: "svelte", avatar: "https://github.com/sveltejs.png", stars: "81k", desc: "Cybernetically enhanced web apps" },
+      { owner: "facebook", repo: "react", avatar: "https://github.com/facebook.png", stars: 0, desc: "A declarative, efficient, and flexible JavaScript library" },
+      { owner: "vuejs", repo: "core", avatar: "https://github.com/vuejs.png", stars: 0, desc: "The progressive JavaScript framework" },
+      { owner: "sveltejs", repo: "svelte", avatar: "https://github.com/sveltejs.png", stars: 0, desc: "Cybernetically enhanced web apps" },
     ],
   },
   {
@@ -24,9 +24,9 @@ const SUGGESTED_PAIRS = [
     icon: "rocket_launch",
     color: "from-purple-500 to-pink-500",
     repos: [
-      { owner: "vercel", repo: "next.js", avatar: "https://github.com/vercel.png", stars: "127k", desc: "The React Framework for the Web" },
-      { owner: "nuxt", repo: "nuxt", avatar: "https://github.com/nuxt.png", stars: "55k", desc: "The Intuitive Vue Framework" },
-      { owner: "sveltejs", repo: "kit", avatar: "https://github.com/sveltejs.png", stars: "18k", desc: "Web development, streamlined" },
+      { owner: "vercel", repo: "next.js", avatar: "https://github.com/vercel.png", stars: 0, desc: "The React Framework for the Web" },
+      { owner: "nuxt", repo: "nuxt", avatar: "https://github.com/nuxt.png", stars: 0, desc: "The Intuitive Vue Framework" },
+      { owner: "sveltejs", repo: "kit", avatar: "https://github.com/sveltejs.png", stars: 0, desc: "Web development, streamlined" },
     ],
   },
   {
@@ -34,9 +34,9 @@ const SUGGESTED_PAIRS = [
     icon: "palette",
     color: "from-emerald-500 to-teal-500",
     repos: [
-      { owner: "tailwindlabs", repo: "tailwindcss", avatar: "https://github.com/tailwindlabs.png", stars: "86k", desc: "A utility-first CSS framework" },
-      { owner: "sass", repo: "sass", avatar: "https://github.com/sass.png", stars: "14k", desc: "Sass makes CSS fun again" },
-      { owner: "unocss", repo: "unocss", avatar: "https://github.com/unocss.png", stars: "16k", desc: "The instant on-demand Atomic CSS engine" },
+      { owner: "tailwindlabs", repo: "tailwindcss", avatar: "https://github.com/tailwindlabs.png", stars: 0, desc: "A utility-first CSS framework" },
+      { owner: "sass", repo: "sass", avatar: "https://github.com/sass.png", stars: 0, desc: "Sass makes CSS fun again" },
+      { owner: "unocss", repo: "unocss", avatar: "https://github.com/unocss.png", stars: 0, desc: "The instant on-demand Atomic CSS engine" },
     ],
   },
   {
@@ -44,9 +44,9 @@ const SUGGESTED_PAIRS = [
     icon: "terminal",
     color: "from-amber-500 to-orange-500",
     repos: [
-      { owner: "nodejs", repo: "node", avatar: "https://github.com/nodejs.png", stars: "105k", desc: "JavaScript runtime built on Chrome's V8" },
-      { owner: "denoland", repo: "deno", avatar: "https://github.com/denoland.png", stars: "98k", desc: "A modern runtime for JavaScript and TypeScript" },
-      { owner: "oven-sh", repo: "bun", avatar: "https://github.com/oven-sh.png", stars: "76k", desc: "Incredibly fast JavaScript runtime" },
+      { owner: "nodejs", repo: "node", avatar: "https://github.com/nodejs.png", stars: 0, desc: "JavaScript runtime built on Chrome's V8" },
+      { owner: "denoland", repo: "deno", avatar: "https://github.com/denoland.png", stars: 0, desc: "A modern runtime for JavaScript and TypeScript" },
+      { owner: "oven-sh", repo: "bun", avatar: "https://github.com/oven-sh.png", stars: 0, desc: "Incredibly fast JavaScript runtime" },
     ],
   },
   {
@@ -54,9 +54,9 @@ const SUGGESTED_PAIRS = [
     icon: "psychology",
     color: "from-rose-500 to-red-500",
     repos: [
-      { owner: "tensorflow", repo: "tensorflow", avatar: "https://github.com/tensorflow.png", stars: "188k", desc: "An Open Source Machine Learning Framework" },
-      { owner: "pytorch", repo: "pytorch", avatar: "https://github.com/pytorch.png", stars: "86k", desc: "Tensors and Dynamic neural networks" },
-      { owner: "openai", repo: "openai-python", avatar: "https://github.com/openai.png", stars: "25k", desc: "The official Python library for OpenAI API" },
+      { owner: "tensorflow", repo: "tensorflow", avatar: "https://github.com/tensorflow.png", stars: 0, desc: "An Open Source Machine Learning Framework" },
+      { owner: "pytorch", repo: "pytorch", avatar: "https://github.com/pytorch.png", stars: 0, desc: "Tensors and Dynamic neural networks" },
+      { owner: "openai", repo: "openai-python", avatar: "https://github.com/openai.png", stars: 0, desc: "The official Python library for OpenAI API" },
     ],
   },
   {
@@ -64,9 +64,9 @@ const SUGGESTED_PAIRS = [
     icon: "construction",
     color: "from-indigo-500 to-violet-500",
     repos: [
-      { owner: "docker", repo: "moby", avatar: "https://github.com/docker.png", stars: "69k", desc: "The open-source application container engine" },
-      { owner: "kubernetes", repo: "kubernetes", avatar: "https://github.com/kubernetes.png", stars: "113k", desc: "Production-Grade Container Orchestration" },
-      { owner: "hashicorp", repo: "terraform", avatar: "https://github.com/hashicorp.png", stars: "44k", desc: "Automate infrastructure on any cloud" },
+      { owner: "docker", repo: "moby", avatar: "https://github.com/docker.png", stars: 0, desc: "The open-source application container engine" },
+      { owner: "kubernetes", repo: "kubernetes", avatar: "https://github.com/kubernetes.png", stars: 0, desc: "Production-Grade Container Orchestration" },
+      { owner: "hashicorp", repo: "terraform", avatar: "https://github.com/hashicorp.png", stars: 0, desc: "Automate infrastructure on any cloud" },
     ],
   },
 ];

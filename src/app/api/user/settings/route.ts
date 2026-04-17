@@ -21,6 +21,12 @@ interface SettingsResponse {
     hasPassword: boolean;
     hasGithubApiKey: boolean;
   };
+  // BYOK key presence (never return actual keys)
+  byok: {
+    hasAnthropic: boolean;
+    hasOpenAI: boolean;
+    hasGemini: boolean;
+  };
   // Connected OAuth providers
   connectedProviders: string[];
   // AI tier info
@@ -85,6 +91,9 @@ async function getHandler() {
         githubApiKey: true,
         aiTier: true,
         aiTierUpdatedAt: true,
+        byokAnthropicKey: true,
+        byokOpenAIKey: true,
+        byokGeminiKey: true,
       },
     }),
     // Connected OAuth providers
@@ -140,6 +149,11 @@ async function getHandler() {
       email: user.email,
       hasPassword: !!user.password,
       hasGithubApiKey: !!user.githubApiKey,
+    },
+    byok: {
+      hasAnthropic: !!user.byokAnthropicKey,
+      hasOpenAI:    !!user.byokOpenAIKey,
+      hasGemini:    !!user.byokGeminiKey,
     },
     connectedProviders: accounts.map((a: { provider: string }) => a.provider),
     aiTier: {

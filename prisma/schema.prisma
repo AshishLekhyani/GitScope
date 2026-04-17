@@ -10,6 +10,7 @@ datasource db {
 enum AiTier {
   free
   professional
+  developer
   team
   enterprise
 }
@@ -91,6 +92,11 @@ model User {
   weeklyDigestEnabled  Boolean  @default(false) @map("weekly_digest_enabled")
   weeklyDigestLastSent DateTime? @map("weekly_digest_last_sent")
   githubAppInstallId   String?  @map("github_app_install_id") // GitHub App installation ID
+
+  // BYOK — Bring Your Own Key (keys are AES-256-GCM encrypted with ENCRYPTION_SECRET before storage)
+  byokAnthropicKey  String?  @map("byok_anthropic_key") @db.Text
+  byokOpenAIKey     String?  @map("byok_openai_key") @db.Text
+  byokGeminiKey     String?  @map("byok_gemini_key") @db.Text
 
   accounts        Account[]
   sessions        Session[]

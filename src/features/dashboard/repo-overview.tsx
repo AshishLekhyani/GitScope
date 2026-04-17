@@ -113,7 +113,7 @@ function CommitVelocityChart({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
+    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-heading text-lg font-bold text-foreground">
@@ -123,7 +123,7 @@ function CommitVelocityChart({
             Daily commits over the selected period
           </p>
         </div>
-        <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
+        <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
           {(["1y", "6m", "90d", "30d", "7d"] as const).map((t) => (
             <button
               key={t}
@@ -132,8 +132,8 @@ function CommitVelocityChart({
               className={cn(
                 "rounded-md px-3 py-1 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
                 range === t
-                  ? "bg-white/10 text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground hover:bg-white/5"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background/60"
               )}
             >
               {t}
@@ -207,7 +207,7 @@ function TopContributorsChart({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
+    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <h3 className="mb-3 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
         Top Contributors
       </h3>
@@ -287,7 +287,7 @@ function LanguageBars({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
+    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <h3 className="mb-4 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
         Language Distribution
       </h3>
@@ -379,7 +379,7 @@ function IntelligentInsights({
   ];
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:bg-slate-900/30 dark:shadow-none">
+    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <div className="mb-1 flex items-center gap-2">
         <div className="p-1.5 rounded-lg bg-amber-500/10">
           <MaterialIcon name="bolt" size={18} className="text-amber-500" />
@@ -531,9 +531,15 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
             <span>{owner}</span>
             <span>/</span>
             <span className="text-primary font-bold">{repo}</span>
-            <span className="bg-tertiary/10 text-tertiary rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
-              Public
-            </span>
+            {data?.private ? (
+              <span className="bg-amber-500/10 text-amber-500 rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                Private
+              </span>
+            ) : (
+              <span className="bg-tertiary/10 text-tertiary rounded px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase">
+                Public
+              </span>
+            )}
           </div>
           <h1 className="font-heading text-3xl font-bold tracking-tight text-foreground md:text-4xl">
             Repository Overview

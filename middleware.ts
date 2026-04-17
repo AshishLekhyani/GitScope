@@ -66,7 +66,7 @@ export async function middleware(req: NextRequest) {
   // Use the `from` param so the back button goes back to where they were, not /login.
   if (isAuthed && AUTH_PAGES.includes(pathname)) {
     const from = req.nextUrl.searchParams.get("from");
-    const dest = from && from.startsWith("/") && !AUTH_PAGES.includes(from)
+    const dest = from && from.startsWith("/") && !from.startsWith("//") && !AUTH_PAGES.includes(from)
       ? from
       : "/overview";
     return NextResponse.redirect(new URL(dest, req.url));

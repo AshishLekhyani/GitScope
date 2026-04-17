@@ -122,16 +122,27 @@ async function getUserEvents(username: string, token: string, page: number): Pro
   return all.filter((e) => ALLOWED_TYPES.includes(e.type));
 }
 
+const EVENT_FILTERS = [
+  { label: "All",      value: "",                  color: "text-foreground"         },
+  { label: "Commits",  value: "PushEvent",          color: "text-indigo-500"         },
+  { label: "PRs",      value: "PullRequestEvent",   color: "text-emerald-500"        },
+  { label: "Issues",   value: "IssuesEvent",         color: "text-amber-500"          },
+  { label: "Stars",    value: "WatchEvent",          color: "text-yellow-500"         },
+  { label: "Releases", value: "ReleaseEvent",        color: "text-rose-500"           },
+  { label: "Forks",    value: "ForkEvent",           color: "text-blue-500"           },
+];
+
 export default async function ActivityPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string }>;
+  searchParams: Promise<{ page?: string; type?: string }>;
 }) {
   const session = await getServerSession(authOptions);
   if (!session?.user) redirect(ROUTES.login);
 
-  const { page: pageStr } = await searchParams;
+  const { page: pageStr, type: typeFilter } = await searchParams;
   const page = Math.max(1, parseInt(pageStr ?? "1", 10));
+  const activeFilter = EVENT_FILTERS.find((f) => f.value === (typeFilter ?? "")) ? (typeFilter ?? "") : "";
 
   const token = await getGitHubToken();
   const isGitHubUser = session.provider === "github" || Boolean(session.accessToken);
@@ -148,6 +159,10 @@ export default async function ActivityPage({
       const profile = await profileRes.json();
       githubLogin = profile.login;
       events = await getUserEvents(profile.login, token, page);
+      // Client-side filter by event type (already fetched all — filter after)
+      if (activeFilter) {
+        events = events.filter((e) => e.type === activeFilter);
+      }
     }
   }
 
@@ -206,6 +221,23 @@ export default async function ActivityPage({
       ) : (
         <div className="grid gap-6 grid-cols-1 md:grid-cols-3">
           <div className="md:col-span-2 space-y-4">
+            {/* Event type filter bar */}
+            <div className="flex flex-wrap gap-2">
+              {EVENT_FILTERS.map((f) => (
+                <Link
+                  key={f.value || "all"}
+                  href={`/activity?page=1${f.value ? `&type=${f.value}` : ""}`}
+                  className={cn(
+                    "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                    activeFilter === f.value
+                      ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400"
+                      : "border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {f.label}
+                </Link>
+              ))}
+            </div>
             <div className="glass-panel rounded-2xl p-1 overflow-hidden">
               {events.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground text-sm">
@@ -272,36 +304,41 @@ export default async function ActivityPage({
               )}
             </div>
 
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-1">
-              <Link
-                href={`/activity?page=${page - 1}`}
-                className={cn(
-                  "inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all",
-                  hasPrev
-                    ? "border-border bg-card hover:bg-muted hover:border-indigo-500/30"
-                    : "border-border/30 text-muted-foreground/30 pointer-events-none"
-                )}
-                aria-disabled={!hasPrev}
-              >
-                <ChevronLeft className="size-4" /> Previous Page
-              </Link>
-              <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
-                Page {page}
-              </span>
-              <Link
-                href={`/activity?page=${page + 1}`}
-                className={cn(
-                  "inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all",
-                  hasNext
-                    ? "border-border bg-card hover:bg-muted hover:border-indigo-500/30"
-                    : "border-border/30 text-muted-foreground/30 pointer-events-none"
-                )}
-                aria-disabled={!hasNext}
-              >
-                Next Page <ChevronRight className="size-4" />
-              </Link>
-            </div>
+            {/* Pagination — preserves active type filter */}
+            {(() => {
+              const typeParam = activeFilter ? `&type=${activeFilter}` : "";
+              return (
+                <div className="flex items-center justify-between px-1">
+                  <Link
+                    href={`/activity?page=${page - 1}${typeParam}`}
+                    className={cn(
+                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all",
+                      hasPrev
+                        ? "border-border bg-card hover:bg-muted hover:border-indigo-500/30"
+                        : "border-border/30 text-muted-foreground/30 pointer-events-none"
+                    )}
+                    aria-disabled={!hasPrev}
+                  >
+                    <ChevronLeft className="size-4" /> Previous Page
+                  </Link>
+                  <span className="font-mono text-[10px] text-muted-foreground uppercase tracking-widest">
+                    Page {page}
+                  </span>
+                  <Link
+                    href={`/activity?page=${page + 1}${typeParam}`}
+                    className={cn(
+                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all",
+                      hasNext
+                        ? "border-border bg-card hover:bg-muted hover:border-indigo-500/30"
+                        : "border-border/30 text-muted-foreground/30 pointer-events-none"
+                    )}
+                    aria-disabled={!hasNext}
+                  >
+                    Next Page <ChevronRight className="size-4" />
+                  </Link>
+                </div>
+              );
+            })()}
           </div>
 
           <div className="space-y-6">

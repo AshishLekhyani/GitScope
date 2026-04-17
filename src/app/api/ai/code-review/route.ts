@@ -157,7 +157,14 @@ CRITICAL RULES — follow exactly:
 3. EVIDENCE ONLY: Only flag issues that are directly visible in the diff or full file contents provided. Never speculate.
 4. FILE ACCURACY: finding.file must be the exact filename from the diff (e.g. "src/api/users.ts"). Never write "various files".
 5. DEDUP: If the same pattern appears in 3 files, write ONE finding listing all 3 in the description — not 3 separate findings.
-6. You return ONLY valid JSON. No markdown fences, no preamble, no trailing text.`;
+6. You return ONLY valid JSON. No markdown fences, no preamble, no trailing text.
+7. FALSE POSITIVE AVOIDANCE — never flag:
+   • Error message strings as hardcoded credentials. e.g. token: "The link is missing a token." is an error message, NOT a secret. Real credentials have no spaces and are hex/base64/alphanumeric.
+   • JSX label or UI display text that contains words like "key", "token", "password" — these are user-facing strings, not security issues.
+   • Files that define security analysis rules (e.g. internal-ai.ts, vuln_patterns.py) — their regex patterns and example bad-code snippets are intentional, not actual vulnerabilities.
+   • Test files — hardcoded fixture values, mock credentials, and test tokens in *.test.ts / *.spec.ts files are intentional and expected.
+   • Type annotations or interface field names (e.g. password?: string) — these are type definitions, not actual credential storage.
+   • Import paths or require() calls that happen to contain words like "auth", "secret", or "token" — these are module names, not sensitive values.`;
 
 function buildPRPrompt(params: {
   repo: string;

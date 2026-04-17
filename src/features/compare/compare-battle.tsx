@@ -205,7 +205,7 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
                     src={repositories[idx]?.avatar || ""} 
                     width={56} 
                     height={56} 
-                    className="size-14 rounded-2xl shadow-xl border-2 border-white" 
+                    className="size-14 rounded-2xl shadow-xl border-2 border-border dark:border-white/40"
                     alt="" 
                   />
                   <div className="absolute -bottom-2 -right-2 size-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-lg">
@@ -595,7 +595,7 @@ function CommunityRound({ results, repos }: { results: AdvancedComparisonResult[
                   <div className="text-xs text-muted-foreground mb-2">Top Contributors</div>
                   <div className="flex -space-x-2">
                     {result.repo.topContributors.slice(0, 5).map((c, i) => (
-                      <img key={i} src={c.avatar} alt="" className="size-6 rounded-full border-2 border-white" title={`${c.login}: ${c.contributions} commits`} />
+                      <img key={i} src={c.avatar} alt="" className="size-6 rounded-full border-2 border-background" title={`${c.login}: ${c.contributions} commits`} />
                     ))}
                   </div>
                 </div>
@@ -703,7 +703,7 @@ function OverallRound({ results, repos }: { results: AdvancedComparisonResult[];
           </div>
           <div className="flex items-center justify-center gap-6 mb-6">
             <div className="relative">
-              <Image src={winnerRepo?.avatar || ""} width={80} height={80} className="size-20 rounded-2xl shadow-2xl border-4 border-white" alt="" />
+              <Image src={winnerRepo?.avatar || ""} width={80} height={80} className="size-20 rounded-2xl shadow-2xl ring-4 ring-white/60" alt="" />
               <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-4 -right-4 size-10 rounded-full bg-white text-amber-500 flex items-center justify-center shadow-lg">
                 <MaterialIcon name="crown" size={24} />
               </motion.div>

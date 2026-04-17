@@ -53,9 +53,9 @@ export interface SearchRepoResult {
 
 const RECOMMENDATIONS = {
   repos: [
-    { owner: "vercel", repo: "next.js", stars: "116k", desc: "The React Framework for the Web", avatar: "https://github.com/vercel.png" },
-    { owner: "facebook", repo: "react", stars: "212k", desc: "The library for web and native UIs", avatar: "https://github.com/facebook.png" },
-    { owner: "shadcn", repo: "ui", stars: "46k", desc: "Beautifully designed components", avatar: "https://github.com/shadcn.png" },
+    { owner: "vercel", repo: "next.js", stars: 0, desc: "The React Framework for the Web", avatar: "https://github.com/vercel.png" },
+    { owner: "facebook", repo: "react", stars: 0, desc: "The library for web and native UIs", avatar: "https://github.com/facebook.png" },
+    { owner: "shadcn", repo: "ui", stars: 0, desc: "Beautifully designed components", avatar: "https://github.com/shadcn.png" },
   ],
   users: [
     { name: "shadcn", type: "Design Architect", avatar: "https://github.com/shadcn.png" },
@@ -244,7 +244,7 @@ export function TopNav({
           >
             <div ref={searchRef} className="relative flex min-w-0 flex-1 items-center">
               <div className={cn(
-                "border-border flex min-w-0 flex-1 items-center rounded-xl border border-white/5 bg-slate-100/80 px-3 py-1.5 dark:bg-slate-900/50 ring-2 ring-indigo-500/20"
+                "flex min-w-0 flex-1 items-center rounded-xl border border-border bg-muted/60 px-3 py-1.5 ring-2 ring-indigo-500/20"
               )}>
                 <MaterialIcon name="search" size={18} className="text-indigo-500 shrink-0" />
                 <Input
@@ -311,8 +311,8 @@ export function TopNav({
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 md:gap-6">
           <div ref={searchRef} className="relative z-50 hidden min-w-0 max-w-md flex-1 items-center sm:flex">
             <div className={cn(
-              "border-border focus-within:ring-indigo-500/40 flex min-w-0 flex-1 items-center rounded-xl border border-white/5 bg-slate-100/80 px-2 py-1.5 focus-within:ring-2 sm:px-3 dark:bg-slate-900/50 transition-all duration-200",
-              isFocused && "bg-white dark:bg-slate-900 shadow-2xl ring-2 ring-indigo-500/20"
+              "focus-within:ring-indigo-500/40 flex min-w-0 flex-1 items-center rounded-xl border border-border bg-muted/60 px-2 py-1.5 focus-within:ring-2 sm:px-3 transition-all duration-200",
+              isFocused && "bg-background shadow-2xl ring-2 ring-indigo-500/20"
             )}>
               <div className="relative flex items-center justify-center">
                 <MaterialIcon name="search" size={18} className={cn("transition-colors", isFocused ? "text-indigo-500" : "text-muted-foreground")} />
@@ -351,7 +351,7 @@ export function TopNav({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.98 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute top-full left-0 mt-2 w-full min-w-[320px] rounded-2xl border border-white/10 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl shadow-2xl overflow-hidden p-2 z-[100]"
+                  className="absolute top-full left-0 mt-2 w-full min-w-[320px] rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden p-2 z-100"
                 >
                   {/* Discovery Recommendations (Only when query is empty and no relevant history) */}
                   {!q && recentHistory.length === 0 && !historyLoading && (
@@ -391,7 +391,7 @@ export function TopNav({
 
                   {/* Recent & Matching History */}
                   {recentHistory.length > 0 && (
-                    <div className="p-2 border-b border-white/5 last:border-0">
+                    <div className="p-2 border-b border-border last:border-0">
                       <div className="mb-2 px-2 flex items-center gap-2">
                         <History className="size-3 text-muted-foreground" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
@@ -427,7 +427,7 @@ export function TopNav({
 
                   {/* Matching Repositories */}
                   {q && liveResults.repos.length > 0 && (
-                    <div className="p-2 border-b border-white/5 last:border-0">
+                    <div className="p-2 border-b border-border last:border-0">
                       <div className="mb-2 px-2 flex items-center gap-2">
                         <Box className="size-3 text-indigo-500" />
                         <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Live Repositories</span>

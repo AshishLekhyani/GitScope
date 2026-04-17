@@ -197,7 +197,7 @@ export function CompareReposPanel() {
               setA(s.a);
               setB(s.b);
             }}
-            className="rounded-full border border-white/5 bg-surface-container px-3 py-1 text-[10px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground"
+            className="rounded-full border border-border bg-muted/40 px-3 py-1 text-[10px] font-medium text-muted-foreground transition-all hover:border-primary/30 hover:text-foreground"
           >
             {s.label}
           </button>

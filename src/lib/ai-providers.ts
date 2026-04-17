@@ -14,13 +14,22 @@
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
 
-export type AIPlan = "free" | "pro" | "professional" | "team" | "enterprise";
+export type AIPlan = "free" | "pro" | "professional" | "developer" | "team" | "enterprise";
+
+/** Decrypted BYOK keys passed through from the calling route. */
+export interface UserBYOKKeys {
+  anthropic?: string | null;
+  openai?: string | null;
+  gemini?: string | null;
+}
 
 export interface AICallOptions {
   plan: AIPlan;
   systemPrompt: string;
   userPrompt: string;
   maxTokens?: number;
+  /** When supplied, BYOK keys take priority over server-level env vars. */
+  byokKeys?: UserBYOKKeys;
 }
 
 export interface AICallResult {
@@ -34,25 +43,26 @@ export interface AICallResult {
 // ── Model selection ────────────────────────────────────────────────────────────
 
 function anthropicModel(plan: AIPlan): string {
-  if (plan === "enterprise") return "claude-opus-4-6";
-  if (plan === "team" || plan === "professional") return "claude-sonnet-4-6";
+  // Sonnet for all paid plans — Opus costs 5× more with negligible quality gain on scan tasks.
+  // Enterprise advantage comes from ensemble (parallel Anthropic + OpenAI), not a heavier model.
+  if (plan === "enterprise" || plan === "team" || plan === "developer" || plan === "professional") return "claude-sonnet-4-6";
   return "claude-haiku-4-5-20251001";
 }
 
 function openaiModel(plan: AIPlan): string {
-  if (plan === "enterprise" || plan === "team" || plan === "professional") return "gpt-4o";
+  if (plan === "enterprise" || plan === "team" || plan === "developer" || plan === "professional") return "gpt-4o";
   return "gpt-4o-mini";
 }
 
 function geminiModel(plan: AIPlan): string {
-  if (plan === "enterprise" || plan === "team" || plan === "professional") return "gemini-2.0-flash";
+  if (plan === "enterprise" || plan === "team" || plan === "developer" || plan === "professional") return "gemini-2.0-flash";
   return "gemini-1.5-flash";
 }
 
 // ── Individual provider callers ───────────────────────────────────────────────
 
 async function callAnthropic(opts: AICallOptions): Promise<AICallResult | null> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
+  const apiKey = opts.byokKeys?.anthropic ?? process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return null;
   const model = anthropicModel(opts.plan);
   // Key is present — let errors propagate so callers can see bad key / rate limit / etc.
@@ -68,7 +78,7 @@ async function callAnthropic(opts: AICallOptions): Promise<AICallResult | null> 
 }
 
 async function callOpenAI(opts: AICallOptions): Promise<AICallResult | null> {
-  const apiKey = process.env.OPENAI_API_KEY;
+  const apiKey = opts.byokKeys?.openai ?? process.env.OPENAI_API_KEY;
   if (!apiKey) return null;
   const model = openaiModel(opts.plan);
   // Key is present — let errors propagate so callers can see bad key / rate limit / etc.
@@ -86,7 +96,7 @@ async function callOpenAI(opts: AICallOptions): Promise<AICallResult | null> {
 }
 
 async function callGemini(opts: AICallOptions): Promise<AICallResult | null> {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = opts.byokKeys?.gemini ?? process.env.GEMINI_API_KEY;
   if (!apiKey) return null;
   const model = geminiModel(opts.plan);
   // Key is present — let errors propagate so callers can see bad key / rate limit / etc.
@@ -168,10 +178,20 @@ export async function callAI(opts: AICallOptions): Promise<AICallResult | null> 
 }
 
 /**
- * True if at least one paid AI provider key is configured.
+ * True if at least one paid AI provider key is configured (server keys or BYOK).
  */
-export function hasAnyAIProvider(): boolean {
-  return !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
+export function hasAnyAIProvider(byokKeys?: UserBYOKKeys): boolean {
+  return !!(
+    byokKeys?.anthropic || byokKeys?.openai || byokKeys?.gemini ||
+    process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY
+  );
+}
+
+/**
+ * True if the user has at least one BYOK key configured.
+ */
+export function hasByokKey(byokKeys?: UserBYOKKeys): boolean {
+  return !!(byokKeys?.anthropic || byokKeys?.openai || byokKeys?.gemini);
 }
 
 /**

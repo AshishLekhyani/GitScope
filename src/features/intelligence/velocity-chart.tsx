@@ -405,7 +405,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
 
                 {/* Expanded detail */}
                 {isExpanded && (
-                  <div className="px-4 pb-4 space-y-4 border-t border-white/5 animate-in fade-in duration-200">
+                  <div className="px-4 pb-4 space-y-4 border-t border-border animate-in fade-in duration-200">
                     {/* What & Why */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
                       <div className="space-y-1">

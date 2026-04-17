@@ -17,7 +17,7 @@ import { performLogout } from "@/lib/client-auth";
 
 type SettingsTab = "profile" | "account" | "appearance" | "workspace" | "integrations";
 type ThemeOption = "light" | "dark" | "system";
-type AiPlan = "free" | "professional" | "team" | "enterprise";
+type AiPlan = "free" | "professional" | "developer" | "team" | "enterprise";
 
 interface AiUsageSnapshot {
   total: number;
@@ -81,6 +81,14 @@ export function SettingsPanel() {
   const [githubApiKeyInput, setGithubApiKeyInput] = useState("");
   const [apiKeySaving, setApiKeySaving] = useState(false);
   const [apiKeyMsg, setApiKeyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // BYOK (Bring Your Own Key) state
+  const [byokSaved, setByokSaved]               = useState({ anthropic: false, openai: false, gemini: false });
+  const [byokAnthropicInput, setByokAnthropicInput] = useState("");
+  const [byokOpenAIInput, setByokOpenAIInput]       = useState("");
+  const [byokGeminiInput, setByokGeminiInput]       = useState("");
+  const [byokSaving, setByokSaving]               = useState(false);
+  const [byokMsg, setByokMsg]                     = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -151,6 +159,14 @@ export function SettingsPanel() {
           );
           setHasPassword(data.profile.hasPassword ?? false);
           setHasGithubApiKey(data.profile.hasGithubApiKey ?? false);
+        }
+        // BYOK key presence
+        if (data.byok) {
+          setByokSaved({
+            anthropic: data.byok.hasAnthropic ?? false,
+            openai:    data.byok.hasOpenAI    ?? false,
+            gemini:    data.byok.hasGemini    ?? false,
+          });
         }
         
         // Connected providers
@@ -538,6 +554,49 @@ export function SettingsPanel() {
     { value: "dark", label: "Deep Ocean", bgClass: "bg-[#0b1326]" },
     { value: "system", label: "System", bgClass: "bg-linear-to-br from-slate-200 to-[#0b1326]" },
   ];
+
+  // ── BYOK handlers ────────────────────────────────────────────────────────────
+  const handleSaveByok = async (provider: "anthropic" | "openai" | "gemini", key: string) => {
+    setByokSaving(true);
+    setByokMsg(null);
+    try {
+      const res = await fetch("/api/user/byok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, key }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Save failed");
+      setByokSaved((prev) => ({ ...prev, [provider]: true }));
+      if (provider === "anthropic") setByokAnthropicInput("");
+      if (provider === "openai")    setByokOpenAIInput("");
+      if (provider === "gemini")    setByokGeminiInput("");
+      setByokMsg({ type: "success", text: `${provider === "anthropic" ? "Anthropic" : provider === "openai" ? "OpenAI" : "Gemini"} key saved and encrypted.` });
+    } catch (e) {
+      setByokMsg({ type: "error", text: e instanceof Error ? e.message : "Failed to save key." });
+    } finally {
+      setByokSaving(false);
+    }
+  };
+
+  const handleDeleteByok = async (provider: "anthropic" | "openai" | "gemini") => {
+    setByokSaving(true);
+    setByokMsg(null);
+    try {
+      const res = await fetch("/api/user/byok", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ provider, key: null }),
+      });
+      if (!res.ok) throw new Error("Remove failed");
+      setByokSaved((prev) => ({ ...prev, [provider]: false }));
+      setByokMsg({ type: "success", text: "Key removed." });
+    } catch {
+      setByokMsg({ type: "error", text: "Failed to remove key." });
+    } finally {
+      setByokSaving(false);
+    }
+  };
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="relative w-full pb-20">
@@ -1308,6 +1367,7 @@ export function SettingsPanel() {
                     >
                       <option value="free">Free</option>
                       <option value="professional">Professional</option>
+                      <option value="developer">Developer (BYOK)</option>
                       <option value="team">Team</option>
                       <option value="enterprise">Enterprise</option>
                     </select>
@@ -1611,6 +1671,133 @@ export function SettingsPanel() {
                   </div>
                 )}
               </>
+            )}
+          </div>
+
+          {/* ── AI Provider Keys (BYOK) ── */}
+          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                <MaterialIcon name="vpn_key" size={18} className="text-indigo-500" />
+              </div>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-foreground">AI Provider Keys (BYOK)</h3>
+                <p className="text-xs text-muted-foreground">Use your own API keys — removes daily scan caps entirely.</p>
+              </div>
+              {(byokSaved.anthropic || byokSaved.openai || byokSaved.gemini) && (
+                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                  Active
+                </span>
+              )}
+            </div>
+
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Instead of GitScope&apos;s shared AI budget, supply your own API keys. Keys are encrypted at rest with AES-256-GCM.
+              BYOK accounts bypass the daily LLM scan limit — scan as much as you want.
+            </p>
+
+            <div className="space-y-4">
+              {/* Anthropic */}
+              <div className="space-y-2">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <span className="inline-block size-2 rounded-full bg-[#cc785c]" />
+                  Anthropic (Claude Sonnet)
+                  {byokSaved.anthropic && <span className="text-emerald-500 normal-case font-normal">✓ key saved</span>}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={byokAnthropicInput}
+                    onChange={(e) => setByokAnthropicInput(e.target.value)}
+                    placeholder={byokSaved.anthropic ? "sk-ant-•••••••••••••••••" : "sk-ant-api03-..."}
+                    className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    disabled={byokSaving || !byokAnthropicInput.trim()}
+                    onClick={() => handleSaveByok("anthropic", byokAnthropicInput)}
+                    className="shrink-0 rounded-lg bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+                  >Save</button>
+                  {byokSaved.anthropic && (
+                    <button
+                      type="button"
+                      disabled={byokSaving}
+                      onClick={() => handleDeleteByok("anthropic")}
+                      className="shrink-0 rounded-lg border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                    >Remove</button>
+                  )}
+                </div>
+              </div>
+
+              {/* OpenAI */}
+              <div className="space-y-2">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <span className="inline-block size-2 rounded-full bg-[#10a37f]" />
+                  OpenAI (GPT-4o)
+                  {byokSaved.openai && <span className="text-emerald-500 normal-case font-normal">✓ key saved</span>}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={byokOpenAIInput}
+                    onChange={(e) => setByokOpenAIInput(e.target.value)}
+                    placeholder={byokSaved.openai ? "sk-•••••••••••••••••" : "sk-proj-..."}
+                    className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    disabled={byokSaving || !byokOpenAIInput.trim()}
+                    onClick={() => handleSaveByok("openai", byokOpenAIInput)}
+                    className="shrink-0 rounded-lg bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+                  >Save</button>
+                  {byokSaved.openai && (
+                    <button
+                      type="button"
+                      disabled={byokSaving}
+                      onClick={() => handleDeleteByok("openai")}
+                      className="shrink-0 rounded-lg border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                    >Remove</button>
+                  )}
+                </div>
+              </div>
+
+              {/* Gemini */}
+              <div className="space-y-2">
+                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                  <span className="inline-block size-2 rounded-full bg-[#4285f4]" />
+                  Google Gemini
+                  {byokSaved.gemini && <span className="text-emerald-500 normal-case font-normal">✓ key saved</span>}
+                </p>
+                <div className="flex gap-2">
+                  <input
+                    type="password"
+                    value={byokGeminiInput}
+                    onChange={(e) => setByokGeminiInput(e.target.value)}
+                    placeholder={byokSaved.gemini ? "AIza•••••••••••••••" : "AIzaSy..."}
+                    className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
+                  />
+                  <button
+                    type="button"
+                    disabled={byokSaving || !byokGeminiInput.trim()}
+                    onClick={() => handleSaveByok("gemini", byokGeminiInput)}
+                    className="shrink-0 rounded-lg bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+                  >Save</button>
+                  {byokSaved.gemini && (
+                    <button
+                      type="button"
+                      disabled={byokSaving}
+                      onClick={() => handleDeleteByok("gemini")}
+                      className="shrink-0 rounded-lg border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                    >Remove</button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {byokMsg && (
+              <p className={cn("font-mono text-xs", byokMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>
+                {byokMsg.text}
+              </p>
             )}
           </div>
         </div>

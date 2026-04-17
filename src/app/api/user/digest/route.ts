@@ -69,22 +69,42 @@ export async function POST(req: NextRequest) {
   if (!sendNow) return NextResponse.json({ ok: true });
 
   // ── Build digest data ───────────────────────────────────────────────────────
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: {
-      name: true,
-      email: true,
-      slackWebhookUrl: true,
-    },
-  });
+  const [user, bookmarks] = await Promise.all([
+    prisma.user.findUnique({
+      where: { id: session.user.id },
+      select: {
+        name: true,
+        email: true,
+        slackWebhookUrl: true,
+        githubHandle: true,
+      },
+    }),
+    // Bookmarks = repos the user explicitly cares about (contributes to, watches, etc.)
+    prisma.bookmark.findMany({
+      where: { userId: session.user.id },
+      select: { owner: true, repo: true },
+    }),
+  ]);
+
   if (!user?.email) return NextResponse.json({ error: "No email on account" }, { status: 400 });
+
+  // Include repos where: user is the owner OR repo is bookmarked.
+  // This covers owned repos AND repos they contribute to (which they'd bookmark).
+  const ownerHandle = user.githubHandle?.toLowerCase() ?? null;
+  const bookmarkedSet = new Set(bookmarks.map((b) => `${b.owner}/${b.repo}`.toLowerCase()));
+  const relevantRepo = (repo: string) => {
+    const lower = repo.toLowerCase();
+    if (ownerHandle && lower.startsWith(`${ownerHandle}/`)) return true;
+    return bookmarkedSet.has(lower);
+  };
 
   // Fetch latest scan per repo in last 30 days
   const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-  const scans = await prisma.repoScanHistory.findMany({
+  const allScans = await prisma.repoScanHistory.findMany({
     where: { userId: session.user.id, createdAt: { gte: since } },
     orderBy: { createdAt: "desc" },
   });
+  const scans = allScans.filter((s) => relevantRepo(s.repo));
 
   // Group: latest scan per repo
   const latestByRepo = new Map<string, typeof scans[0]>();
@@ -100,9 +120,10 @@ export async function POST(req: NextRequest) {
   // Previous week average (7-14 days ago)
   const prevSince = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000);
   const prevUntil = new Date(Date.now() - 7  * 24 * 60 * 60 * 1000);
-  const prevScans = await prisma.repoScanHistory.findMany({
+  const allPrevScans = await prisma.repoScanHistory.findMany({
     where: { userId: session.user.id, createdAt: { gte: prevSince, lte: prevUntil } },
   });
+  const prevScans = allPrevScans.filter((s) => relevantRepo(s.repo));
   const prevAvg = prevScans.length > 0
     ? Math.round(prevScans.reduce((s, r) => s + r.healthScore, 0) / prevScans.length)
     : avgScore;

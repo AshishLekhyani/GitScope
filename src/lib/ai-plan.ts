@@ -4,7 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import type { AiTier as PrismaAiTier } from "@prisma/client";
 
-export type AiPlan = "free" | "professional" | "team" | "enterprise";
+export type AiPlan = "free" | "professional" | "developer" | "team" | "enterprise";
 
 export interface AiCapabilities {
   plan: AiPlan;
@@ -37,6 +37,9 @@ export interface AiCapabilities {
   benchmarkComparisonAllowed: boolean;
   // Free monthly PR review allowance (GitHub App)
   monthlyPrReviewLimit: number;
+  // Maximum LLM-powered scans per day (internal AI is free and unlimited).
+  // Caps real API cost — free plan gets 0 (internal AI only).
+  dailyLlmScanLimit: number;
 }
 
 const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
@@ -68,6 +71,7 @@ const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
     weeklyDigestAllowed: false,
     benchmarkComparisonAllowed: false,
     monthlyPrReviewLimit: 5,
+    dailyLlmScanLimit: 0,              // free plan: internal AI only, no LLM cost
   },
   professional: {
     plan: "professional",
@@ -97,6 +101,37 @@ const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
     weeklyDigestAllowed: true,
     benchmarkComparisonAllowed: true,
     monthlyPrReviewLimit: 50,
+    dailyLlmScanLimit: 10,             // ~$0.63/day Sonnet cost; well within professional pricing
+  },
+  developer: {
+    plan: "developer",
+    label: "Developer",
+    maxReposInWorkspace: 15,
+    maxReposPerRequest: 15,
+    maxOpenPRsPerRepo: 10,
+    maxFilesPerDeepScan: 12,
+    maxPackagesPerSecurityScan: 300,
+    aiAgentDepth: 2,
+    aiRequestsPerHour: 80,
+    allowsPrivateRepoAnalysis: true,
+    allowSharedTokenFallback: false,
+    deepScanAllowed: true,
+    fixDiffsAllowed: true,
+    scanHistoryDays: 30,
+    scheduledScansAllowed: true,
+    maxScheduledScans: 5,
+    customRulesAllowed: false,
+    maxCustomRules: 0,
+    dailyScanLimit: 999,                // effectively unlimited — BYOK pays the bill
+    generateReadmeAllowed: true,
+    generateChangelogAllowed: true,
+    dailyGenerateLimit: 10,
+    slackNotificationsAllowed: true,
+    githubAppPrReviewsAllowed: true,
+    weeklyDigestAllowed: true,
+    benchmarkComparisonAllowed: true,
+    monthlyPrReviewLimit: 50,
+    dailyLlmScanLimit: 10,              // fallback if BYOK not configured; BYOK bypasses this
   },
   team: {
     plan: "team",
@@ -126,6 +161,7 @@ const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
     weeklyDigestAllowed: true,
     benchmarkComparisonAllowed: true,
     monthlyPrReviewLimit: 200,
+    dailyLlmScanLimit: 25,             // ~$1.58/day Sonnet cost; well within team pricing
   },
   enterprise: {
     plan: "enterprise",
@@ -155,10 +191,11 @@ const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
     weeklyDigestAllowed: true,
     benchmarkComparisonAllowed: true,
     monthlyPrReviewLimit: 10000,       // effectively unlimited
+    dailyLlmScanLimit: 50,             // ~$3.15/day Sonnet cost; well within enterprise pricing
   },
 };
 
-const PLAN_ORDER: AiPlan[] = ["free", "professional", "team", "enterprise"];
+const PLAN_ORDER: AiPlan[] = ["free", "professional", "developer", "team", "enterprise"];
 
 function normalize(value: string): string {
   return value.trim().toLowerCase();

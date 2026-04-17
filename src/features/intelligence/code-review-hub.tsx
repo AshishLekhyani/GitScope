@@ -49,14 +49,15 @@ export function CodeReviewHub({
 }: CodeReviewHubProps) {
   const [activeTab, setActiveTab] = useState<CodeLensTab>("pr-review");
 
-  const isPro  = plan === "professional" || plan === "team" || plan === "enterprise";
+  const isPro  = plan === "professional" || plan === "developer" || plan === "team" || plan === "enterprise";
   const isTeam = plan === "team" || plan === "enterprise";
   const canDeepScan            = isPro;
   const allowsPrivateRepo      = isPro;
   const fixDiffsAllowed        = isPro;
   const scheduledScansAllowed  = isPro;
   const customRulesAllowed     = isTeam;
-  const scanHistoryDays        = plan === "enterprise" ? 365 : plan === "team" ? 90 : plan === "professional" ? 30 : 0;
+  const multiBranchAllowed     = plan === "developer" || isTeam;
+  const scanHistoryDays        = plan === "enterprise" ? 365 : plan === "team" ? 90 : (plan === "professional" || plan === "developer") ? 30 : 0;
   const primaryRepo = selectedRepos[0] ?? null;
   const activeTabConfig = TABS.find((t) => t.id === activeTab)!;
 
@@ -168,6 +169,7 @@ export function CodeReviewHub({
               fixDiffsAllowed={fixDiffsAllowed}
               scheduledScansAllowed={scheduledScansAllowed}
               customRulesAllowed={customRulesAllowed}
+              multiBranchAllowed={multiBranchAllowed}
               scanHistoryDays={scanHistoryDays}
               plan={plan}
             />

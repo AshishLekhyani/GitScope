@@ -48,7 +48,7 @@ function clamp(num: number, min: number, max: number): number {
 function tierDepth(plan: AiPlan): 0 | 1 | 2 | 3 {
   if (plan === "enterprise") return 3;
   if (plan === "team") return 3;
-  if (plan === "professional") return 2;
+  if (plan === "professional" || plan === "developer") return 2;
   return 1;
 }
 
@@ -343,7 +343,7 @@ export async function deepCodeImpact(
 
   const call = makeCallFn(plan as AIPlan);
   const depth = tierDepth(plan);
-  const maxFiles = options?.maxFiles ?? (plan === "professional" ? 10 : plan === "team" ? 20 : 35);
+  const maxFiles = options?.maxFiles ?? (plan === "professional" || plan === "developer" ? 10 : plan === "team" ? 20 : 35);
 
   const sortedFiles = [...input.files].sort((a, b) => (b.additions + b.deletions) - (a.additions + a.deletions)).slice(0, maxFiles);
   const fileContext = sortedFiles

@@ -59,8 +59,16 @@ async function patchHandler(req: Request) {
   // Update Slack webhook URL
   if ("slackWebhookUrl" in body) {
     const url = body.slackWebhookUrl?.trim() || null;
-    if (url && !url.startsWith("https://hooks.slack.com/")) {
-      return NextResponse.json({ error: "Invalid Slack webhook URL." }, { status: 400 });
+    if (url) {
+      try {
+        const parsed = new URL(url);
+        // Strict: exact hostname match, not just startsWith (prevents hooks.slack.com.evil.com)
+        if (parsed.protocol !== "https:" || parsed.hostname !== "hooks.slack.com") {
+          return NextResponse.json({ error: "Invalid Slack webhook URL." }, { status: 400 });
+        }
+      } catch {
+        return NextResponse.json({ error: "Invalid Slack webhook URL." }, { status: 400 });
+      }
     }
     await prisma.user.update({
       where: { id: session.user.id },

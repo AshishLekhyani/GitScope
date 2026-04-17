@@ -55,6 +55,27 @@ const PLANS = [
     ],
   },
   {
+    id: "developer",
+    name: "Developer",
+    price: 19,
+    description: "For developers who want unlimited AI analysis using their own API keys.",
+    color: "border-emerald-500/40",
+    badge: "BYOK",
+    badgeColor: "bg-emerald-500 text-white",
+    cta: "Start Developer Trial",
+    ctaHref: "/login?mode=signup&plan=developer",
+    features: [
+      "Everything in Professional",
+      "Unlimited AI scans (BYOK required)",
+      "Bring your own Anthropic / OpenAI / Gemini key",
+      "Zero AI cost to GitScope — full plan revenue",
+      "Multi-branch repo scanning",
+      "SBOM dependency export",
+      "80 AI analysis calls / hour",
+      "Priority email support",
+    ],
+  },
+  {
     id: "team",
     name: "Team",
     price: 49,
@@ -72,26 +93,30 @@ const PLANS = [
       "AI PR Risk Predictor (team multi-agent)",
       "Deep Code Impact (4 specialist agents)",
       "240 AI analysis calls / hour per workspace",
+      "25 LLM scans / day (or unlimited with BYOK)",
       "Dependency Radar graph",
       "Shared team dashboards",
       "Weekly automated reports",
       "Webhook integrations",
       "Slack notifications",
+      "Pay-as-you-go AI overage available",
     ],
   },
   {
     id: "enterprise",
     name: "Enterprise",
     price: null,
-    description: "For large organizations requiring custom analytics and enterprise security.",
+    description: "Custom pricing based on your team size and usage. Talk to us and we'll build a plan that fits.",
     color: "border-amber-500/30",
-    badge: "Custom",
+    badge: "Contact Us",
     badgeColor: "bg-amber-500 text-white",
-    cta: "Contact Sales",
-    ctaHref: "mailto:sales@gitscope.dev",
+    cta: "Talk to Sales",
+    ctaHref: "mailto:sales@gitscope.dev?subject=GitScope%20Enterprise%20Enquiry",
     features: [
       "Everything in Team",
-      "Unlimited seats",
+      "Unlimited seats — pay for what you use",
+      "Pay-as-you-go AI usage billing",
+      "50 LLM scans / day base (or unlimited BYOK)",
       "GitHub Enterprise Server support",
       "SSO / SAML authentication",
       "Custom metric definitions",
@@ -99,26 +124,28 @@ const PLANS = [
       "Dedicated account manager",
       "On-premise deployment option",
       "99.9% uptime SLA",
-      "Custom AI analysis quotas",
       "Audit logs & compliance exports",
     ],
   },
 ] as const;
 
 const COMPARE_ROWS = [
-  { feature: "Repos tracked", explorer: "5", pro: "Unlimited", team: "Unlimited", enterprise: "Unlimited" },
-  { feature: "Commit history", explorer: "30 days", pro: "Full", team: "Full", enterprise: "Full" },
-  { feature: "GitHub OAuth", explorer: false, pro: true, team: true, enterprise: true },
-  { feature: "Live activity feed", explorer: false, pro: true, team: true, enterprise: true },
-  { feature: "Organization Pulse", explorer: false, pro: true, team: true, enterprise: true },
-  { feature: "DORA Metrics", explorer: false, pro: false, team: true, enterprise: true },
-  { feature: "AI Risk Predictor", explorer: false, pro: false, team: true, enterprise: true },
-  { feature: "AI agent depth", explorer: "1", pro: "2", team: "4", enterprise: "Custom" },
-  { feature: "AI calls / hour", explorer: "20", pro: "80", team: "240", enterprise: "Custom" },
-  { feature: "Team seats", explorer: "1", pro: "1", team: "10", enterprise: "Unlimited" },
-  { feature: "Webhook integrations", explorer: false, pro: false, team: true, enterprise: true },
-  { feature: "SSO / SAML", explorer: false, pro: false, team: false, enterprise: true },
-  { feature: "SLA", explorer: false, pro: false, team: false, enterprise: "99.9%" },
+  { feature: "Repos tracked", explorer: "5", pro: "Unlimited", developer: "Unlimited", team: "Unlimited", enterprise: "Unlimited" },
+  { feature: "Commit history", explorer: "30 days", pro: "Full", developer: "Full", team: "Full", enterprise: "Full" },
+  { feature: "GitHub OAuth", explorer: false, pro: true, developer: true, team: true, enterprise: true },
+  { feature: "Live activity feed", explorer: false, pro: true, developer: true, team: true, enterprise: true },
+  { feature: "Organization Pulse", explorer: false, pro: true, developer: true, team: true, enterprise: true },
+  { feature: "DORA Metrics", explorer: false, pro: false, developer: false, team: true, enterprise: true },
+  { feature: "AI Risk Predictor", explorer: false, pro: false, developer: false, team: true, enterprise: true },
+  { feature: "AI agent depth", explorer: "1", pro: "2", developer: "2", team: "4", enterprise: "Custom" },
+  { feature: "AI calls / hour", explorer: "20", pro: "80", developer: "80", team: "240", enterprise: "Custom" },
+  { feature: "Daily LLM scans", explorer: "Internal AI", pro: "10", developer: "Unlimited BYOK", team: "25", enterprise: "50+" },
+  { feature: "BYOK (own API keys)", explorer: false, pro: true, developer: "Required", team: true, enterprise: true },
+  { feature: "Pay-as-you-go billing", explorer: false, pro: false, developer: false, team: "Optional", enterprise: true },
+  { feature: "Team seats", explorer: "1", pro: "1", developer: "1", team: "10", enterprise: "Unlimited" },
+  { feature: "Webhook integrations", explorer: false, pro: false, developer: false, team: true, enterprise: true },
+  { feature: "SSO / SAML", explorer: false, pro: false, developer: false, team: false, enterprise: true },
+  { feature: "SLA", explorer: false, pro: false, developer: false, team: false, enterprise: "99.9%" },
 ];
 
 export interface PricingPageClientProps {
@@ -134,6 +161,9 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
     if (p.price === 0) return "$0";
     return `$${annual ? Math.round(p.price * 0.8) : p.price}`;
   };
+
+  // Enterprise: don't show price — contact sales
+  const isEnterprise = (p: typeof PLANS[number]) => p.id === "enterprise";
 
   return (
     <motion.div
@@ -196,7 +226,7 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
       </div>
 
       {/* Plan cards */}
-      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-5">
         {PLANS.map((plan, idx) => (
           <motion.div
             key={plan.id}
@@ -217,14 +247,23 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
 
             <h3 className="font-heading text-lg font-black uppercase tracking-tight">{plan.name}</h3>
 
-            <div className="mt-3 flex items-baseline gap-1">
-              <span className="font-heading text-4xl font-black tracking-tighter">{price(plan)}</span>
-              {plan.price !== null && plan.price > 0 && (
-                <span className="text-xs font-bold text-muted-foreground">/mo</span>
-              )}
-            </div>
-            {annual && plan.price && plan.price > 0 && (
-              <p className="text-[10px] text-emerald-500 font-bold mt-0.5">Billed annually — save ${plan.price * 12 * 0.2}/yr</p>
+            {isEnterprise(plan) ? (
+              <div className="mt-3">
+                <p className="font-heading text-2xl font-black tracking-tight text-amber-500">Let&apos;s talk</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Pricing tailored to your scale &amp; usage</p>
+              </div>
+            ) : (
+              <>
+                <div className="mt-3 flex items-baseline gap-1">
+                  <span className="font-heading text-4xl font-black tracking-tighter">{price(plan)}</span>
+                  {plan.price !== null && plan.price > 0 && (
+                    <span className="text-xs font-bold text-muted-foreground">/mo</span>
+                  )}
+                </div>
+                {annual && plan.price && plan.price > 0 && (
+                  <p className="text-[10px] text-emerald-500 font-bold mt-0.5">Billed annually — save ${plan.price * 12 * 0.2}/yr</p>
+                )}
+              </>
             )}
 
             <p className="mt-3 text-xs text-muted-foreground leading-relaxed">{plan.description}</p>
@@ -244,7 +283,7 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
               href={plan.ctaHref}
               className={cn(
                 "mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-widest transition-all",
-                plan.id === "pro" || plan.id === "team"
+                plan.id === "pro" || plan.id === "developer" || plan.id === "team"
                   ? "btn-gitscope-primary"
                   : "border border-border hover:bg-muted"
               )}
@@ -273,7 +312,7 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
                 {COMPARE_ROWS.map((row) => (
                   <tr key={row.feature} className="hover:bg-muted/20 transition-colors">
                     <td className="py-3 px-6 text-xs text-foreground/80 font-medium">{row.feature}</td>
-                    {(["explorer", "pro", "team", "enterprise"] as const).map((plan) => {
+                    {(["explorer", "pro", "developer", "team", "enterprise"] as const).map((plan) => {
                       const val = row[plan];
                       return (
                         <td key={plan} className="py-3 px-4 text-center">

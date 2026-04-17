@@ -60,6 +60,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
   const [progress, setProgress] = useState({ step: "", percent: 0 });
   const [result, setResult] = useState<CodeReviewResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [resultFromCache, setResultFromCache] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
 
   // Load commits — initial load resets page; subsequent calls append
@@ -117,6 +118,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
         setResult(parsed);
         setState("done");
         setError(null);
+        setResultFromCache(true);
         return;
       }
     } catch { /* ignore */ }
@@ -127,6 +129,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
     setProgress({ step: "Initializing…", percent: 2 });
     setResult(null);
     setError(null);
+    setResultFromCache(false);
     setSelectedSha(sha);
 
     try {
@@ -179,6 +182,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
               } else if (data.result) {
                 setState("done");
                 setResult(data.result);
+                setResultFromCache(false);
                 try {
                   sessionStorage.setItem(commitCacheKey(targetRepo, sha, scanMode), JSON.stringify(data.result));
                 } catch { /* quota exceeded — ignore */ }
@@ -275,6 +279,11 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
             <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-background/40 text-muted-foreground border border-outline-variant/20">
               {result.confidence}% confidence
             </span>
+            {resultFromCache && (
+              <span title="Loaded from session cache — click the commit again to re-analyze" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-help">
+                Cached
+              </span>
+            )}
             {result.isDemo && (
               <span className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 border border-amber-500/20">
                 Preview

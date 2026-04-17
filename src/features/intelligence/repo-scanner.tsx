@@ -374,6 +374,7 @@ interface RepoScannerProps {
   scanHistoryDays?: number;
   scheduledScansAllowed?: boolean;
   customRulesAllowed?: boolean;
+  multiBranchAllowed?: boolean;
   plan?: string;
 }
 
@@ -417,8 +418,8 @@ interface CustomRule {
   hitCount: number;
 }
 
-function scanCacheKey(repo: string, mode: string) {
-  return `gitscope-scan-v1:${repo}:${mode}`;
+function scanCacheKey(repo: string, mode: string, branch = "") {
+  return `gitscope-scan-v1:${repo}:${mode}${branch ? `:${branch}` : ""}`;
 }
 
 export function RepoScanner({
@@ -429,10 +430,12 @@ export function RepoScanner({
   scanHistoryDays = 0,
   scheduledScansAllowed = false,
   customRulesAllowed = false,
+  multiBranchAllowed = false,
   plan = "free",
 }: RepoScannerProps) {
   const [repoInput, setRepoInput] = useState(selectedRepo ?? "");
   const [scanMode, setScanMode] = useState<"quick" | "deep">("quick");
+  const [branch, setBranch] = useState("");
   const [state, setState] = useState<ScanState>("idle");
   const [progress, setProgress] = useState({ step: "", percent: 0 });
   const [result, setResult] = useState<RepoScanResult | null>(null);
@@ -554,7 +557,7 @@ export function RepoScanner({
       const res = await fetch("/api/ai/repo-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ repo: targetRepo, scanMode }),
+        body: JSON.stringify({ repo: targetRepo, scanMode, ...(branch.trim() ? { branch: branch.trim() } : {}) }),
         signal: abortRef.current.signal,
       });
 
@@ -593,7 +596,7 @@ export function RepoScanner({
                 setState("done");
                 setResult(data.result);
                 try {
-                  sessionStorage.setItem(scanCacheKey(targetRepo, scanMode), JSON.stringify(data.result));
+                  sessionStorage.setItem(scanCacheKey(targetRepo, scanMode, branch.trim()), JSON.stringify(data.result));
                 } catch { /* quota exceeded — ignore */ }
               }
             }
@@ -768,6 +771,17 @@ export function RepoScanner({
             </div>
             <div className="shrink-0 space-y-2.5 text-right">
               <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 truncate max-w-[160px]">{targetRepo}</div>
+              {/* SBOM export */}
+              {multiBranchAllowed && (
+                <a
+                  href={`/api/ai/sbom?repo=${encodeURIComponent(targetRepo)}${branch.trim() ? `&branch=${encodeURIComponent(branch.trim())}` : ""}`}
+                  download
+                  className="ml-auto flex items-center gap-2 px-3 py-2 rounded-xl border border-emerald-500/25 bg-emerald-500/8 text-emerald-400 text-[10px] font-black tracking-wide hover:bg-emerald-500/15 transition-all duration-200"
+                >
+                  <MaterialIcon name="download" size={14} />
+                  <span>SBOM</span>
+                </a>
+              )}
               {/* Schedule button — prominent, clearly interactive */}
               {scheduledScansAllowed && (
                 <button
@@ -1643,6 +1657,26 @@ export function RepoScanner({
             <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400/60 mb-0.5">Target Repository</p>
             <p className="text-sm font-black text-foreground/90 truncate">{selectedRepo}</p>
           </div>
+        </div>
+      )}
+
+      {/* Branch selector — Developer+ only */}
+      {multiBranchAllowed && (
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <MaterialIcon name="account_tree" size={14} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-emerald-500/60 pointer-events-none" />
+            <input
+              value={branch}
+              onChange={(e) => setBranch(e.target.value)}
+              placeholder="Branch (leave blank for default)"
+              className="w-full pl-9 pr-4 py-2.5 bg-surface-container/40 border border-emerald-500/20 rounded-xl text-xs placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/40 transition-all"
+            />
+          </div>
+          {branch.trim() && (
+            <span className="shrink-0 px-2 py-1 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-[9px] font-black text-emerald-500 uppercase tracking-widest">
+              {branch.trim()}
+            </span>
+          )}
         </div>
       )}
 

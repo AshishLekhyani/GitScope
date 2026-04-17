@@ -11,7 +11,8 @@ export type AiUsageFeature =
   | "dependency-map"
   | "repo-analysis"
   | "code-review"
-  | "repo-scan";
+  | "repo-scan"
+  | "repo-scan-llm";   // daily LLM cost gate (separate from hourly rate limit)
 
 export interface UsageBudgetResult {
   allowed: boolean;

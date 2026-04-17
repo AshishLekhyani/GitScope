@@ -33,8 +33,11 @@ async function getHandler(req: NextRequest) {
     return NextResponse.json(data);
   } catch (e) {
     const err = e as Error & { status?: number };
+    // Log full details server-side; send only a generic message to the client
+    // to prevent leaking GitHub token status, internal paths, or API internals.
+    if (process.env.NODE_ENV !== "production") console.error("[github/proxy]", err.message);
     return NextResponse.json(
-      { error: err.message },
+      { error: "Unable to fetch from GitHub" },
       { status: err.status ?? 500 }
     );
   }

@@ -29,6 +29,7 @@ export interface GitHubRepo {
   default_branch: string;
   language: string | null;
   fork: boolean;
+  private: boolean;
   owner: {
     login: string;
     avatar_url: string;
