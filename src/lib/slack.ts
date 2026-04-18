@@ -48,7 +48,7 @@ export async function sendSlackMessage(webhookUrl: string, message: SlackMessage
 
 // ── High-level notification builders ──────────────────────────────────────────
 
-const APP_URL = process.env.NEXTAUTH_URL ?? "https://gitscope.dev";
+const APP_URL = (process.env.NEXTAUTH_URL ?? "https://git-scope-pi.vercel.app").replace(/\/$/, "");
 
 function tierColor(score: number): string {
   if (score >= 80) return "#10b981";   // green

@@ -86,7 +86,7 @@ export function AppSidebar({
       match: (p) => p.startsWith("/repos"),
     },
     {
-      href: "/intelligence",
+      href: ROUTES.intelligence,
       label: "Intelligence Hub",
       mat: "psychology",
       match: (p) => p.startsWith("/intelligence"),
@@ -108,7 +108,7 @@ export function AppSidebar({
     },
     {
       href: ROUTES.trending,
-      label: "Trending",
+      label: "Stack Trending",
       mat: "trending_up",
       match: (p) => p.startsWith("/trending"),
     },
@@ -124,37 +124,25 @@ export function AppSidebar({
       mat: "corporate_fare",
       match: (p) => p.startsWith("/organizations"),
     },
-    {
-      href: ROUTES.topics,
-      label: "Topic Explorer",
-      mat: "tag",
-      match: (p) => p.startsWith("/topics"),
-    },
   ];
 
   const analyticsNav: NavDef[] = [
     {
       href: ROUTES.leaderboard,
-      label: "Leaderboard",
+      label: "Contributor Leaderboard",
       mat: "leaderboard",
       match: (p) => p.startsWith("/leaderboard"),
     },
     {
-      href: ROUTES.languages,
-      label: "Languages",
-      mat: "code_blocks",
-      match: (p) => p.startsWith("/languages"),
-    },
-    {
       href: ROUTES.releases,
-      label: "Releases",
+      label: "Release Radar",
       mat: "new_releases",
       match: (p) => p.startsWith("/releases"),
     },
     {
       href: ROUTES.bookmarks,
-      label: "Bookmarks",
-      mat: "bookmark",
+      label: "Action Items",
+      mat: "checklist",
       match: (p) => p.startsWith("/bookmarks"),
     },
   ];
@@ -352,7 +340,7 @@ export function AppSidebar({
               {!isCollapsed && <span className="truncate">Settings</span>}
             </Link>
             <Link
-              href="/docs-reference"
+              href={ROUTES.docsReference}
               title={isCollapsed ? "Documentation" : undefined}
               onClick={onNavigate}
               className={linkCls(pathname.startsWith("/docs-reference"))}

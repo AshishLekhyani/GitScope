@@ -1,5 +1,11 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Activity Feed — GitScope",
+  description: "Recent commits, issues, and pull requests across your tracked repositories.",
+};
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";

@@ -8,6 +8,8 @@ import { VelocityChart } from "@/features/intelligence/velocity-chart";
 import { IntelligenceSearch } from "@/features/intelligence/intelligence-search";
 import { RiskPredictor } from "@/features/intelligence/risk-predictor";
 import { CodeReviewHub } from "@/features/intelligence/code-review-hub";
+import { CodeOwnership } from "@/features/intelligence/code-ownership";
+import { CiStatus } from "@/features/intelligence/ci-status";
 import { cn } from "@/lib/utils";
 
 interface CapabilitiesResponse {
@@ -37,13 +39,13 @@ interface OrgHealthEntry {
 
 interface PageState {
   selectedRepos: string[];
-  activeTab: "radar" | "velocity" | "risk" | "codelens" | "orghealth";
+  activeTab: "radar" | "velocity" | "risk" | "codelens" | "orghealth" | "ownership" | "ci";
 }
 
 export function IntelligenceClient() {
   const searchParams = useSearchParams();
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
-  const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk" | "codelens" | "orghealth">("codelens");
+  const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk" | "codelens" | "orghealth" | "ownership" | "ci">("codelens");
   const [orgHealth, setOrgHealth] = useState<OrgHealthEntry[]>([]);
   const [orgHealthLoading, setOrgHealthLoading] = useState(false);
   const [caps, setCaps] = useState<CapabilitiesResponse | null>(null);
@@ -163,11 +165,13 @@ export function IntelligenceClient() {
 
         <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm overflow-x-auto">
           {[
-            { id: "codelens",  icon: "rate_review",  label: "Code Lens" },
+            { id: "codelens",  icon: "rate_review",    label: "Code Lens"  },
             { id: "orghealth", icon: "corporate_fare", label: "Org Health" },
-            { id: "radar",     icon: "scatter_plot",  label: "Radar" },
-            { id: "velocity",  icon: "speed",         label: "Velocity" },
-            { id: "risk",      icon: "security",      label: "AI Risk" },
+            { id: "ownership", icon: "group",          label: "Ownership"  },
+            { id: "ci",        icon: "rocket_launch",  label: "CI/CD"      },
+            { id: "radar",     icon: "scatter_plot",   label: "Radar"      },
+            { id: "velocity",  icon: "speed",          label: "Velocity"   },
+            { id: "risk",      icon: "security",       label: "AI Risk"    },
           ].map((tab) => (
             <button
                key={tab.id}
@@ -400,6 +404,16 @@ export function IntelligenceClient() {
                   aiRequestsPerHour={caps?.capabilities.aiRequestsPerHour ?? 20}
                   githubConnected={caps?.githubAuthSource === "session-oauth" || caps?.githubAuthSource === "user-pat"}
                 />
+              </div>
+            )}
+            {activeTab === "ownership" && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <CodeOwnership repos={selectedRepos} />
+              </div>
+            )}
+            {activeTab === "ci" && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <CiStatus repos={selectedRepos} />
               </div>
             )}
             {activeTab === "radar" && (

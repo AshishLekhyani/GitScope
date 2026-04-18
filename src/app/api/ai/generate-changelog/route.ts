@@ -196,6 +196,9 @@ async function handler(req: NextRequest) {
   const clampedMax = Math.min(Math.max(Number(maxCommits) || 100, 10), 200);
 
   const plan = await resolveAiPlanFromSessionDb(session) as AIPlan;
+  if (plan === "free") {
+    return NextResponse.json({ error: "Changelog generation requires Professional plan or higher." }, { status: 403 });
+  }
   const token = await getGitHubToken() ?? "";
 
   const [meta, rawCommits, tags, releases] = await Promise.all([

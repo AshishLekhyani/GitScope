@@ -1,5 +1,11 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Docs & Reference — GitScope",
+  description: "API documentation, keyboard shortcuts, and feature guides.",
+};
+
 import { DocsPageClient } from "@/features/docs/docs-page-client";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

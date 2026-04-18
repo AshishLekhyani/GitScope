@@ -1,5 +1,11 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Organization Health — GitScope",
+  description: "Health scores and insights across your GitHub organizations.",
+};
+
 import { requireTier } from "@/lib/auth-tier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";

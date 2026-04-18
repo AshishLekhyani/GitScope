@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Home, ArrowLeft } from "lucide-react";
+import { GoBackButton } from "@/components/go-back-button";
 
 export default function NotFound() {
   return (
@@ -30,13 +31,7 @@ export default function NotFound() {
             <Home className="size-4" />
             Go to Overview
           </Link>
-          <Link
-            href="javascript:history.back()"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl border border-border bg-card hover:bg-muted text-sm font-bold transition-all"
-          >
-            <ArrowLeft className="size-4" />
-            Go Back
-          </Link>
+          <GoBackButton />
         </div>
 
         <div className="pt-4 border-t border-border/50">

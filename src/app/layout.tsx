@@ -24,13 +24,32 @@ const jetbrainsMono = JetBrains_Mono({
   weight: ["400", "500", "600"],
 });
 
+const APP_URL = (process.env.NEXTAUTH_URL ?? "https://git-scope-pi.vercel.app").replace(/\/$/, "");
+
 export const metadata: Metadata = {
+  metadataBase: new URL(APP_URL),
   title: {
     default: "GitScope — GitHub analytics dashboard",
     template: "%s · GitScope",
   },
   description:
     "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+  openGraph: {
+    type: "website",
+    url: APP_URL,
+    siteName: "GitScope",
+    title: "GitScope — GitHub analytics dashboard",
+    description:
+      "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+    images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "GitScope" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "GitScope — GitHub analytics dashboard",
+    description:
+      "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default async function RootLayout({

@@ -122,6 +122,12 @@ export function SettingsPanel() {
   const [slackMsg, setSlackMsg]                   = useState<{ type: "success" | "error"; text: string } | null>(null);
   const [slackTestSending, setSlackTestSending]   = useState(false);
 
+  const [discordWebhook, setDiscordWebhook]         = useState("");
+  const [discordSaved, setDiscordSaved]             = useState(false);
+  const [discordSaving, setDiscordSaving]           = useState(false);
+  const [discordMsg, setDiscordMsg]                 = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [discordTestSending, setDiscordTestSending] = useState(false);
+
   const [weeklyDigest, setWeeklyDigest]           = useState(false);
   const [digestLastSent, setDigestLastSent]        = useState<string | null>(null);
   const [digestSending, setDigestSending]         = useState(false);
@@ -203,7 +209,8 @@ export function SettingsPanel() {
         Promise.all([
           fetch("/api/user/digest").then(r => r.ok ? r.json() : null),
           fetch("/api/github-app/status").then(r => r.ok ? r.json() : null),
-        ]).then(([digestData, ghData]) => {
+          fetch("/api/user/discord").then(r => r.ok ? r.json() : null),
+        ]).then(([digestData, ghData, discordData]) => {
           if (digestData) {
             setWeeklyDigest(digestData.weeklyDigestEnabled ?? false);
             setDigestLastSent(digestData.weeklyDigestLastSent ?? null);
@@ -213,6 +220,9 @@ export function SettingsPanel() {
             setGhAppInstalled(ghData.installed ?? false);
             setGhAppInstallUrl(ghData.installUrl ?? null);
             setGhAppConfigured(ghData.appConfigured ?? false);
+          }
+          if (discordData) {
+            setDiscordSaved(discordData.saved ?? false);
           }
         }).catch(() => { /* non-fatal */ });
       })
@@ -307,7 +317,6 @@ export function SettingsPanel() {
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       setDirty(false);
     } catch (e) {
-      console.error("Failed to save profile", e);
       // dirty flag intentionally kept so user knows save failed
     } finally {
       setSaving(false);
@@ -467,6 +476,54 @@ export function SettingsPanel() {
       setSlackMsg({ type: "error", text: "An error occurred." });
     } finally {
       setSlackTestSending(false);
+    }
+  };
+
+  const handleSaveDiscord = async (remove = false) => {
+    setDiscordSaving(true);
+    setDiscordMsg(null);
+    try {
+      const res = await fetch("/api/user/discord", {
+        method: remove ? "DELETE" : "POST",
+        headers: { "Content-Type": "application/json" },
+        body: remove ? undefined : JSON.stringify({ webhookUrl: discordWebhook.trim() }),
+      });
+      const d = await res.json();
+      if (res.ok) {
+        if (remove) {
+          setDiscordSaved(false);
+          setDiscordWebhook("");
+          setDiscordMsg({ type: "success", text: "Discord webhook removed." });
+        } else {
+          setDiscordSaved(true);
+          setDiscordWebhook("");
+          setDiscordMsg({ type: "success", text: "Discord webhook connected." });
+        }
+      } else {
+        setDiscordMsg({ type: "error", text: d.error ?? "Failed to save." });
+      }
+    } catch {
+      setDiscordMsg({ type: "error", text: "An error occurred." });
+    } finally {
+      setDiscordSaving(false);
+    }
+  };
+
+  const handleTestDiscord = async () => {
+    setDiscordTestSending(true);
+    setDiscordMsg(null);
+    try {
+      const res = await fetch("/api/user/discord", { method: "PATCH" });
+      if (res.ok) {
+        setDiscordMsg({ type: "success", text: "Test message sent to Discord!" });
+      } else {
+        const d = await res.json();
+        setDiscordMsg({ type: "error", text: d.error ?? "Failed to send test." });
+      }
+    } catch {
+      setDiscordMsg({ type: "error", text: "An error occurred." });
+    } finally {
+      setDiscordTestSending(false);
     }
   };
 
@@ -1361,6 +1418,7 @@ export function SettingsPanel() {
                       className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
                     />
                     <select
+                      aria-label="Target plan"
                       value={tierTargetPlan}
                       onChange={(e) => setTierTargetPlan(e.target.value as AiPlan)}
                       className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
@@ -1466,7 +1524,30 @@ export function SettingsPanel() {
       {activeTab === "integrations" && (
         <div className="space-y-6">
 
-          {/* Slack */}
+          {/* Slack — Professional+ */}
+          {tierInfo?.resolvedPlan === "free" ? (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#4A154B]/10 border border-[#4A154B]/20">
+                <svg viewBox="0 0 54 54" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M19.712 34.138a3.853 3.853 0 0 1-3.853 3.853 3.853 3.853 0 0 1-3.854-3.853 3.853 3.853 0 0 1 3.854-3.854h3.853v3.854z" fill="#E01E5A"/>
+                  <path d="M21.587 34.138a3.853 3.853 0 0 1 3.853-3.854 3.853 3.853 0 0 1 3.854 3.854v9.634a3.853 3.853 0 0 1-3.854 3.853 3.853 3.853 0 0 1-3.853-3.853v-9.634z" fill="#E01E5A"/>
+                  <path d="M25.44 19.712a3.853 3.853 0 0 1-3.853-3.853 3.853 3.853 0 0 1 3.853-3.854 3.853 3.853 0 0 1 3.854 3.854v3.853H25.44z" fill="#36C5F0"/>
+                  <path d="M25.44 21.587a3.853 3.853 0 0 1 3.854 3.853 3.853 3.853 0 0 1-3.854 3.854h-9.634a3.853 3.853 0 0 1-3.853-3.854 3.853 3.853 0 0 1 3.853-3.853h9.634z" fill="#36C5F0"/>
+                  <path d="M40.166 25.44a3.853 3.853 0 0 1 3.853 3.853 3.853 3.853 0 0 1-3.853 3.854 3.853 3.853 0 0 1-3.854-3.854V25.44h3.854z" fill="#2EB67D"/>
+                  <path d="M38.291 25.44a3.853 3.853 0 0 1-3.853-3.853 3.853 3.853 0 0 1 3.853-3.854h9.634a3.853 3.853 0 0 1 3.854 3.854 3.853 3.853 0 0 1-3.854 3.853h-9.634z" fill="#2EB67D"/>
+                  <path d="M34.438 40.166a3.853 3.853 0 0 1-3.854 3.853 3.853 3.853 0 0 1-3.853-3.853 3.853 3.853 0 0 1 3.853-3.854h3.854v3.854z" fill="#ECB22E"/>
+                  <path d="M34.438 38.291a3.853 3.853 0 0 1 3.854-3.853 3.853 3.853 0 0 1 3.853 3.853v9.634a3.853 3.853 0 0 1-3.853 3.854 3.853 3.853 0 0 1-3.854-3.854v-9.634z" fill="#ECB22E"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">Slack Notifications</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Get scan alerts and PR reviews posted directly to Slack. Available on Professional plan and above.</p>
+              </div>
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+                <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
+              </a>
+            </div>
+          ) : (
           <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="flex size-9 items-center justify-center rounded-xl bg-[#4A154B]/20 border border-[#4A154B]/30">
@@ -1533,8 +1614,101 @@ export function SettingsPanel() {
               </div>
             )}
           </div>
+          )} {/* end Slack gate */}
 
-          {/* Weekly Digest */}
+          {/* Discord — Professional+ */}
+          {tierInfo?.resolvedPlan === "free" ? (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#5865F2]/10 border border-[#5865F2]/20">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="#5865F2" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                </svg>
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">Discord Notifications</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Get scan alerts posted directly to your Discord server. Available on Professional plan and above.</p>
+              </div>
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+                <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
+              </a>
+            </div>
+          ) : (
+          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+            <div className="flex items-center gap-3 mb-1">
+              <div className="flex size-9 items-center justify-center rounded-xl bg-[#5865F2]/20 border border-[#5865F2]/30">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="#5865F2" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
+                </svg>
+              </div>
+              <div>
+                <h3 className="font-heading text-lg font-bold text-foreground">Discord Notifications</h3>
+                <p className="text-xs text-muted-foreground">Get scan alerts and digests posted to your Discord server via webhook.</p>
+              </div>
+              {discordSaved && (
+                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                  <span className="size-1.5 rounded-full bg-current" /> Connected
+                </span>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Setup Guide</p>
+              <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
+                <li>In Discord: open your server settings → <strong className="text-foreground">Integrations</strong> → <strong className="text-foreground">Webhooks</strong></li>
+                <li>Click <strong className="text-foreground">New Webhook</strong>, choose a channel, and copy the URL</li>
+                <li>Paste the Webhook URL below and click Connect</li>
+              </ol>
+            </div>
+
+            {discordSaved ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                  <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
+                  <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">Webhook active — scan alerts will post to your Discord channel</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button type="button" variant="outline" size="sm" disabled={discordTestSending} onClick={handleTestDiscord} className="font-mono text-[10px] uppercase tracking-widest">
+                    {discordTestSending ? "Sending..." : "Send Test Message"}
+                  </Button>
+                  <Button type="button" variant="outline" size="sm" disabled={discordSaving} onClick={() => handleSaveDiscord(true)} className="text-destructive border-destructive/30 hover:bg-destructive/10 font-mono text-[10px] uppercase tracking-widest">
+                    {discordSaving ? "Removing..." : "Disconnect"}
+                  </Button>
+                </div>
+                {discordMsg && <p className={cn("font-mono text-xs", discordMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{discordMsg.text}</p>}
+              </div>
+            ) : (
+              <div className="space-y-3 max-w-lg">
+                <input
+                  type="url"
+                  value={discordWebhook}
+                  onChange={(e) => setDiscordWebhook(e.target.value)}
+                  placeholder="https://discord.com/api/webhooks/..."
+                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-xs text-foreground focus:border-primary/50 focus:outline-none"
+                />
+                <Button type="button" size="sm" disabled={discordSaving || !discordWebhook.trim().startsWith("https://discord.com/api/webhooks/")} onClick={() => handleSaveDiscord(false)} className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest">
+                  {discordSaving ? "Saving..." : "Connect Discord"}
+                </Button>
+                {discordMsg && <p className={cn("font-mono text-xs", discordMsg.type === "success" ? "text-tertiary" : "text-destructive")}>{discordMsg.text}</p>}
+              </div>
+            )}
+          </div>
+          )} {/* end Discord gate */}
+
+          {/* Weekly Digest — Professional+ */}
+          {tierInfo?.resolvedPlan === "free" ? (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                <MaterialIcon name="mail" size={18} className="text-indigo-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">Weekly Digest Email</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Fleet health summary every Monday morning. Available on Professional plan and above.</p>
+              </div>
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+                <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
+              </a>
+            </div>
+          ) : (
           <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3">
               <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
@@ -1576,15 +1750,30 @@ export function SettingsPanel() {
 
             {!weeklyDigest && (
               <p className="font-mono text-[9px] text-muted-foreground pl-12">
-                Toggle on to start receiving weekly email reports. Requires Professional plan or higher.
+                Toggle on to receive a weekly fleet health summary every Monday morning.
               </p>
             )}
             {digestMsg && !weeklyDigest && (
               <p className={cn("font-mono text-xs pl-12", digestMsg.type === "error" ? "text-destructive" : "text-tertiary")}>{digestMsg.text}</p>
             )}
           </div>
+          )} {/* end Weekly Digest gate */}
 
-          {/* GitHub App */}
+          {/* GitHub App — Team+ */}
+          {(tierInfo?.resolvedPlan === "free" || tierInfo?.resolvedPlan === "professional" || tierInfo?.resolvedPlan === "developer") ? (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground/5 border border-outline-variant/20">
+                <MaterialIcon name="integration_instructions" size={18} className="text-foreground/50" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">GitHub App</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Auto-review PRs and post AI analysis as GitHub review comments. Available on Team plan and above.</p>
+              </div>
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+                <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
+              </a>
+            </div>
+          ) : (
           <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="flex size-9 items-center justify-center rounded-xl bg-foreground/5 border border-outline-variant/20">
@@ -1673,8 +1862,23 @@ export function SettingsPanel() {
               </>
             )}
           </div>
+          )} {/* end GitHub App gate */}
 
-          {/* ── AI Provider Keys (BYOK) ── */}
+          {/* ── AI Provider Keys (BYOK) — Professional+ only ── */}
+          {tierInfo?.resolvedPlan === "free" ? (
+            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
+                <MaterialIcon name="vpn_key" size={18} className="text-indigo-400" />
+              </div>
+              <div className="flex-1">
+                <p className="font-bold text-sm text-foreground">AI Provider Keys (BYOK)</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Bring your own Anthropic / OpenAI / Gemini key for unlimited AI scans. Available on Professional and Developer plans.</p>
+              </div>
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+                <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
+              </a>
+            </div>
+          ) : (
           <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
               <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
@@ -1800,6 +2004,7 @@ export function SettingsPanel() {
               </p>
             )}
           </div>
+          )}
         </div>
       )}
 

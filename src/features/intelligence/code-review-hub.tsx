@@ -6,8 +6,13 @@ import { cn } from "@/lib/utils";
 import { PRReviewer } from "@/features/intelligence/pr-reviewer";
 import { CommitInspector } from "@/features/intelligence/commit-inspector";
 import { RepoScanner } from "@/features/intelligence/repo-scanner";
+import { PrDescriptionGenerator } from "@/features/intelligence/pr-description-generator";
+import { AiGenerator } from "@/features/intelligence/ai-generator";
+import { OsvScanner } from "@/features/intelligence/osv-scanner";
+import { TestCoverage } from "@/features/intelligence/test-coverage";
+import { PrQueue } from "@/features/intelligence/pr-queue";
 
-type CodeLensTab = "pr-review" | "commit-inspect" | "repo-scan";
+type CodeLensTab = "pr-review" | "commit-inspect" | "repo-scan" | "osv" | "pr-desc" | "generate" | "coverage" | "pr-queue";
 
 const TABS = [
   {
@@ -15,21 +20,48 @@ const TABS = [
     icon: "rate_review",
     label: "PR Review",
     description: "Security, breaking changes & merge verdict",
-    color: "indigo",
   },
   {
     id: "commit-inspect" as CodeLensTab,
     icon: "commit",
     label: "Commit Inspector",
     description: "Audit any commit SHA line-by-line",
-    color: "violet",
   },
   {
     id: "repo-scan" as CodeLensTab,
     icon: "manage_search",
     label: "Repo Deep Scan",
     description: "Full codebase health & tech debt audit",
-    color: "purple",
+  },
+  {
+    id: "osv" as CodeLensTab,
+    icon: "security",
+    label: "CVE Scanner",
+    description: "Google OSV database — known vulnerabilities",
+  },
+  {
+    id: "pr-desc" as CodeLensTab,
+    icon: "edit_note",
+    label: "PR Description",
+    description: "AI-written PR descriptions from your diff",
+  },
+  {
+    id: "generate" as CodeLensTab,
+    icon: "auto_awesome",
+    label: "AI Generators",
+    description: "Generate README & CHANGELOG with AI",
+  },
+  {
+    id: "coverage" as CodeLensTab,
+    icon: "science",
+    label: "Test Coverage",
+    description: "Coverage % via Codecov + framework detection",
+  },
+  {
+    id: "pr-queue" as CodeLensTab,
+    icon: "queue",
+    label: "PR Queue",
+    description: "Bulk AI review of all open PRs",
   },
 ];
 
@@ -173,6 +205,37 @@ export function CodeReviewHub({
               scanHistoryDays={scanHistoryDays}
               plan={plan}
             />
+          </div>
+        )}
+        {activeTab === "osv" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <OsvScanner selectedRepo={primaryRepo} />
+          </div>
+        )}
+        {activeTab === "pr-desc" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <PrDescriptionGenerator
+              selectedRepo={primaryRepo}
+              isPro={isPro}
+            />
+          </div>
+        )}
+        {activeTab === "generate" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <AiGenerator
+              selectedRepo={primaryRepo}
+              isPro={isPro}
+            />
+          </div>
+        )}
+        {activeTab === "coverage" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <TestCoverage repos={primaryRepo ? [primaryRepo] : []} />
+          </div>
+        )}
+        {activeTab === "pr-queue" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <PrQueue selectedRepo={primaryRepo} isPro={isPro} />
           </div>
         )}
       </div>

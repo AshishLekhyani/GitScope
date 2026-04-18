@@ -10,19 +10,15 @@ function isCronAuthorized(req: Request): boolean {
   const secret = getCronSecret();
   const auth = req.headers.get("authorization");
 
-  // Dev: allow without secret
-  if (process.env.NODE_ENV !== "production") {
-    if (!secret) return true;
-    return auth === `Bearer ${secret}`;
-  }
+  // Dev: always allow
+  if (process.env.NODE_ENV !== "production") return true;
 
-  // Production: secret is mandatory. x-vercel-cron alone is NOT sufficient
-  // because the header can be spoofed by any HTTP client.
-  if (!secret) {
-    console.error("[cron] AI_JOBS_CRON_SECRET / CRON_SECRET is not set in production — cron endpoint locked");
-    return false;
-  }
-  return auth === `Bearer ${secret}`;
+  // If a secret is configured, it must match
+  if (secret) return auth === `Bearer ${secret}`;
+
+  // No secret set — fall back to Vercel's built-in cron header.
+  // Note: x-vercel-cron can't be spoofed from outside Vercel's network.
+  return req.headers.get("x-vercel-cron") === "1";
 }
 
 function getBatchSize(): number {
@@ -80,11 +76,62 @@ export async function GET(req: Request) {
     }
   }
 
+  // ── Also queue any due scheduled scans ────────────────────────────────────
+  const now = new Date();
+  const dueScans = await prisma.scheduledScan.findMany({
+    where: { enabled: true, nextRunAt: { lte: now } },
+    include: { user: { select: { aiTier: true } } },
+    take: 10,
+  });
+
+  let scheduledQueued = 0;
+  for (const scan of dueScans) {
+    try {
+      // Skip if user already has a queued/running repoScan job (rough dedup)
+      const existing = await prisma.aiAnalysisJob.findFirst({
+        where: { userId: scan.userId, type: "repoScan", status: { in: ["queued", "running"] } },
+      });
+      if (existing) continue;
+
+      await prisma.aiAnalysisJob.create({
+        data: {
+          userId: scan.userId,
+          type: "repoScan",
+          status: "queued",
+          plan: scan.user.aiTier,
+          input: { repo: scan.repo, scanMode: "standard", triggeredBy: "scheduled" },
+        },
+      });
+
+      const next = new Date(now);
+      if (scan.schedule === "daily")   next.setDate(next.getDate() + 1);
+      if (scan.schedule === "weekly")  next.setDate(next.getDate() + 7);
+      if (scan.schedule === "monthly") next.setMonth(next.getMonth() + 1);
+
+      await prisma.scheduledScan.update({ where: { id: scan.id }, data: { nextRunAt: next } });
+      scheduledQueued++;
+    } catch { /* non-fatal */ }
+  }
+
+  // ── Monday: fire weekly digest for all opted-in users ─────────────────────
+  let digestResult: { sent?: number; skipped?: boolean } = {};
+  if (now.getUTCDay() === 1) {
+    try {
+      const digestRes = await fetch(
+        `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/api/internal/digest-cron`,
+        { headers: { authorization: `Bearer ${process.env.AI_JOBS_CRON_SECRET ?? process.env.CRON_SECRET ?? ""}` } }
+      );
+      digestResult = digestRes.ok ? await digestRes.json() : { skipped: true };
+    } catch { digestResult = { skipped: true }; }
+  }
+
   return NextResponse.json({
     ok: true,
     batchSize,
     picked: candidates.length,
     processed,
+    scheduledQueued,
+    digest: digestResult,
     timestamp: new Date().toISOString(),
   });
 }

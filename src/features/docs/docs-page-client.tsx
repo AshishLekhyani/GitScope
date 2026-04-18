@@ -13,6 +13,7 @@ type Section =
   | "authentication"
   | "repository-analysis"
   | "intelligence-hub"
+  | "integrations"
   | "organization-analytics"
   | "activity-notifications"
   | "api-rate-limits"
@@ -26,8 +27,9 @@ const sections: { id: Section; label: string; icon: string }[] = [
   { id: "authentication",         label: "Authentication & Accounts",  icon: "lock"             },
   { id: "repository-analysis",    label: "Repository Analysis",        icon: "source"           },
   { id: "intelligence-hub",       label: "Intelligence Hub",           icon: "psychology"       },
+  { id: "integrations",           label: "Slack, Discord & Alerts",    icon: "notifications_active" },
   { id: "organization-analytics", label: "Organization Analytics",     icon: "corporate_fare"   },
-  { id: "activity-notifications", label: "Activity & Notifications",   icon: "notifications"  },
+  { id: "activity-notifications", label: "Activity & Notifications",   icon: "notifications"    },
   { id: "api-rate-limits",        label: "API & Rate Limits",          icon: "api"              },
   { id: "keyboard-shortcuts",     label: "Keyboard Shortcuts",         icon: "keyboard"         },
   { id: "troubleshooting",        label: "Troubleshooting",            icon: "build"            },
@@ -239,67 +241,166 @@ read:org      — Read organization membership and public repos`,
   // -------------------------------------------------------------------------
   "intelligence-hub": {
     title:    "Intelligence Hub",
-    subtitle: "AI-powered repository intelligence: velocity metrics, PR risk scoring, dependency radar, and code health analysis.",
+    subtitle: "AI-powered repository intelligence across 12 tools: health scans, CVE detection, code ownership, CI/CD, test coverage, PR review, bulk PR queue, and AI writing.",
     blocks: [
       {
         type: "paragraph",
-        text: "The Intelligence Hub is GitScope's premium analytics layer. It applies AI models and heuristics on top of raw GitHub API data to produce actionable engineering intelligence that goes beyond surface-level metrics. The Hub is organized into four tools: Velocity Metrics, PR Risk Predictor, Dependency Radar, and Code Health Analysis.",
+        text: "The Intelligence Hub is GitScope's AI analysis layer. It has two levels of tabs: outer tabs (Code Lens, Org Health, Ownership, CI/CD, Radar, Velocity, AI Risk) and inner Code Lens sub-tabs (PR Review, Commit Inspector, Repo Scan, CVE Scanner, PR Description, AI Generators, Test Coverage, PR Queue). Add one or more repositories to your workspace using the search bar, then switch between tools freely.",
       },
       {
         type: "note",
-        text: "The Intelligence Hub requires sign-in with GitHub OAuth. This is because the tools consume additional GitHub API calls per analysis, and GitScope needs a stable, authenticated identity to manage rate limits responsibly. Email/password or Google sign-in accounts can access the Hub by also adding a GitHub PAT in Settings.",
+        text: "AI features are tier-gated. Free accounts can run scans with limited depth. Professional and above have deeper analysis. Bring your own Anthropic or OpenAI API key (Settings → BYOK) to unlock AI features on any tier. OSV CVE scans, Code Ownership, CI/CD, and Test Coverage do not consume AI quota.",
       },
       {
         type: "bullets",
-        heading: "Velocity Metrics",
+        heading: "Code Lens — Repo Health Scan",
         items: [
-          "Measures the real commit cadence of a repository over the last 30, 60, and 90-day windows.",
-          "Calculates week-over-week velocity change — a positive trend suggests an accelerating project; a negative trend may indicate maintenance mode or decline.",
-          "Plots the 12-week moving average of commits alongside absolute weekly counts to smooth out noise from sprint cycles.",
-          "Highlights the top 3 contributors to velocity in the selected time window.",
-          "Compares the repository's velocity against a rolling baseline of similar repositories in the same primary language.",
+          "Produces a 0–100 health score covering security, code quality, documentation, dependency freshness, and maintenance activity.",
+          "Findings ranked Critical → Low, each with a remediation suggestion and optional diff fix.",
+          "Save any finding as an Action Item; escalate to a GitHub Issue with one click.",
+          "Scan history retained so you can track score changes over time (30d Pro, 90d Team, unlimited Enterprise).",
         ],
       },
       {
         type: "bullets",
-        heading: "PR Risk Predictor",
+        heading: "Code Lens — OSV CVE Scanner",
         items: [
-          "Analyzes all currently open pull requests in a repository and assigns each a risk score from 0–100.",
-          "Risk scoring factors include: number of files changed, total lines added and deleted, days since last review activity, number of unresolved review comments, and whether the PR touches high-churn files.",
-          "PRs with a risk score above 70 are flagged as High Risk — these are the ones most likely to introduce regressions or require significant rework before merging.",
-          "The predictor also surfaces PRs that have been open for an unusually long time relative to the repository's typical merge velocity.",
-          "Results are sorted by risk score by default but can be re-sorted by age, size, or review activity.",
+          "Queries Google's Open Source Vulnerability database for CVEs in the repo's dependencies.",
+          "Each result shows: CVE ID, severity, CVSS score, affected version range, and fixed version.",
+          "Supports npm (package.json), PyPI (requirements.txt), and Go (go.mod).",
+          "No AI quota consumed.",
         ],
       },
       {
         type: "bullets",
-        heading: "Dependency Radar",
+        heading: "Code Lens — PR Review & PR Queue",
         items: [
-          "Reads the repository's package.json (for JavaScript/TypeScript projects) to enumerate all declared dependencies and devDependencies.",
-          "Checks each dependency against the npm registry to determine the current latest version and flags packages that are one or more major versions behind.",
-          "Highlights packages with known security advisories using the GitHub Advisory Database.",
-          "Groups dependencies by category: production, development, and peer dependencies.",
-          "Works best for Node.js ecosystem repos. Support for requirements.txt (Python) and go.mod (Go) is on the roadmap.",
+          "PR Review: paste a PR number or branch name to get an AI verdict (Approve / Request Changes / Discuss), risk level, and per-file findings.",
+          "PR Queue (bulk): load all open PRs for a repo, select any subset, and run AI reviews sequentially — results appear inline per PR with size badge (XS–XL), verdict, and top findings.",
+          "Both use the same AI review pipeline; PR Queue requires Professional tier.",
         ],
       },
       {
         type: "bullets",
-        heading: "Code Health Analysis",
+        heading: "Code Lens — Test Coverage",
         items: [
-          "Produces a composite code health score (0–100) from six sub-metrics: test coverage signals, documentation density, issue closure rate, average PR merge time, contributor bus factor, and release cadence.",
-          "Each sub-metric is scored individually and displayed with a plain-language explanation of what drives a good or poor result.",
-          "The bus factor sub-metric measures how many contributors account for 80% of commits — a bus factor of 1 (one person owns everything) is flagged as a critical risk.",
-          "Code health scores are recalculated on every page load using live GitHub data, so they reflect the current state of the repository.",
+          "Pulls live coverage percentage from Codecov's public API (no Codecov account required for public repos).",
+          "Displays a ring gauge with A+–F grade, 10-commit trend bar chart, and pass/fail trend delta.",
+          "Auto-detects test frameworks from package.json devDependencies and requirements.txt: Jest, Vitest, Mocha, pytest, coverage.py, nyc, c8, Go test.",
+          "Shows all detected config files (jest.config.ts, codecov.yml, .coveragerc, etc.).",
         ],
       },
       {
-        type: "paragraph",
-        text: "All Intelligence Hub analyses are performed on-demand. Results are not cached between sessions, ensuring you always see the freshest data. Each analysis typically takes 3–8 seconds depending on the repository size and current GitHub API response times.",
+        type: "bullets",
+        heading: "Ownership tab — Code Ownership Maps",
+        items: [
+          "Shows per-contributor commit percentage, additions, deletions, and a stacked ownership bar across the top contributors.",
+          "Bus Factor score: the minimum number of developers who together own ≥ 80% of all commits.",
+          "Bus Factor risk levels: CRITICAL (1 person), HIGH (2 people), MEDIUM (3–4 people), HEALTHY (5+).",
+          "Works for public repos without authentication; private repos use your connected OAuth token automatically.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "CI/CD tab — Workflow Status",
+        items: [
+          "Lists all GitHub Actions workflows for the selected repo with their latest run status.",
+          "Per-workflow: color-coded run streak dots (green = success, red = failure, blue = running), pass rate %, and average build duration.",
+          "Overall fleet pass rate shown in the summary strip.",
+          "Supports private repos via server-side token proxy.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Code Lens — PR Description & AI Generators",
+        items: [
+          "PR Description: fetches diff from GitHub (by PR number or branch) and generates a structured Markdown description with Summary, Changes, and Testing sections.",
+          "README Generator: generates a full README from repo metadata; adjustable verbosity.",
+          "Changelog Generator: converts recent commits to Keep-a-Changelog, Conventional Commits, or Narrative format.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Action Items & Scheduled Scans",
+        items: [
+          "Save any scan finding as a persistent Action Item (visible in Bookmarks).",
+          "Schedule daily, weekly, or monthly automated re-scans from Settings → Scheduled Scans (Professional+).",
+          "Score drop alerts sent to your Slack and/or Discord webhooks automatically.",
+        ],
       },
     ],
     links: [
       { label: "Open Intelligence Hub", href: "/intelligence" },
-      { label: "Account Settings",      href: "/settings"     },
+      { label: "Action Items",          href: "/bookmarks"    },
+      { label: "Settings",              href: "/settings"     },
+    ],
+  },
+
+  // -------------------------------------------------------------------------
+  "integrations": {
+    title:    "Slack, Discord & Alerts",
+    subtitle: "Connect your communication tools to get real-time scan alerts and weekly digest summaries.",
+    blocks: [
+      {
+        type: "paragraph",
+        text: "GitScope can push notifications to Slack and Discord when repository health drops, and send a Monday-morning weekly digest summarizing your fleet's health. Both integrations use simple incoming webhook URLs — no OAuth or app installation required on the communication platform side.",
+      },
+      {
+        type: "bullets",
+        heading: "Setting up Slack",
+        items: [
+          "Go to api.slack.com/apps and create a new Slack App (or use an existing one).",
+          "Enable Incoming Webhooks under the Features section.",
+          "Click 'Add New Webhook to Workspace', choose your channel, and copy the webhook URL.",
+          "Paste the URL into GitScope Settings → Integrations → Slack Webhook URL.",
+          "Click 'Test' to send a test message and confirm the connection.",
+          "Requires Professional tier or above.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Setting up Discord",
+        items: [
+          "In Discord, open the channel where you want GitScope notifications.",
+          "Click Edit Channel → Integrations → Webhooks → New Webhook.",
+          "Give it a name (e.g. 'GitScope') and copy the webhook URL.",
+          "Paste the URL into GitScope Settings → Integrations → Discord Webhook URL.",
+          "Click 'Test' to verify the connection.",
+          "Requires Professional tier or above.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "What triggers an alert",
+        items: [
+          "A manual or scheduled repo scan that detects a health score drop of 10+ points vs. the previous scan.",
+          "A scan that surfaces a new Critical or High severity finding.",
+          "The alert includes: repo name, previous score, new score, number of critical/high findings, and a link to the full scan report.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Weekly Digest",
+        items: [
+          "Enable the Weekly Digest from Settings → Notifications.",
+          "Every Monday at 08:00 UTC, GitScope sends a summary to your email + configured Slack/Discord channels.",
+          "The digest includes: total repos scanned, average health score, week-over-week delta, top 3 healthiest repos, and up to 3 at-risk repos (score < 50).",
+          "Requires at least one repo scan in the past 30 days to generate meaningful data.",
+        ],
+      },
+      {
+        type: "bullets",
+        heading: "Health Badge",
+        items: [
+          "Embed a live health-score badge in any README or documentation.",
+          "Badge URL format: https://git-scope-pi.vercel.app/api/badge?repo={owner/repo}",
+          "The badge updates after each new scan and shows the current score with a color indicator (green ≥ 70, yellow 40–69, red < 40).",
+          "Available to all tiers — no authentication required to display the badge.",
+        ],
+      },
+    ],
+    links: [
+      { label: "Open Settings → Integrations", href: "/settings" },
     ],
   },
 

@@ -1,161 +1,134 @@
 # Contributing to GitScope
 
-First off, thank you for considering contributing to GitScope! It's people like you that make this tool better for everyone.
+GitScope is proprietary software. Please read the [LICENSE](LICENSE) before contributing — by submitting a pull request you agree to the terms below.
 
-## Code of Conduct
+## License Agreement
 
-This project and everyone participating in it is governed by a standard of respect and professionalism. Be kind, constructive, and helpful.
+By submitting a contribution (pull request, patch, issue fix, or documentation change), you agree that:
 
-## How Can I Contribute?
+1. Your contribution becomes the **exclusive property of Ashish Lekhyani** under the same proprietary terms as the rest of the codebase.
+2. You retain no rights to use, redistribute, or sublicense your contribution independently.
+3. You have the right to make the contribution (i.e. it is your own original work and does not violate any third-party IP).
+
+Contributions that add open-source dependencies must use licenses compatible with proprietary distribution (MIT, Apache-2.0, ISC). GPL/LGPL/AGPL dependencies are not accepted.
+
+---
+
+## How to Contribute
 
 ### Reporting Bugs
 
-Before creating a bug report, please:
-- Check if the issue already exists in the [Issues](https://github.com/AshishLekhyani/GitScope/issues)
-- Try the latest version to see if it's already fixed
-- Collect information about the bug (screenshots, error messages, steps to reproduce)
+Before filing a bug report:
+- Check if it already exists in [Issues](https://github.com/AshishLekhyani/GitScope/issues)
+- Try to reproduce on the latest `master`
 
-When submitting a bug report, include:
-- **Clear title** — describe the problem briefly
-- **Steps to reproduce** — numbered list of actions that trigger the bug
-- **Expected behavior** — what you thought would happen
-- **Actual behavior** — what actually happened
-- **Environment** — OS, browser, Node.js version, etc.
-- **Screenshots** — if applicable
+A good bug report includes:
+- **Clear title** — one sentence describing the problem
+- **Steps to reproduce** — numbered, minimal steps
+- **Expected vs. actual behavior**
+- **Environment** — OS, browser, Node.js version
+- **Screenshots or error logs** if applicable
 
 ### Suggesting Features
 
-Feature requests are welcome! Please:
-- Check if the feature was already suggested
-- Explain why this feature would be useful to most GitScope users
-- Provide a clear use case and expected behavior
+Open an issue tagged `enhancement`. Explain:
+- What problem it solves
+- Who benefits from it
+- Rough implementation idea (optional)
 
-### Pull Requests
+Features that align with GitScope's roadmap (AI scanning, integrations, analytics depth) are most likely to be accepted.
 
-1. **Fork** the repository
-2. **Create a branch** from `master` for your feature or fix:
+### Submitting a Pull Request
+
+1. **Open an issue first** for non-trivial changes so we can discuss before you invest time
+2. Branch from `master`:
    ```bash
-   git checkout -b feat/your-feature-name
+   git checkout -b feat/short-description
    # or
    git checkout -b fix/bug-description
    ```
-3. **Make your changes** — follow the coding standards below
-4. **Test your changes** — run the test suite
-5. **Commit** with a clear message following [Conventional Commits](https://www.conventionalcommits.org):
-   ```bash
-   git commit -m "feat: add new analytics widget"
-   git commit -m "fix: resolve hydration mismatch on dashboard"
-   git commit -m "docs: update API endpoint documentation"
+3. Follow the coding standards below
+4. Commit with [Conventional Commits](https://www.conventionalcommits.org):
    ```
-6. **Push** to your fork:
-   ```bash
-   git push origin feat/your-feature-name
+   feat(intelligence): add OSV scan progress indicator
+   fix(auth): resolve session cookie expiry on Safari
+   docs(api): update badge endpoint path
    ```
-7. **Open a Pull Request** against `master`
+5. Push and open a PR against `master` — fill in the PR template
+
+---
 
 ## Development Setup
 
 ```bash
-# 1. Fork and clone
-git clone https://github.com/YOUR_USERNAME/GitScope.git
+# 1. Clone (do NOT fork publicly — see LICENSE)
+git clone https://github.com/AshishLekhyani/GitScope.git
 cd GitScope/gitscope
 
 # 2. Install dependencies
 npm install
 
-# 3. Set up environment
+# 3. Copy and fill in environment variables
 cp .env.example .env.local
-# Edit .env.local with your values
 
-# 4. Set up database
+# 4. Push Prisma schema
 npx prisma db push
 
-# 5. Start development server
+# 5. Start dev server
 npm run dev
 ```
 
-Visit `http://localhost:3000`
+---
 
 ## Coding Standards
 
 ### TypeScript
-- Use **strict TypeScript** throughout
-- Avoid `any` — use proper types or `unknown` with type guards
-- Export types and interfaces from their own files when shared
+- Strict mode throughout — no `any`, use `unknown` with type guards
+- Export shared types from dedicated files
 
-### Code Style
-- Follow the existing code style — consistency matters
-- Use **Prettier** for formatting (config included)
-- Use **ESLint** for linting (run `npm run lint`)
+### Style
+- Tailwind CSS for all styling — no inline styles except dynamic values
+- shadcn/ui components first, custom only when necessary
+- `cn()` from `@/lib/utils` for conditional class merging
 
-### Naming Conventions
-- Components: PascalCase (`UserProfile.tsx`)
-- Utilities/hooks: camelCase (`useAuth.ts`, `formatDate.ts`)
-- Constants: UPPER_SNAKE_CASE for true constants
-- Files should match their default export name
+### Naming
+- Components: `PascalCase.tsx`
+- Hooks/utilities: `camelCase.ts`
+- Constants: `UPPER_SNAKE_CASE`
+- API routes: follow existing `src/app/api/` structure
 
-### Commits
-Follow [Conventional Commits](https://www.conventionalcommits.org):
+### Commit Types
 
-| Type | Description |
+| Type | When to use |
 |------|-------------|
-| `feat` | New feature |
+| `feat` | New feature or capability |
 | `fix` | Bug fix |
-| `docs` | Documentation only |
-| `style` | Code style (formatting, missing semicolons, etc.) |
-| `refactor` | Code change that neither fixes a bug nor adds a feature |
 | `perf` | Performance improvement |
-| `test` | Adding or correcting tests |
-| `chore` | Build process or auxiliary tool changes |
-| `security` | Security-related changes |
-
-Examples:
-```
-feat(auth): add Google OAuth provider
-fix(api): resolve rate limit calculation error
-docs(readme): update environment variable section
-security(middleware): add CSRF token validation
-```
-
-### Testing
-- Write tests for new features when possible
-- Run tests before submitting PR: `npm test`
-- Maintain or improve test coverage
+| `refactor` | Code restructure, no behavior change |
+| `docs` | Documentation only |
+| `style` | Formatting, no logic change |
+| `test` | Tests added or corrected |
+| `chore` | Build tools, dependencies |
+| `security` | Security-related change |
 
 ### Database Changes
-- Modify `prisma/schema.prisma` for schema changes
-- Generate migrations: `npx prisma migrate dev --name descriptive_name`
-- Update seed data if needed
-
-## Project Structure
-
-```
-src/
-├── app/              # Next.js App Router
-│   ├── (dashboard)/  # Dashboard route group
-│   ├── (site)/       # Marketing/site pages
-│   └── api/          # API routes
-├── components/       # Shared React components
-├── features/         # Feature-specific modules
-├── hooks/            # Custom React hooks
-├── lib/              # Utility libraries
-├── constants/        # App constants
-└── types/            # Shared TypeScript types
-```
-
-## Security
-
-If you discover a security vulnerability, **DO NOT** open an issue. Email **security@gitscope.dev** instead. See [SECURITY.md](SECURITY.md) for details.
-
-## Questions?
-
-- Open a [Discussion](https://github.com/AshishLekhyani/GitScope/discussions) for questions
-- Join our community (if applicable)
-
-## License
-
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+- Modify `prisma/schema.prisma`
+- Run `npx prisma migrate dev --name descriptive_name`
+- Update `.env.example` if new env vars are required
 
 ---
 
-Thank you for contributing! 🚀
+## Security
+
+**Never open a public issue for security vulnerabilities.**  
+Email **acnotros2@gmail.com** instead. See [SECURITY.md](SECURITY.md).
+
+---
+
+## Questions
+
+Open a [GitHub Discussion](https://github.com/AshishLekhyani/GitScope/discussions) for general questions.
+
+---
+
+*All rights reserved. See [LICENSE](LICENSE) for full terms.*

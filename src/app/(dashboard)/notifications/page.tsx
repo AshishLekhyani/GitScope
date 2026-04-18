@@ -1,5 +1,11 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Notifications — GitScope",
+  description: "Repository alerts and scan notifications.",
+};
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";

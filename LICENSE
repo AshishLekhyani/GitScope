@@ -1,65 +1,73 @@
-Business Source License 1.1
+GitScope Proprietary License
 
 Copyright (c) 2026 Ashish Lekhyani. All rights reserved.
 
-Parameters
+IMPORTANT — READ CAREFULLY BEFORE USING THIS SOFTWARE.
 
-  Licensor:             Ashish Lekhyani
-  Licensed Work:        GitScope — AI-Powered GitHub Analytics & Code Intelligence Platform
-  Additional Use Grant: You may use the Licensed Work for personal, educational, or
-                        internal non-commercial evaluation purposes only.
-  Change Date:          2030-01-01
-  Change License:       MIT License
+This software and all associated source code, documentation, and assets
+("GitScope") are the exclusive property of Ashish Lekhyani ("the Author").
 
-Terms
+-------------------------------------------------------------------------------
+PERMITTED USES
+-------------------------------------------------------------------------------
 
-The Licensor hereby grants you the right to copy, modify, create derivative
-works, redistribute, and make non-production use of the Licensed Work. The
-Licensor may make an Additional Use Grant, above, permitting limited production use.
+You MAY:
+  - View and study the source code for personal, non-commercial, educational
+    purposes only.
+  - Run GitScope locally on your own machine for personal evaluation only.
+  - Submit pull requests and contribute improvements back to this repository
+    under the understanding that any contribution becomes the property of
+    the Author and is licensed under these same terms.
 
-Effective on the Change Date, or the fourth anniversary of the first publicly
-available distribution of a specific version of the Licensed Work under this
-License, whichever comes first, the Licensor hereby grants you rights under
-the terms of the Change License, and the rights granted in the paragraph
-above terminate.
+-------------------------------------------------------------------------------
+PROHIBITED USES — NO EXCEPTIONS WITHOUT WRITTEN PERMISSION
+-------------------------------------------------------------------------------
 
-COMMERCIAL USE RESTRICTION
+You MAY NOT, without prior explicit written permission from the Author:
 
-Any use of the Licensed Work, or any derivative or fork thereof, for commercial
-purposes — including but not limited to:
+  1. DISTRIBUTE — Redistribute, share, publish, or make the source code or
+     any compiled form of GitScope available to any third party through any
+     channel (public repositories, package registries, file hosts, etc.).
 
-  - Operating a SaaS product, hosted service, or any offering that charges
-    subscription fees, usage fees, or generates revenue
-  - Reselling, sublicensing, or redistributing the work as part of a paid product
-  - Using the platform's features (Code Lens, Intelligence Hub, analytics, AI
-    reviews) as the basis for a competing or complementary commercial service
-  - White-labeling or rebranding for any commercial deployment
+  2. DEPLOY PUBLICLY — Host, run, or operate any public-facing instance of
+     GitScope (including on platforms such as Vercel, Netlify, Railway, AWS,
+     or any other hosting provider) where the service is accessible to anyone
+     other than yourself.
 
-is STRICTLY PROHIBITED without a separate written commercial license from the
-copyright holder.
+  3. COMMERCIAL USE — Use GitScope or any derivative work for any commercial
+     purpose, including operating a SaaS product, subscription service,
+     paid API, white-label product, or any offering that generates revenue.
 
-To obtain a commercial license, contact: ashishlekhyani@gmail.com
+  4. FORK FOR COMPETITION — Create a competing product, service, or tool
+     that is based on, derived from, or substantially similar to GitScope.
 
-PERSONAL & EDUCATIONAL USE
+  5. SUBLICENSE — Grant rights to others to use, modify, or distribute
+     GitScope in any form.
 
-You may:
-  - Run the software locally for personal use or study
-  - Fork and modify the code for non-commercial learning projects
-  - Contribute improvements back to this repository under this license
+  6. REMOVE NOTICES — Remove, alter, or obscure any copyright notice,
+     license notice, or attribution in the source code or documentation.
 
-You may not:
-  - Deploy a public-facing instance that charges users or generates revenue
-  - Use this codebase to build, bootstrap, or operate a competing product
-  - Remove or alter copyright notices or this license
+-------------------------------------------------------------------------------
+REQUESTING PERMISSION
+-------------------------------------------------------------------------------
 
-NOTICE
+To obtain a license for any use not explicitly permitted above — including
+commercial use, public deployment, or distribution — contact:
 
-THE LICENSED WORK IS PROVIDED "AS IS". THE LICENSOR HEREBY DISCLAIMS ALL
-WARRANTIES AND CONDITIONS, EXPRESS OR IMPLIED, INCLUDING (WITHOUT LIMITATION)
-WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND
-NON-INFRINGEMENT. THE LICENSOR SHALL NOT BE LIABLE FOR ANY DAMAGES OF ANY KIND
-ARISING FROM USE OF THE LICENSED WORK, EVEN IF ADVISED OF THE POSSIBILITY OF
-SUCH DAMAGE.
+  Email:  ashishlekhyani@gmail.com
+  GitHub: https://github.com/AshishLekhyani
 
-For the full Business Source License 1.1 text, see:
-https://mariadb.com/bsl11/
+-------------------------------------------------------------------------------
+DISCLAIMER OF WARRANTIES
+-------------------------------------------------------------------------------
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL
+THE AUTHOR BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER IN
+AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF, OR IN
+CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+-------------------------------------------------------------------------------
+
+All rights not explicitly granted above are reserved by the Author.

@@ -72,7 +72,7 @@ export default function TermsPage() {
             {[
               "Provide accurate and complete information when creating your account.",
               "Promptly update your information if it changes.",
-              "Notify us immediately at security@gitscope.dev if you suspect unauthorised access to your account.",
+              "Notify us immediately at acnotros2@gmail.com if you suspect unauthorised access to your account.",
               "Not share your account credentials with any third party.",
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
@@ -218,10 +218,10 @@ export default function TermsPage() {
         <p>
           Questions about these Terms should be directed to{" "}
           <Link
-            href="mailto:legal@gitscope.dev"
+            href="mailto:acnotros2@gmail.com"
             className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
           >
-            legal@gitscope.dev
+            acnotros2@gmail.com
           </Link>
           .
         </p>

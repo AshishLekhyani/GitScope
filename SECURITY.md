@@ -2,11 +2,11 @@
 
 ## Supported Versions
 
-The following versions of GitScope are currently supported with security updates:
-
-| Version | Supported          |
-| ------- | ------------------ |
-| 0.1.x   | :white_check_mark: |
+| Version | Supported |
+| ------- | --------- |
+| 1.0.x   | ✅ Current — security patches applied immediately |
+| 0.9.x   | ⚠️ Critical fixes only |
+| < 0.9   | ❌ Not supported — please upgrade |
 
 ## Security Features
 
@@ -63,7 +63,7 @@ We take security seriously and appreciate responsible disclosure.
 
 ### How to Report
 
-Please email **security@gitscope.dev** with:
+Please email **acnotros2@gmail.com** with:
 
 1. **Description** — Clear explanation of the vulnerability
 2. **Steps to Reproduce** — Detailed instructions to trigger the issue
@@ -160,7 +160,7 @@ Valid vulnerability reports that lead to a security fix will receive:
 ## Contact
 
 For security-related inquiries:
-- **Email:** security@gitscope.dev
+- **Email:** acnotros2@gmail.com
 - **Response Time:** Within 2 business days
 - **PGP Key:** Available on request
 

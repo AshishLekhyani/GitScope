@@ -174,8 +174,8 @@ export default function PrivacyPage() {
               "Access: request a copy of the personal data associated with your account.",
               "Correction: update your display name or email address in Account Settings.",
               "Deletion: delete your account from Account Settings → Danger Zone. This initiates permanent data removal within 30 days.",
-              "Export: request a JSON export of your account data and search history by emailing privacy@gitscope.dev.",
-              "Objection: opt out of aggregated product analytics by emailing privacy@gitscope.dev.",
+              "Export: request a JSON export of your account data and search history by emailing acnotros2@gmail.com.",
+              "Objection: opt out of aggregated product analytics by emailing acnotros2@gmail.com.",
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-400" />
@@ -214,10 +214,10 @@ export default function PrivacyPage() {
         <p>
           For privacy questions, data requests, or concerns, email us at{" "}
           <Link
-            href="mailto:privacy@gitscope.dev"
+            href="mailto:acnotros2@gmail.com"
             className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
           >
-            privacy@gitscope.dev
+            acnotros2@gmail.com
           </Link>
           . We aim to respond within 5 business days.
         </p>

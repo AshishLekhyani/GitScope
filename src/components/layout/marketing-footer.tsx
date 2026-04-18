@@ -27,8 +27,8 @@ const FOOTER_LINKS = {
 };
 
 const SOCIAL = [
-  { icon: "mdi:github",  href: "https://github.com/AshishLekhyani", label: "GitHub" },
-  { icon: "mdi:twitter", href: "https://twitter.com", label: "Twitter / X" },
+  { icon: "mdi:github",   href: "https://github.com/AshishLekhyani",               label: "GitHub"   },
+  { icon: "mdi:linkedin", href: "https://www.linkedin.com/in/ashishlekhyani", label: "LinkedIn" },
 ];
 
 const TECH_BADGES = [

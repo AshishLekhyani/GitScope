@@ -5,8 +5,8 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 
 export const metadata: Metadata = {
-  title: "Trending",
-  description: "Highly starred repositories (GitHub search proxy).",
+  title: "Stack Trending",
+  description: "Repositories trending in your tech stack.",
 };
 
 function TrendingFallback() {

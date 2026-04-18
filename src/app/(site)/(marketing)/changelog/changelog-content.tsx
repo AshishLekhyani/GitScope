@@ -45,6 +45,55 @@ const KIND_META: Record<ChangeKind, { label: string; dot: string; badge: string 
 
 const RELEASES: Release[] = [
   {
+    version: "1.0.4.0",
+    label: "Latest",
+    date: "April 2026",
+    title: "Code Ownership · CI/CD · Test Coverage · PR Queue · Team Workspaces · Private Repos",
+    changes: [
+      { kind: "new", text: "Code Ownership Maps — per-contributor commit percentage, stacked ownership bar across top contributors, and a Bus Factor score (CRITICAL / HIGH / MEDIUM / HEALTHY) measuring key-person dependency risk" },
+      { kind: "new", text: "CI/CD Status Dashboard — GitHub Actions workflow runs per repo, color-coded run streak dots, per-workflow pass rate and average build duration" },
+      { kind: "new", text: "Test Coverage Reporting — coverage percentage from Codecov's public API with A+–F grade, 10-commit trend chart, and automatic detection of Jest, Vitest, pytest, coverage.py, and Go test configs" },
+      { kind: "new", text: "PR Queue (bulk AI review) — load all open PRs for any repo, select a subset, and run AI security + quality reviews sequentially with verdict, risk level, and top findings shown inline per PR" },
+      { kind: "new", text: "Shared Team Workspaces — Organizations page now has a Shared Workspace panel: click any org to see aggregated scan history from all team members across every repo in that org" },
+      { kind: "new", text: "Private repo support — 5 new server-side GitHub routes (/api/github/contributors, ci-runs, coverage, open-prs, /api/ai/team-scans) all proxy requests through the user's stored OAuth token, enabling full analysis of private repositories" },
+      { kind: "improvement", text: "Status page rebuilt — all 6 system components now show accurate names (GitHub API Gateway, AI Scan Engine, OSV CVE Database Proxy, etc.), realistic 90-day uptime bars, and actual past incidents" },
+      { kind: "improvement", text: "Features page updated — 16 feature cards including the 7 new capabilities, each with accurate descriptions and competitive tags" },
+    ],
+  },
+  {
+    version: "1.0.3.0",
+    date: "April 2026",
+    title: "Discord + OSV Scanner + PR Generator + Onboarding",
+    changes: [
+      { kind: "new", text: "Discord integration — connect a Discord webhook in Settings → Integrations to receive real-time scan alerts and weekly digest summaries directly in your Discord server" },
+      { kind: "new", text: "OSV CVE Scanner — scan any repository against Google's Open Source Vulnerability database, surfacing CVEs with severity, CVSS score, and affected version ranges" },
+      { kind: "new", text: "Health Badge API — embed a live health-score badge in any README via /api/badge/health?repo={owner/repo}; badge auto-updates after each scan" },
+      { kind: "new", text: "PR Description Generator — one-click AI-generated pull request descriptions from diff context, with tone selector (concise / detailed / conventional commits)" },
+      { kind: "new", text: "Create GitHub Issue from Action Items — one-click 'Create Issue' button in Action Items sends a pre-filled bug report or task to your GitHub repository" },
+      { kind: "new", text: "7-step interactive first-run onboarding — comprehensive guided tour covering Search, Compare, Code Lens, Trending, Alerts, and Action Items with per-step color themes and keyboard tips" },
+      { kind: "improvement", text: "Settings plan gating — Slack integration, weekly digest, and GitHub App sections now show clear tier requirement banners for Free users instead of silently hiding features" },
+      { kind: "improvement", text: "Weekly digest cron now fans out to all opted-in users in a single Monday 08:00 UTC invocation, respecting Vercel's single-cron free-tier constraint" },
+      { kind: "improvement", text: "Page title metadata added across all 20+ dashboard routes for accurate browser tab titles and social sharing previews" },
+      { kind: "fix", text: "Fixed Discord and Slack webhook function signatures — both now accept a single opts object, eliminating positional-argument mismatches" },
+      { kind: "fix", text: "Fixed changelog format validation — AI generator now uses 'narrative' format instead of the invalid 'simple' value" },
+      { kind: "fix", text: "Internal AI security rules expanded with 9 new checks: TLS enforcement, UUID v1 predictability, open redirect, TOCTOU race conditions, Array.sort() mutation, and loose equality pitfalls" },
+    ],
+  },
+  {
+    version: "1.0.2.0",
+    date: "April 2026",
+    title: "Slack + GitHub App + Weekly Digest + Benchmarks",
+    changes: [
+      { kind: "new", text: "Slack integration — connect a Slack webhook in Settings → Integrations to receive repo scan alerts and weekly digest summaries in any Slack channel" },
+      { kind: "new", text: "GitHub App support — install the GitScope GitHub App to enable automatic PR reviews, webhook-triggered scans, and token-free API access with higher rate limits" },
+      { kind: "new", text: "Weekly digest email — opt-in to receive a Monday morning summary of your fleet's average health score, top repos, and at-risk projects" },
+      { kind: "new", text: "Benchmark comparisons — compare your repo's health score and velocity against similar-sized repositories in the same ecosystem" },
+      { kind: "improvement", text: "Activity filters — filter the Activity Log by event type (commits, PRs, issues, releases) and date range" },
+      { kind: "improvement", text: "Cache badge on repository cards shows data freshness at a glance (live, < 1h, < 24h, stale)" },
+      { kind: "fix", text: "GitHub App webhook signature validation corrected — HMAC now uses the raw request body, not the parsed JSON payload" },
+    ],
+  },
+  {
     version: "1.0.1.0",
     date: "April 2026",
     title: "Production Release Patch 1",
@@ -55,7 +104,6 @@ const RELEASES: Release[] = [
   },
   {
     version: "1.0.0.0",
-    label: "Latest",
     date: "April 2026",
     title: "v1.0 Production Release — Enterprise Ready",
     changes: [

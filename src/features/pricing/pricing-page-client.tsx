@@ -111,7 +111,7 @@ const PLANS = [
     badge: "Contact Us",
     badgeColor: "bg-amber-500 text-white",
     cta: "Talk to Sales",
-    ctaHref: "mailto:sales@gitscope.dev?subject=GitScope%20Enterprise%20Enquiry",
+    ctaHref: "mailto:acnotros2@gmail.com?subject=GitScope%20Enterprise%20Enquiry",
     features: [
       "Everything in Team",
       "Unlimited seats — pay for what you use",

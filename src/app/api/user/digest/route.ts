@@ -12,6 +12,7 @@ import { prisma } from "@/lib/prisma";
 import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-plan";
 import { sendEmail, buildWeeklyDigestEmail } from "@/lib/email";
 import { sendWeeklyDigestSlack } from "@/lib/slack";
+import { sendDiscordDigest } from "@/lib/discord";
 
 // ── GET — return digest settings ───────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -76,6 +77,7 @@ export async function POST(req: NextRequest) {
         name: true,
         email: true,
         slackWebhookUrl: true,
+        discordWebhookUrl: true,
         githubHandle: true,
       },
     }),
@@ -156,6 +158,18 @@ export async function POST(req: NextRequest) {
       topScore: topRepos[0]?.score ?? 0,
       weeklyDelta,
     }).catch(() => { /* slack failure should not block email */ });
+  }
+
+  // ── Send Discord if configured ──────────────────────────────────────────────
+  if (user.discordWebhookUrl && caps.slackNotificationsAllowed) {
+    await sendDiscordDigest(user.discordWebhookUrl, {
+      repoCount,
+      avgScore,
+      atRiskCount: atRiskRepos.length,
+      topRepo: topRepos[0]?.name ?? "—",
+      topScore: topRepos[0]?.score ?? 0,
+      weeklyDelta,
+    }).catch(() => { /* discord failure should not block email */ });
   }
 
   // Update last sent timestamp

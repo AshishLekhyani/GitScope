@@ -105,11 +105,13 @@ export function TrendingReposPanel() {
   const [bookmarkedKeys, setBookmarkedKeys] = useState<Set<string>>(new Set());
   const [showFilters, setShowFilters] = useState(false);
 
-  // Load existing bookmarks once on mount
+  // Load existing bookmarks and restore last-used language filter
   useEffect(() => {
     fetchBookmarks().then((bms) => {
       setBookmarkedKeys(new Set(bms.map((b) => `${b.owner}/${b.repo}`)));
     });
+    const saved = typeof window !== "undefined" ? localStorage.getItem("gitscope:trending-lang") : null;
+    if (saved) setSelectedLang(saved);
   }, []);
 
   const toggleBookmarkRepo = useCallback(async (repo: RepoItem) => {
@@ -328,7 +330,7 @@ export function TrendingReposPanel() {
           <div>
             <h1 className="font-heading text-2xl font-bold tracking-tight text-foreground flex items-center gap-2">
               <Flame size={28} className="text-orange-500" />
-              Trending Repositories
+              Stack Trending
             </h1>
             <p className="text-muted-foreground text-sm">
               Discover the most starred repositories on GitHub
@@ -442,7 +444,7 @@ export function TrendingReposPanel() {
                 <div className="flex flex-wrap gap-2">
                   <button
                     type="button"
-                    onClick={() => setSelectedLang(null)}
+                    onClick={() => { setSelectedLang(null); localStorage.removeItem("gitscope:trending-lang"); }}
                     className={cn(
                       "px-3 py-1 rounded-full text-xs font-medium transition-all",
                       selectedLang === null
@@ -456,7 +458,7 @@ export function TrendingReposPanel() {
                     <button
                       key={lang}
                       type="button"
-                      onClick={() => setSelectedLang(lang === selectedLang ? null : lang)}
+                      onClick={() => { const next = lang === selectedLang ? null : lang; setSelectedLang(next); if (next) localStorage.setItem("gitscope:trending-lang", next); else localStorage.removeItem("gitscope:trending-lang"); }}
                       className={cn(
                         "px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5",
                         selectedLang === lang

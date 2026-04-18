@@ -89,6 +89,7 @@ model User {
   
   // Integrations
   slackWebhookUrl      String?  @map("slack_webhook_url")   // Slack incoming webhook for alerts
+  discordWebhookUrl    String?  @map("discord_webhook_url") // Discord incoming webhook for alerts
   weeklyDigestEnabled  Boolean  @default(false) @map("weekly_digest_enabled")
   weeklyDigestLastSent DateTime? @map("weekly_digest_last_sent")
   githubAppInstallId   String?  @map("github_app_install_id") // GitHub App installation ID
@@ -110,6 +111,7 @@ model User {
   repoScanHistory RepoScanHistory[]
   scheduledScans  ScheduledScan[]
   customScanRules CustomScanRule[]
+  actionItems     ActionItem[]
 
   @@map("users")
 }
@@ -370,6 +372,28 @@ model BenchmarkStat {
   @@unique([language, sizeClass, metric])
   @@index([metric])
   @@map("benchmark_stats")
+}
+
+// ── Action Items ───────────────────────────────────────────────────────────────
+// Saved scan findings that the user wants to track and fix.
+model ActionItem {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  repo        String
+  title       String
+  description String   @db.Text
+  suggestion  String   @db.Text
+  severity    String   @default("medium") // critical|high|medium|low|info
+  category    String   @default("quality")
+  file        String?
+  status      String   @default("open")  // open|in_progress|done|dismissed
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([userId, status, createdAt])
+  @@index([userId, repo])
+  @@map("action_items")
 }
 
 // identifier prefixes:

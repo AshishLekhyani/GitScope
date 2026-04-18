@@ -250,8 +250,33 @@ const SEVERITY_STYLES = {
   },
 } as const;
 
-function FindingItem({ finding, fixDiffsAllowed = true }: { finding: RepoScanFinding; fixDiffsAllowed?: boolean }) {
+function FindingItem({ finding, fixDiffsAllowed = true, repo = "" }: { finding: RepoScanFinding; fixDiffsAllowed?: boolean; repo?: string }) {
   const [open, setOpen] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const saveActionItem = async () => {
+    if (saved || saving) return;
+    setSaving(true);
+    try {
+      await fetch("/api/user/action-items", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          repo,
+          title: finding.description.slice(0, 200),
+          description: finding.description,
+          suggestion: finding.suggestion,
+          severity: finding.severity,
+          category: finding.category,
+          file: finding.file,
+        }),
+      });
+      setSaved(true);
+    } catch { /* ignore */ } finally {
+      setSaving(false);
+    }
+  };
   const sev = (finding.severity in SEVERITY_STYLES ? finding.severity : "low") as keyof typeof SEVERITY_STYLES;
   const s = SEVERITY_STYLES[sev];
   const fileName = finding.file ? finding.file.split("/").slice(-1)[0] : null;
@@ -312,6 +337,52 @@ function FindingItem({ finding, fixDiffsAllowed = true }: { finding: RepoScanFin
               <p className={cn("text-[10px] font-black uppercase tracking-wider mb-1", s.accent)}>Suggested fix</p>
               <p className="text-xs text-foreground/75 leading-relaxed">{finding.suggestion}</p>
             </div>
+          </div>
+
+          {/* Actions row */}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={saveActionItem}
+              disabled={saved || saving}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all",
+                saved
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                  : "border-outline-variant/20 text-muted-foreground/60 hover:border-indigo-500/30 hover:text-indigo-400 hover:bg-indigo-500/8"
+              )}
+            >
+              <MaterialIcon name={saved ? "check_circle" : "add_task"} size={11} />
+              {saved ? "Saved to Action Items" : saving ? "Saving…" : "Save as Action Item"}
+            </button>
+
+            {repo && (
+              <a
+                href={`https://github.com/${repo}/issues/new?${new URLSearchParams({
+                  title: `[GitScope] ${finding.description.slice(0, 120)}`,
+                  body: [
+                    `**Category:** ${finding.category}`,
+                    finding.file ? `**File:** \`${finding.file}\`` : "",
+                    `**Severity:** ${finding.severity}`,
+                    "",
+                    "**Description:**",
+                    finding.description,
+                    "",
+                    "**Suggested fix:**",
+                    finding.suggestion,
+                    "",
+                    "_Found by [GitScope](https://git-scope-pi.vercel.app) static analysis_",
+                  ].filter(Boolean).join("\n"),
+                  labels: `bug,${finding.category}`,
+                }).toString()}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/20 text-[9px] font-black uppercase tracking-widest text-muted-foreground/60 hover:border-rose-500/30 hover:text-rose-400 hover:bg-rose-500/8 transition-all"
+              >
+                <MaterialIcon name="bug_report" size={11} />
+                Create Issue
+              </a>
+            )}
           </div>
 
           {/* Code diff — gated by plan */}
@@ -469,6 +540,20 @@ export function RepoScanner({
   const [newRule, setNewRule] = useState({ name: "", pattern: "", suggestion: "", severity: "medium", category: "quality", fileGlob: "" });
   const [ruleError, setRuleError] = useState<string | null>(null);
   const [scheduleSaved, setScheduleSaved] = useState(false);
+
+  // Badge copy state
+  const [badgeCopied, setBadgeCopied] = useState(false);
+
+  // OSV CVE scanner state
+  const [osvVulns, setOsvVulns] = useState<{
+    package: string; version: string; devDependency: boolean;
+    vulnId: string; summary: string;
+    severity: "critical" | "high" | "medium" | "low"; url: string;
+  }[] | null>(null);
+  const [osvScanning, setOsvScanning] = useState(false);
+  const [osvScanned, setOsvScanned] = useState(0);
+  const [osvError, setOsvError] = useState<string | null>(null);
+  const [osvSavedItems, setOsvSavedItems] = useState<Set<string>>(new Set());
 
   const targetRepo = selectedRepo ?? repoInput;
 
@@ -746,6 +831,7 @@ export function RepoScanner({
       { id: "security",  label: "Security",     icon: "security" },
       { id: "quality",   label: "Quality",      icon: "code_blocks" },
       { id: "deps",      label: "Dependencies", icon: "account_tree" },
+      { id: "osv",       label: "CVE Scan",     icon: "gpp_bad" },
       { id: "recs",      label: "Roadmap",      icon: "map" },
       { id: "history",   label: scanHistoryDays > 0 ? "History" : "History ✦", icon: "timeline" },
       ...(customRulesAllowed ? [{ id: "rules", label: "Custom Rules", icon: "rule" }] : []),
@@ -1164,7 +1250,7 @@ export function RepoScanner({
                 {filteredSecIssues.length === 0 ? (
                   <p className="text-center text-xs text-muted-foreground/40 py-4">No {secFilter} issues</p>
                 ) : (
-                  filteredSecIssues.map((f, i) => <FindingItem key={i} finding={f} fixDiffsAllowed={fixDiffsAllowed} />)
+                  filteredSecIssues.map((f, i) => <FindingItem key={i} finding={f} fixDiffsAllowed={fixDiffsAllowed} repo={targetRepo} />)
                 )}
               </div>
             )}
@@ -1195,7 +1281,7 @@ export function RepoScanner({
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">
                   Quality Issues ({result.codeQuality.issues.length})
                 </p>
-                {result.codeQuality.issues.map((f, i) => <FindingItem key={i} finding={f} fixDiffsAllowed={fixDiffsAllowed} />)}
+                {result.codeQuality.issues.map((f, i) => <FindingItem key={i} finding={f} fixDiffsAllowed={fixDiffsAllowed} repo={targetRepo} />)}
               </div>
             )}
 
@@ -1498,6 +1584,162 @@ export function RepoScanner({
           </div>
         )}
 
+        {/* ── CVE / OSV Scan tab (Professional+) ── */}
+        {activeSection === "osv" && (() => {
+          const SEV_COLORS = {
+            critical: { badge: "bg-red-500/15 border-red-500/30 text-red-400", dot: "bg-red-500" },
+            high:     { badge: "bg-orange-500/15 border-orange-500/30 text-orange-400", dot: "bg-orange-500" },
+            medium:   { badge: "bg-amber-500/15 border-amber-500/30 text-amber-400", dot: "bg-amber-500" },
+            low:      { badge: "bg-blue-500/15 border-blue-500/30 text-blue-400", dot: "bg-blue-500" },
+          } as const;
+
+          const runOsv = async () => {
+            if (!targetRepo || osvScanning) return;
+            setOsvScanning(true);
+            setOsvVulns(null);
+            setOsvError(null);
+            setOsvScanned(0);
+            try {
+              const res = await fetch("/api/ai/osv-scan", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ repo: targetRepo }),
+              });
+              const data = await res.json();
+              if (!res.ok) { setOsvError(data.error ?? "Scan failed"); return; }
+              setOsvVulns(data.vulns ?? []);
+              setOsvScanned(data.scanned ?? 0);
+            } catch { setOsvError("Network error"); } finally { setOsvScanning(false); }
+          };
+
+          const critical = osvVulns?.filter((v) => v.severity === "critical").length ?? 0;
+          const high      = osvVulns?.filter((v) => v.severity === "high").length ?? 0;
+          const prodOnly  = osvVulns?.filter((v) => !v.devDependency) ?? [];
+
+          return (
+            <div className="space-y-4 animate-in fade-in duration-300">
+              {!fixDiffsAllowed ? (
+                <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-6 text-center space-y-3">
+                  <MaterialIcon name="gpp_bad" size={28} className="text-indigo-400 mx-auto" />
+                  <p className="font-black text-sm text-foreground">CVE Scanning requires Professional+</p>
+                  <p className="text-xs text-muted-foreground">Check your dependencies against the Google OSV database for known vulnerabilities.</p>
+                  <a href="/pricing-settings" className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-black hover:bg-indigo-600 transition-colors">
+                    <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade Plan
+                  </a>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Google OSV Database</p>
+                      {osvScanned > 0 && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{osvScanned} packages checked</p>
+                      )}
+                    </div>
+                    <button type="button" onClick={runOsv} disabled={osvScanning}
+                      className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all disabled:opacity-50">
+                      <MaterialIcon name={osvScanning ? "hourglass_top" : "radar"} size={13} />
+                      {osvScanning ? "Scanning…" : osvVulns ? "Re-scan" : "Scan Dependencies"}
+                    </button>
+                  </div>
+
+                  {osvError && (
+                    <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-xs text-red-400">{osvError}</div>
+                  )}
+
+                  {osvVulns && osvVulns.length === 0 && (
+                    <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center space-y-2">
+                      <MaterialIcon name="verified_user" size={28} className="text-emerald-400 mx-auto" />
+                      <p className="font-black text-sm text-emerald-400">No known CVEs found</p>
+                      <p className="text-xs text-muted-foreground">{osvScanned} packages checked — all clear against the OSV database.</p>
+                    </div>
+                  )}
+
+                  {osvVulns && osvVulns.length > 0 && (
+                    <>
+                      {/* Stats strip */}
+                      <div className="grid grid-cols-3 gap-3">
+                        {[
+                          { label: "Total CVEs", count: osvVulns.length, color: "text-foreground" },
+                          { label: "Critical / High", count: critical + high, color: critical + high > 0 ? "text-red-400" : "text-emerald-400" },
+                          { label: "Production", count: prodOnly.length, color: prodOnly.length > 0 ? "text-orange-400" : "text-emerald-400" },
+                        ].map((s) => (
+                          <div key={s.label} className="rounded-2xl border border-outline-variant/15 bg-surface-container/30 p-3 text-center">
+                            <p className={cn("text-2xl font-black", s.color)}>{s.count}</p>
+                            <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">{s.label}</p>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Findings list */}
+                      <div className="space-y-2">
+                        {osvVulns.map((v, i) => {
+                          const sc = SEV_COLORS[v.severity];
+                          const osvSavedKey = `${v.package}-${v.vulnId}`;
+                          const isSaved = osvSavedItems.has(osvSavedKey);
+                          return (
+                            <div key={i} className="rounded-xl border border-outline-variant/15 bg-surface-container/20 px-4 py-3 space-y-2">
+                              <div className="flex items-start gap-3">
+                                <span className={cn("size-2 rounded-full shrink-0 mt-1.5", sc.dot)} />
+                                <div className="flex-1 min-w-0 space-y-0.5">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={cn("text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border", sc.badge)}>
+                                      {v.severity}
+                                    </span>
+                                    <span className="text-[9px] font-mono font-bold text-foreground/70">{v.package}@{v.version}</span>
+                                    {v.devDependency && (
+                                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 border border-outline-variant/20 px-1.5 py-0.5 rounded">dev</span>
+                                    )}
+                                    <a href={v.url} target="_blank" rel="noopener noreferrer"
+                                      className="text-[8px] font-mono text-indigo-400/60 hover:text-indigo-400 transition-colors ml-auto shrink-0">
+                                      {v.vulnId} →
+                                    </a>
+                                  </div>
+                                  <p className="text-[10px] text-muted-foreground/70 leading-snug line-clamp-2">{v.summary}</p>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 pl-5">
+                                <button type="button"
+                                  disabled={isSaved}
+                                  onClick={async () => {
+                                    if (isSaved) return;
+                                    await fetch("/api/user/action-items", {
+                                      method: "POST",
+                                      headers: { "Content-Type": "application/json" },
+                                      body: JSON.stringify({
+                                        repo: targetRepo,
+                                        title: `CVE: ${v.package}@${v.version} — ${v.vulnId}`,
+                                        description: v.summary,
+                                        suggestion: `Upgrade ${v.package} to a patched version. See advisory: ${v.url}`,
+                                        severity: v.severity,
+                                        category: "security",
+                                      }),
+                                    });
+                                    setOsvSavedItems((prev) => new Set([...prev, osvSavedKey]));
+                                  }}
+                                  className={cn(
+                                    "flex items-center gap-1 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest transition-all",
+                                    isSaved
+                                      ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                                      : "border-outline-variant/20 text-muted-foreground/50 hover:border-indigo-500/30 hover:text-indigo-400 hover:bg-indigo-500/8"
+                                  )}
+                                >
+                                  <MaterialIcon name={isSaved ? "check_circle" : "add_task"} size={10} />
+                                  {isSaved ? "Saved" : "Save as Action Item"}
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
+          );
+        })()}
+
         {/* ── Custom Rules tab (Team+) ── */}
         {activeSection === "rules" && customRulesAllowed && (
           <div className="space-y-4 animate-in fade-in duration-300">
@@ -1626,6 +1868,28 @@ export function RepoScanner({
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Badge snippet */}
+        {!result.isDemo && (
+          <div className="rounded-xl border border-outline-variant/10 bg-surface-container/20 px-4 py-3 flex flex-wrap items-center gap-3">
+            <MaterialIcon name="verified" size={14} className="text-indigo-400 shrink-0" />
+            <code className="flex-1 min-w-0 text-[9px] font-mono text-muted-foreground/60 truncate">
+              {`[![GitScope Health](https://git-scope-pi.vercel.app/api/badge?repo=${encodeURIComponent(targetRepo)})](https://git-scope-pi.vercel.app)`}
+            </code>
+            <button type="button"
+              onClick={() => {
+                const md = `[![GitScope Health](https://git-scope-pi.vercel.app/api/badge?repo=${encodeURIComponent(targetRepo)})](https://git-scope-pi.vercel.app)`;
+                navigator.clipboard.writeText(md).then(() => {
+                  setBadgeCopied(true);
+                  setTimeout(() => setBadgeCopied(false), 2000);
+                });
+              }}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg border border-outline-variant/20 text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-indigo-400 hover:border-indigo-500/30 transition-colors shrink-0">
+              <MaterialIcon name={badgeCopied ? "check" : "content_copy"} size={10} />
+              {badgeCopied ? "Copied" : "Copy Badge"}
+            </button>
           </div>
         )}
 

@@ -23,13 +23,16 @@ export const ROUTES = {
   login: "/login",
   signup: "/login?mode=signup",
   repos: "/repos",
-  // New dashboard pages
+  // Dashboard pages
+  intelligence: "/intelligence",
   notifications: "/notifications",
   bookmarks: "/bookmarks",
   releases: "/releases",
   leaderboard: "/leaderboard",
   languages: "/languages",
   topics: "/topics",
+  docsReference: "/docs-reference",
+  pricingSettings: "/pricing-settings",
   // Feature Detail Pages
   feature: (slug: string) => `/features/${slug}`,
   // Legal & Resources

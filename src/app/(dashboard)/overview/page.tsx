@@ -1,5 +1,11 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Overview — GitScope",
+  description: "Your repository fleet health at a glance.",
+};
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";

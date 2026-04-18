@@ -1,0 +1,18 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Disallow: /overview
+Disallow: /activity
+Disallow: /repos
+Disallow: /intelligence
+Disallow: /notifications
+Disallow: /bookmarks
+Disallow: /releases
+Disallow: /leaderboard
+Disallow: /trending
+Disallow: /compare
+Disallow: /organizations
+Disallow: /settings
+Disallow: /pricing-settings
+
+Sitemap: https://git-scope-pi.vercel.app/sitemap.xml

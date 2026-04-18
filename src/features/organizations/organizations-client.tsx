@@ -140,6 +140,27 @@ export function OrganizationsClient({ orgs, username }: OrganizationsClientProps
   const [copiedOrg, setCopiedOrg] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
+  // Shared Workspace state
+  const [workspaceOrg, setWorkspaceOrg] = useState<string | null>(null);
+  const [workspaceData, setWorkspaceData] = useState<{
+    repos: { repo: string; healthScore: number; securityScore: number; qualityScore: number; criticalCount: number; highCount: number; summary: string; createdAt: string; user: { name: string | null; image: string | null; githubHandle: string | null } }[];
+    avgHealth: number;
+    criticalRepos: number;
+    total: number;
+  } | null>(null);
+  const [workspaceLoading, setWorkspaceLoading] = useState(false);
+
+  const loadWorkspace = async (orgLogin: string) => {
+    if (workspaceOrg === orgLogin) { setWorkspaceOrg(null); setWorkspaceData(null); return; }
+    setWorkspaceOrg(orgLogin);
+    setWorkspaceLoading(true);
+    try {
+      const res = await fetch(`/api/ai/team-scans?org=${encodeURIComponent(orgLogin)}`);
+      if (res.ok) setWorkspaceData(await res.json());
+    } catch { /* ignore */ }
+    finally { setWorkspaceLoading(false); }
+  };
+
   // Stats calculations
   const stats = useMemo(() => {
     const totalRepos = orgs.reduce((sum, org) => sum + (org.public_repos || 0), 0);
@@ -515,6 +536,118 @@ export function OrganizationsClient({ orgs, username }: OrganizationsClientProps
             </motion.div>
           )}
         </AnimatePresence>
+
+        {/* ── Shared Workspace ─────────────────────────────────────────────── */}
+        {orgs.length > 0 && (
+          <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
+              <div className="flex items-center gap-2">
+                <Users className="size-4 text-indigo-400" />
+                <span className="text-sm font-black">Shared Workspace</span>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 uppercase tracking-widest">Team</span>
+              </div>
+              <p className="text-[10px] text-muted-foreground/50">Select an org to view team scan history</p>
+            </div>
+            <div className="flex gap-2 p-4 flex-wrap">
+              {orgs.slice(0, 8).map((org) => (
+                <button
+                  key={org.login}
+                  type="button"
+                  onClick={() => loadWorkspace(org.login)}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all",
+                    workspaceOrg === org.login
+                      ? "bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20"
+                      : "border-outline-variant/15 text-muted-foreground hover:border-indigo-500/30 hover:text-foreground"
+                  )}
+                >
+                  <Avatar className="size-4 shrink-0">
+                    <AvatarImage src={org.avatar_url} alt={org.login} />
+                    <AvatarFallback className="text-[7px]">{org.login.slice(0, 2).toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  {org.login}
+                </button>
+              ))}
+            </div>
+
+            {workspaceLoading && (
+              <div className="flex items-center justify-center gap-2 py-10 text-muted-foreground/50">
+                <RefreshCw className="size-4 animate-spin" />
+                <span className="text-sm">Loading team scans…</span>
+              </div>
+            )}
+
+            {!workspaceLoading && workspaceOrg && workspaceData && (
+              <div className="px-4 pb-5 space-y-4">
+                <div className="grid grid-cols-3 gap-3">
+                  {[
+                    { label: "Repos Scanned", value: workspaceData.total, color: "text-foreground" },
+                    { label: "Avg Health", value: workspaceData.avgHealth, color: workspaceData.avgHealth >= 70 ? "text-emerald-400" : workspaceData.avgHealth >= 50 ? "text-amber-400" : "text-red-400" },
+                    { label: "Critical Issues", value: workspaceData.criticalRepos, color: workspaceData.criticalRepos > 0 ? "text-red-400" : "text-emerald-400" },
+                  ].map((m) => (
+                    <div key={m.label} className="px-4 py-3 rounded-xl bg-surface-container/40 border border-outline-variant/10 space-y-0.5">
+                      <p className={cn("text-xl font-black", m.color)}>{m.value}</p>
+                      <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">{m.label}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {workspaceData.repos.length === 0 ? (
+                  <div className="flex flex-col items-center gap-3 py-10 text-center rounded-2xl border-2 border-dashed border-outline-variant/10">
+                    <BarChart3 className="size-8 text-muted-foreground/20" />
+                    <div>
+                      <p className="text-sm font-black text-foreground/50">No scans yet for {workspaceOrg}</p>
+                      <p className="text-xs text-muted-foreground/40 mt-1">Use Code Lens to scan repos in this org. Results appear here for your whole team.</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {workspaceData.repos.map((r) => {
+                      const score = r.healthScore;
+                      const scoreColor = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
+                      const barColor = score >= 80 ? "bg-emerald-500" : score >= 60 ? "bg-amber-500" : "bg-red-500";
+                      return (
+                        <div key={r.repo} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container/30 border border-outline-variant/8 hover:border-indigo-500/20 transition-all group">
+                          {r.user.image && (
+                            <Avatar className="size-6 shrink-0">
+                              <AvatarImage src={r.user.image} alt={r.user.name ?? ""} />
+                              <AvatarFallback className="text-[8px]">{(r.user.name ?? "?").slice(0, 2)}</AvatarFallback>
+                            </Avatar>
+                          )}
+                          <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs font-black text-foreground/85 truncate">{r.repo.split("/")[1] ?? r.repo}</span>
+                              {r.criticalCount > 0 && (
+                                <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-red-500/10 border border-red-500/20 text-red-400">
+                                  {r.criticalCount} critical
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex h-1.5 rounded-full overflow-hidden bg-surface-container-highest">
+                              <div className={cn("h-full rounded-full transition-all", barColor)} style={{ width: `${score}%` }} />
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0 space-y-0.5">
+                            <p className={cn("text-sm font-black", scoreColor)}>{score}</p>
+                            <p className="text-[8px] font-mono text-muted-foreground/35">
+                              {new Date(r.createdAt).toLocaleDateString("en", { month: "short", day: "numeric" })}
+                            </p>
+                          </div>
+                          <Link
+                            href={`/intelligence?repo=${encodeURIComponent(r.repo)}`}
+                            className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <ArrowUpRight className="size-4 text-indigo-400" />
+                          </Link>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Empty State for Search */}
         {filteredOrgs.length === 0 && searchQuery && (

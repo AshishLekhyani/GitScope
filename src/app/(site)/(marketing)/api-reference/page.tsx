@@ -113,6 +113,94 @@ export default function APIPage() {
           </section>
 
           <section>
+            <h2 className="mb-4 text-2xl font-bold text-foreground">AI Endpoints</h2>
+            <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
+              These endpoints require authentication. AI endpoints are gated by plan tier.
+            </p>
+            <div className="space-y-6">
+              <EndpointCard
+                method="POST"
+                path="/api/ai/repo-scan"
+                description="Full AI-powered repo health scan — returns 0–100 health score, findings, and recommendations"
+                requiresCsrf
+              />
+              <EndpointCard
+                method="POST"
+                path="/api/ai/osv-scan"
+                description="Scan a repository against the Google OSV CVE database — returns vulnerabilities with severity and CVSS scores"
+                requiresCsrf
+              />
+              <EndpointCard
+                method="POST"
+                path="/api/ai/generate-pr-description"
+                description="Generate an AI pull request description from diff context with configurable tone"
+                requiresCsrf
+              />
+              <EndpointCard
+                method="POST"
+                path="/api/ai/generate-readme"
+                description="AI-generated README from repository structure and source files"
+                requiresCsrf
+              />
+              <EndpointCard
+                method="POST"
+                path="/api/ai/generate-changelog"
+                description="Generate a changelog from recent commits (keepachangelog | conventional | narrative format)"
+                requiresCsrf
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-2xl font-bold text-foreground">GitHub Data Endpoints</h2>
+            <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
+              Server-side GitHub proxies. All requests use your stored OAuth token automatically — works for private repos.
+            </p>
+            <div className="space-y-6">
+              <EndpointCard
+                method="GET"
+                path="/api/github/contributors?repo={owner/repo}"
+                description="Contributor stats for a repository — commit count, additions, deletions per contributor. Returns 202 if GitHub is still computing stats (retry after 3–5 s)."
+              />
+              <EndpointCard
+                method="GET"
+                path="/api/github/ci-runs?repo={owner/repo}"
+                description="Most recent 50 GitHub Actions workflow runs for a repository, grouped by workflow name."
+              />
+              <EndpointCard
+                method="GET"
+                path="/api/github/coverage?repo={owner/repo}"
+                description="Test coverage percentage from Codecov API, detected test frameworks, and config files found in the repository."
+              />
+              <EndpointCard
+                method="GET"
+                path="/api/github/open-prs?repo={owner/repo}"
+                description="Open pull requests for a repository — title, author, head/base branch, additions, deletions, labels, and PR URL."
+              />
+              <EndpointCard
+                method="GET"
+                path="/api/ai/team-scans?org={org-name}"
+                description="Aggregated scan history for all repositories in an organization, across all GitScope users. Returns per-repo latest health score, critical count, and scanner identity."
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-2xl font-bold text-foreground">Public Badge API</h2>
+            <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
+              Embeddable SVG badge — no authentication required:
+            </p>
+            <div className="space-y-6">
+              <EndpointCard
+                method="GET"
+                path="/api/badge?repo={owner/repo}"
+                description="Returns a live SVG health-score badge for any repo. Embed in any README."
+                example="![health](https://git-scope-pi.vercel.app/api/badge?repo=vercel/next.js)"
+              />
+            </div>
+          </section>
+
+          <section>
             <h2 className="mb-4 text-2xl font-bold text-foreground">GitHub OAuth Required</h2>
             <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
               These endpoints require GitHub OAuth sign-in specifically:
@@ -137,12 +225,6 @@ export default function APIPage() {
                 method="GET"
                 path="/api/user/dependency-map?repo={owner/repo}"
                 description="Get dependency analysis and security advisories"
-              />
-              <EndpointCard
-                method="POST"
-                path="/api/ai/analyze"
-                description="AI-powered repository analysis via Claude"
-                requiresCsrf
               />
             </div>
           </section>

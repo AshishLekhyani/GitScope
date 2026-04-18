@@ -152,7 +152,7 @@ export default function SecurityPage() {
           <h3 className="mb-3 text-sm font-bold text-white">How to Report</h3>
           <ol className="mb-6 space-y-3">
             {[
-              "Email a description of the vulnerability to security@gitscope.dev. Include the affected URL or endpoint, steps to reproduce, and the potential impact.",
+              "Email a description of the vulnerability to acnotros2@gmail.com. Include the affected URL or endpoint, steps to reproduce, and the potential impact.",
               "Encrypt your report if it contains sensitive details — our PGP public key is available on request.",
               "We will acknowledge receipt within 2 business days and aim to provide an initial assessment within 7 days.",
               "We will keep you informed of our progress and notify you when the issue is resolved.",
@@ -168,11 +168,11 @@ export default function SecurityPage() {
           </ol>
 
           <Link
-            href="mailto:security@gitscope.dev"
+            href="mailto:acnotros2@gmail.com"
             className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-bold text-white transition hover:bg-indigo-500"
           >
             <Mail className="size-4" />
-            security@gitscope.dev
+            acnotros2@gmail.com
           </Link>
         </div>
       </section>

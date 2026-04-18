@@ -13,7 +13,7 @@ import type { Metadata } from "next";
 import { Card } from "@/components/ui/card";
 
 export const metadata: Metadata = {
-  title: "Top Contributors Leaderboard",
+  title: "Contributor Leaderboard",
   description: "Ranked contributors across your analyzed GitHub repositories.",
 };
 
@@ -156,7 +156,7 @@ export default async function LeaderboardPage() {
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
             <MaterialIcon name="emoji_events" size={32} className="text-yellow-500" />
             <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
-              Top Contributors Leaderboard
+              Contributor Leaderboard
             </span>
           </h1>
           <p className="text-muted-foreground mt-1 text-sm font-medium">

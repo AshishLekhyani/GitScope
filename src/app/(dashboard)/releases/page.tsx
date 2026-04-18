@@ -1,5 +1,11 @@
 export const dynamic = 'force-dynamic';
 
+import type { Metadata } from "next";
+export const metadata: Metadata = {
+  title: "Release Radar — GitScope",
+  description: "Track new releases from repositories you follow.",
+};
+
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";
@@ -160,7 +166,7 @@ export default async function ReleasesPage() {
               <MaterialIcon name="new_releases" size={22} className="text-indigo-500" />
             </span>
             <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
-              Release Timeline
+              Release Radar
             </span>
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">

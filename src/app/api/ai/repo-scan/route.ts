@@ -14,6 +14,7 @@ import { safeDecrypt } from "@/lib/encrypt";
 import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "@/lib/repo-knowledge";
 import { sendEmail, buildScanAlertEmail } from "@/lib/email";
 import { sendScanAlert as sendSlackScanAlert } from "@/lib/slack";
+import { sendDiscordScanAlert } from "@/lib/discord";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -838,7 +839,7 @@ export async function POST(req: NextRequest) {
                 }),
                 prisma.user.findUnique({
                   where: { id: session.user.id },
-                  select: { slackWebhookUrl: true },
+                  select: { slackWebhookUrl: true, discordWebhookUrl: true },
                 }),
               ]);
               if (scheduled?.enabled && scheduled.alertOnDrop && scheduled.lastScore !== null) {
@@ -864,6 +865,10 @@ export async function POST(req: NextRequest) {
                   }
                   if (userForSlack?.slackWebhookUrl && caps.slackNotificationsAllowed) {
                     sendSlackScanAlert(userForSlack.slackWebhookUrl, alertPayload)
+                      .catch(() => { /* non-blocking */ });
+                  }
+                  if (userForSlack?.discordWebhookUrl && caps.slackNotificationsAllowed) {
+                    sendDiscordScanAlert(userForSlack.discordWebhookUrl, alertPayload)
                       .catch(() => { /* non-blocking */ });
                   }
                 }

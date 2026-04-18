@@ -36,6 +36,10 @@ export function DashboardShell({
   // Ref for search input to enable keyboard shortcut focus
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  // First-run onboarding
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [onboardingStep, setOnboardingStep] = useState(0);
+
   // Load sidebar state from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("gitscope:sidebar:collapsed");
@@ -43,6 +47,10 @@ export function DashboardShell({
       setIsCollapsed(saved === "true");
     }
     setMounted(true);
+    // Show onboarding if user has never dismissed it
+    if (!localStorage.getItem("gitscope:onboarding:done")) {
+      setShowOnboarding(true);
+    }
   }, []);
 
   // Save sidebar state to localStorage when it changes
@@ -156,10 +164,176 @@ export function DashboardShell({
 
 
 
+  const dismissOnboarding = () => {
+    localStorage.setItem("gitscope:onboarding:done", "1");
+    setShowOnboarding(false);
+  };
+
+  const ONBOARDING_STEPS = [
+    {
+      icon: "waving_hand",
+      color: "indigo",
+      tag: "Step 1 of 7",
+      title: "Welcome to GitScope",
+      body: "GitScope is your GitHub intelligence platform — health scores, AI security scans, PR reviews, contributor analytics, and team notifications. This quick tour shows you exactly how to get the most out of it.",
+      hint: null,
+      cta: "Let's go →",
+    },
+    {
+      icon: "search",
+      color: "blue",
+      tag: "Step 2 of 7",
+      title: "Search any repository",
+      body: "Type any public GitHub repo into the search bar at the top (e.g. vercel/next.js or microsoft/vscode). You'll instantly get stars, forks, language breakdown, top contributors, commit activity, and recent issues.",
+      hint: "💡 Tip: Press Ctrl+K (or ⌘K) anywhere to open the command palette and jump to Search.",
+      cta: "Next →",
+    },
+    {
+      icon: "compare_arrows",
+      color: "cyan",
+      tag: "Step 3 of 7",
+      title: "Compare repositories",
+      body: "Head to Compare in the sidebar to put two or three repos side by side. See health scores, star velocity, issue response times, and contributor counts on a single screen — great for evaluating libraries or competitors.",
+      hint: "💡 Tip: Use Compare before adopting a new dependency to check its activity and quality.",
+      cta: "Next →",
+    },
+    {
+      icon: "psychology",
+      color: "violet",
+      tag: "Step 4 of 7",
+      title: "Code Lens: AI-powered scans",
+      body: "Code Lens (Intelligence Hub in the sidebar) is where the real power is. Paste any repo name and run a full scan — it checks for security vulnerabilities, code quality issues, outdated patterns, and gives an overall health score from 0–100. You also get AI-generated PR descriptions, README files, and changelogs.",
+      hint: "💡 Tip: Save scan findings as Action Items to track them over time.",
+      cta: "Next →",
+    },
+    {
+      icon: "trending_up",
+      color: "emerald",
+      tag: "Step 5 of 7",
+      title: "Stack Trending & Leaderboard",
+      body: "Stack Trending shows what's gaining stars in your tech stack right now — filter by language to see what's hot in TypeScript, Python, Rust, or any other ecosystem. The Contributor Leaderboard shows the most active engineers on any repo.",
+      hint: "💡 Tip: Your language filter is remembered — set it once and it persists.",
+      cta: "Next →",
+    },
+    {
+      icon: "notifications_active",
+      color: "amber",
+      tag: "Step 6 of 7",
+      title: "Alerts & Weekly Digest",
+      body: "Connect Slack or Discord in Settings → Integrations to get scan alerts whenever a repo's health drops. Enable the Weekly Digest to get a Monday morning summary of your entire fleet's health, top repos, and at-risk projects.",
+      hint: "💡 Tip: Set up scheduled scans so your repos are automatically re-scanned daily, weekly, or monthly.",
+      cta: "Next →",
+    },
+    {
+      icon: "rocket_launch",
+      color: "rose",
+      tag: "Step 7 of 7",
+      title: "You're ready to go",
+      body: "Start by searching a repo you care about, or paste one into Code Lens for a full AI scan. Your Action Items, scan history, and bookmarks are all saved to your account across sessions.",
+      hint: "💡 Tip: Press ? at any time to see all keyboard shortcuts.",
+      cta: "Start using GitScope",
+    },
+  ] as const;
+
+  const COLOR_MAP = {
+    indigo: { bg: "bg-indigo-500/10", border: "border-indigo-500/20", icon: "text-indigo-400", dot: "bg-indigo-500", btn: "bg-indigo-500 hover:bg-indigo-600" },
+    blue:   { bg: "bg-blue-500/10",   border: "border-blue-500/20",   icon: "text-blue-400",   dot: "bg-blue-500",   btn: "bg-blue-500 hover:bg-blue-600" },
+    cyan:   { bg: "bg-cyan-500/10",   border: "border-cyan-500/20",   icon: "text-cyan-400",   dot: "bg-cyan-500",   btn: "bg-cyan-500 hover:bg-cyan-600" },
+    violet: { bg: "bg-violet-500/10", border: "border-violet-500/20", icon: "text-violet-400", dot: "bg-violet-500", btn: "bg-violet-500 hover:bg-violet-600" },
+    emerald:{ bg: "bg-emerald-500/10",border: "border-emerald-500/20",icon: "text-emerald-400",dot: "bg-emerald-500",btn: "bg-emerald-500 hover:bg-emerald-600" },
+    amber:  { bg: "bg-amber-500/10",  border: "border-amber-500/20",  icon: "text-amber-400",  dot: "bg-amber-500",  btn: "bg-amber-500 hover:bg-amber-600" },
+    rose:   { bg: "bg-rose-500/10",   border: "border-rose-500/20",   icon: "text-rose-400",   dot: "bg-rose-500",   btn: "bg-rose-500 hover:bg-rose-600" },
+  } as const;
+
+  const step = ONBOARDING_STEPS[onboardingStep];
+  const colors = COLOR_MAP[step?.color ?? "indigo"];
+
   return (
     <div className="bg-background flex min-h-screen flex-col">
       <GitScopeCommandPalette />
       <ShortcutsModal />
+
+      {/* First-run onboarding modal */}
+      {showOnboarding && mounted && step && (
+        <div className="fixed inset-0 z-200 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
+          <div className="relative w-full max-w-md rounded-2xl border border-outline-variant/20 bg-surface-container p-8 shadow-2xl">
+            <button
+              type="button"
+              onClick={dismissOnboarding}
+              className="absolute top-4 right-4 text-muted-foreground hover:text-foreground transition-colors"
+              aria-label="Close"
+            >
+              <MaterialIcon name="close" size={18} />
+            </button>
+
+            {/* Step progress dots */}
+            <div className="flex gap-1.5 mb-5">
+              {ONBOARDING_STEPS.map((_, i) => (
+                <span
+                  key={i}
+                  className={cn(
+                    "h-1.5 rounded-full transition-all duration-300",
+                    i === onboardingStep
+                      ? `w-6 ${colors.dot}`
+                      : i < onboardingStep
+                        ? `w-1.5 ${colors.dot} opacity-40`
+                        : "w-1.5 bg-outline-variant/40"
+                  )}
+                />
+              ))}
+            </div>
+
+            {/* Step tag badge */}
+            <span className={cn("inline-flex items-center rounded-full px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest mb-4", colors.bg, colors.icon)}>
+              {step.tag}
+            </span>
+
+            {/* Icon */}
+            <div className={cn("flex size-12 items-center justify-center rounded-2xl border mb-4", colors.bg, colors.border)}>
+              <MaterialIcon name={step.icon} size={24} className={colors.icon} />
+            </div>
+
+            <h2 className="font-heading text-xl font-bold text-foreground mb-2">{step.title}</h2>
+            <p className="text-sm text-muted-foreground leading-relaxed mb-4">{step.body}</p>
+
+            {/* Tip block */}
+            {step.hint && (
+              <div className={cn("rounded-xl border px-4 py-3 mb-5 text-[11px] text-muted-foreground leading-relaxed", colors.bg, colors.border)}>
+                {step.hint}
+              </div>
+            )}
+
+            {!step.hint && <div className="mb-4" />}
+
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={dismissOnboarding}
+                className="font-mono text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
+              >
+                Skip tour
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (onboardingStep < ONBOARDING_STEPS.length - 1) {
+                    setOnboardingStep(onboardingStep + 1);
+                  } else {
+                    dismissOnboarding();
+                  }
+                }}
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-xl px-5 py-2.5 font-mono text-[11px] font-black uppercase tracking-widest text-white transition-colors",
+                  colors.btn
+                )}
+              >
+                {step.cta}
+                {onboardingStep < ONBOARDING_STEPS.length - 1 && <MaterialIcon name="arrow_forward" size={14} />}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       <TopNav
         title={title}
         session={session}

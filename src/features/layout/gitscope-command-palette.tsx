@@ -11,7 +11,7 @@ import {
   Terminal, Moon, Sun, LogOut, LayoutDashboard, BookOpen, Zap,
   Command as CommandIcon, TrendingUp, History, Search, GitMerge,
   Settings, Activity, Building2, Brain, CreditCard, User, RefreshCw, Github,
-  Bell, Bookmark, Tag, Trophy, Code2, Package,
+  Bell, Bookmark, Trophy, Package, CheckSquare, Radar,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import Image from "next/image";
@@ -70,21 +70,19 @@ export function GitScopeCommandPalette() {
     { icon: Activity, label: "Activity Feed", sublabel: "Your live GitHub events", href: ROUTES.activity, category: "Navigate" },
     { icon: Bell, label: "Notifications", sublabel: "GitHub notification center", href: ROUTES.notifications, category: "Navigate", keywords: ["inbox", "alerts"] },
     // Discover
-    { icon: TrendingUp, label: "Trending Repos", sublabel: "What's popular right now", href: ROUTES.trending, category: "Discover" },
+    { icon: TrendingUp, label: "Stack Trending", sublabel: "Trending in your tech stack", href: ROUTES.trending, category: "Discover" },
     { icon: GitMerge, label: "Compare Repos", sublabel: "Side-by-side benchmarks", href: ROUTES.compare, category: "Discover" },
     { icon: Building2, label: "Organizations", sublabel: "GitHub org analytics", href: ROUTES.organizations, category: "Discover" },
-    { icon: Tag, label: "Topic Explorer", sublabel: "Browse repos by topic", href: ROUTES.topics, category: "Discover" },
     // Analytics
-    { icon: Trophy, label: "Leaderboard", sublabel: "Top contributors ranking", href: ROUTES.leaderboard, category: "Analytics", keywords: ["top", "contributors"] },
-    { icon: Code2, label: "Language Analytics", sublabel: "Language distribution", href: ROUTES.languages, category: "Analytics", keywords: ["stats"] },
-    { icon: Package, label: "Releases", sublabel: "Recent releases timeline", href: ROUTES.releases, category: "Analytics" },
-    { icon: Bookmark, label: "Bookmarks", sublabel: "Saved repositories", href: ROUTES.bookmarks, category: "Analytics", keywords: ["saved", "favorites"] },
+    { icon: Trophy, label: "Contributor Leaderboard", sublabel: "Top contributors in your org", href: ROUTES.leaderboard, category: "Analytics", keywords: ["top", "contributors", "ranking"] },
+    { icon: Package, label: "Release Radar", sublabel: "New releases from tracked repos", href: ROUTES.releases, category: "Analytics", keywords: ["releases", "updates", "dependencies"] },
+    { icon: CheckSquare, label: "Action Items", sublabel: "Scan findings to fix", href: ROUTES.bookmarks, category: "Analytics", keywords: ["todos", "findings", "issues", "fix"] },
     // Settings
     { icon: User, label: "Profile Settings", sublabel: "Name, bio, avatar", href: `${ROUTES.settings}?tab=profile`, category: "Settings" },
     { icon: Settings, label: "Security & Password", sublabel: "Manage login methods", href: `${ROUTES.settings}?tab=account`, category: "Settings" },
     { icon: Zap, label: "Workspace Settings", sublabel: "Notifications, sync, API", href: `${ROUTES.settings}?tab=workspace`, category: "Settings" },
-    { icon: CreditCard, label: "Billing & Plans", sublabel: "Upgrade your plan", href: "/pricing-settings", category: "Settings" },
-    { icon: BookOpen, label: "Documentation", sublabel: "Guides & API reference", href: ROUTES.docs, category: "Settings", keywords: ["help", "reference"] },
+    { icon: CreditCard, label: "Billing & Plans", sublabel: "Upgrade your plan", href: ROUTES.pricingSettings, category: "Settings" },
+    { icon: BookOpen, label: "Documentation", sublabel: "Guides & API reference", href: ROUTES.docsReference, category: "Settings", keywords: ["help", "reference"] },
     // System
     { icon: isDark ? Sun : Moon, label: `Switch to ${isDark ? "Light" : "Dark"} Mode`, action: () => { setTheme(isDark ? "light" : "dark"); dispatch(setCommandPaletteOpen(false)); }, category: "System", keywords: ["theme"] },
     { icon: RefreshCw, label: "Reload Page", action: () => { window.location.reload(); }, category: "System" },

@@ -22,6 +22,27 @@ const CATEGORIES: Category[] = ["All", "Engineering", "Open Source", "Productivi
 
 const POSTS: Post[] = [
   {
+    slug: "ai-security-scanning-osv",
+    title: "AI + OSV: How GitScope Catches CVEs Before They Hit Production",
+    excerpt:
+      "Static security scanners miss context. GitScope's two-layer approach combines Google's OSV database for known CVEs with an AI layer that understands your codebase's actual exposure — so you see risk, not just a raw vulnerability list. Here is the architecture behind it.",
+    author: "GitScope Team",
+    date: "April 18, 2026",
+    category: "Engineering",
+    readTime: 9,
+    featured: true,
+  },
+  {
+    slug: "slack-discord-devops-notifications",
+    title: "Stop Opening Dashboards: Bring Your Repo Health Into Slack and Discord",
+    excerpt:
+      "The best alert is the one you actually see. GitScope's Slack and Discord integrations push scan alerts and weekly health digests to wherever your team already lives — without forcing another tool into the workflow. Setup takes 60 seconds.",
+    author: "GitScope Team",
+    date: "April 16, 2026",
+    category: "Updates",
+    readTime: 5,
+  },
+  {
     slug: "dora-metrics-practical-guide",
     title: "DORA Metrics in Practice: What They Actually Tell You About Your Team",
     excerpt:
@@ -30,7 +51,6 @@ const POSTS: Post[] = [
     date: "March 28, 2026",
     category: "Engineering",
     readTime: 11,
-    featured: true,
   },
   {
     slug: "open-source-health-scorecard",
