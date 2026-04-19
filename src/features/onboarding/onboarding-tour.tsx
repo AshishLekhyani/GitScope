@@ -156,14 +156,13 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
     <AnimatePresence>
       {visible && (
         <>
-          {/* Backdrop */}
+          {/* Backdrop — blocks interaction, does NOT dismiss on click */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-200 bg-black/70 backdrop-blur-md"
-            onClick={complete}
+            className="fixed top-0 left-0 w-screen h-screen min-h-dvh z-9998 bg-black/85 backdrop-blur-[6px]"
           />
 
           {/* Modal */}
@@ -173,7 +172,7 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 24 }}
             transition={{ type: "spring", stiffness: 340, damping: 28 }}
-            className="fixed inset-x-4 bottom-6 z-201 mx-auto max-w-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2"
+            className="fixed inset-x-4 bottom-6 z-9999 mx-auto max-w-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2"
           >
             <div className="overflow-hidden rounded-3xl border border-white/8 bg-[#0f1629]/96 shadow-[0_32px_80px_-12px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
 
