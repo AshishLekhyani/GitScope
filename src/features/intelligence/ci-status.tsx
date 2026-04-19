@@ -184,8 +184,11 @@ export function CiStatus({ repos }: CiStatusProps) {
                 <MaterialIcon name="rocket_launch" size={32} className="text-muted-foreground/20" />
                 <div>
                   <p className="text-sm font-black text-foreground/60">No CI/CD workflows found</p>
-                  <p className="text-xs text-muted-foreground/40 mt-1 max-w-xs mx-auto">
-                    This repo has no GitHub Actions workflows, or Actions are disabled / private.
+                  <p className="text-xs text-muted-foreground/40 mt-1 max-w-xs mx-auto leading-relaxed">
+                    No GitHub Actions workflows detected. Actions may be disabled or private.{" "}
+                    <a href="https://docs.github.com/en/actions/quickstart" target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline underline-offset-2">
+                      Set up a workflow →
+                    </a>
                   </p>
                 </div>
               </div>
@@ -208,7 +211,7 @@ export function CiStatus({ repos }: CiStatusProps) {
               return (
                 <div className="space-y-4">
                   {/* Summary strip */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                     <div className={cn("px-4 py-3 rounded-2xl border space-y-1", latestC.bg, latestC.border)}>
                       <div className="flex items-center gap-1.5">
                         <span className={cn("size-2 rounded-full", latestC.dot)} />

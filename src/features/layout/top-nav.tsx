@@ -791,7 +791,7 @@ export function TopNav({
               )}
             >
               {!isLoading && (
-                <div className="from-primary to-primary-container flex size-full items-center justify-center bg-gradient-to-br text-xs font-bold text-primary-foreground">
+                <div className="from-primary to-primary-container flex size-full items-center justify-center bg-linear-to-br text-xs font-bold text-primary-foreground">
                   {userImage ? (
                     <Image src={userImage} width={32} height={32} alt="Avatar" className="size-full object-cover" />
                   ) : (

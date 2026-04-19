@@ -2,8 +2,8 @@
 
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
-import { motion } from "framer-motion";
-import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Check, Minus, Zap } from "lucide-react";
 
@@ -150,11 +150,24 @@ const COMPARE_ROWS = [
 
 export interface PricingPageClientProps {
   variant?: "marketing" | "dashboard";
+  isAuthenticated?: boolean;
 }
 
-export function PricingPageClient({ variant = "marketing" }: PricingPageClientProps) {
+export function PricingPageClient({ variant = "marketing", isAuthenticated = false }: PricingPageClientProps) {
   const [annual, setAnnual] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
   const isDashboard = variant === "dashboard";
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      const key = "gitscope_payment_notice_shown";
+      if (!sessionStorage.getItem(key)) {
+        setShowPaymentModal(true);
+        sessionStorage.setItem(key, "1");
+      }
+    } catch { /* sessionStorage blocked */ }
+  }, [isAuthenticated]);
 
   const price = (p: typeof PLANS[number]) => {
     if (p.price === null) return "Custom";
@@ -166,6 +179,57 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
   const isEnterprise = (p: typeof PLANS[number]) => p.id === "enterprise";
 
   return (
+    <>
+      {/* ── Payment notice — bottom-left sticky banner ── */}
+      <AnimatePresence>
+        {showPaymentModal && (
+          <motion.div
+            key="payment-banner"
+            initial={{ opacity: 0, y: 16, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 16, scale: 0.97 }}
+            transition={{ type: "spring", stiffness: 380, damping: 30 }}
+            className="fixed bottom-5 left-4 z-200 w-[calc(100vw-2rem)] max-w-xs sm:left-5 sm:w-80"
+          >
+            <div className="overflow-hidden rounded-2xl border border-amber-500/25 bg-[#0f1629]/95 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+              <div className="h-0.5 bg-linear-to-r from-amber-500 to-orange-400" />
+              <div className="p-4 space-y-3">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex items-start gap-3">
+                    <div className="size-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                      <MaterialIcon name="payments" size={16} className="text-amber-400" />
+                    </div>
+                    <div className="space-y-0.5">
+                      <p className="text-xs font-black text-white leading-snug">Payments aren&apos;t live yet</p>
+                      <p className="text-[10px] text-white/45 leading-relaxed">
+                        To upgrade, contact me on LinkedIn — I&apos;ll activate your plan manually within 24 h.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    title="Dismiss"
+                    onClick={() => setShowPaymentModal(false)}
+                    className="text-white/25 hover:text-white/60 transition-colors shrink-0 mt-0.5"
+                  >
+                    <MaterialIcon name="close" size={14} />
+                  </button>
+                </div>
+                <a
+                  href="https://www.linkedin.com/in/ashishlekhyani"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#0077b5] hover:bg-[#0066a0] px-3 py-2 text-[11px] font-black text-white transition-colors"
+                >
+                  <MaterialIcon name="open_in_new" size={12} />
+                  Message on LinkedIn
+                </a>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
@@ -377,5 +441,6 @@ export function PricingPageClient({ variant = "marketing" }: PricingPageClientPr
         </div>
       )}
     </motion.div>
+    </>
   );
 }

@@ -19,5 +19,5 @@ export default async function DashboardPricingPage() {
     redirect(ROUTES.login);
   }
 
-  return <PricingPageClient variant="dashboard" />;
+  return <PricingPageClient variant="dashboard" isAuthenticated />;
 }

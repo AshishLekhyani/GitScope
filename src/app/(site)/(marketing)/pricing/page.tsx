@@ -1,4 +1,6 @@
 import { PricingPageClient } from "@/features/pricing/pricing-page-client";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -6,6 +8,7 @@ export const metadata: Metadata = {
   description: "GitScope plans and pricing for engineering teams.",
 };
 
-export default function PricingPage() {
-  return <PricingPageClient />;
+export default async function PricingPage() {
+  const session = await getServerSession(authOptions);
+  return <PricingPageClient isAuthenticated={!!session?.user} />;
 }

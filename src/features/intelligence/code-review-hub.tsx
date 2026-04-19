@@ -133,33 +133,37 @@ export function CodeReviewHub({
       </div>
 
       {/* ── Tab bar ── */}
-      <div className="flex gap-1 p-1 bg-surface-container/30 rounded-2xl border border-outline-variant/10 overflow-x-auto">
-        {TABS.map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => setActiveTab(tab.id)}
-              className={cn(
-                "flex-1 flex items-center gap-2.5 px-4 py-2.5 rounded-xl transition-all text-left min-w-max",
-                isActive
-                  ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
-                  : "text-muted-foreground/60 hover:text-foreground hover:bg-surface-container-highest/60"
-              )}
-            >
-              <MaterialIcon name={tab.icon} size={15} className={isActive ? "text-white" : "text-muted-foreground/50"} />
-              <div className="min-w-0">
-                <div className={cn("text-[10px] font-black uppercase tracking-wider leading-none", isActive ? "text-white" : "")}>
-                  {tab.label}
+      <div className="relative">
+        <div className="flex gap-1 p-1 bg-surface-container/30 rounded-2xl border border-outline-variant/10 overflow-x-auto scrollbar-none">
+          {TABS.map((tab) => {
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl transition-all text-left shrink-0",
+                  isActive
+                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                    : "text-muted-foreground/60 hover:text-foreground hover:bg-surface-container-highest/60"
+                )}
+              >
+                <MaterialIcon name={tab.icon} size={14} className={isActive ? "text-white" : "text-muted-foreground/50"} />
+                <div className="min-w-0">
+                  <div className={cn("text-[10px] font-black uppercase tracking-wider leading-none whitespace-nowrap", isActive ? "text-white" : "")}>
+                    {tab.label}
+                  </div>
+                  <div className={cn("text-[8px] mt-0.5 leading-tight truncate hidden lg:block", isActive ? "text-indigo-100/70" : "text-muted-foreground/40")}>
+                    {tab.description}
+                  </div>
                 </div>
-                <div className={cn("text-[8px] mt-0.5 leading-tight truncate hidden sm:block", isActive ? "text-indigo-100/70" : "text-muted-foreground/40")}>
-                  {tab.description}
-                </div>
-              </div>
-            </button>
-          );
-        })}
+              </button>
+            );
+          })}
+        </div>
+        {/* Fade hint for horizontal scroll */}
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 rounded-r-2xl bg-linear-to-l from-background/60 to-transparent sm:hidden" />
       </div>
 
       {/* GitHub notice */}

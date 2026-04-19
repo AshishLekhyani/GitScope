@@ -158,7 +158,7 @@ function GateModal({ msg, featureLabel, required, onClose }: {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-300 bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <motion.div
@@ -166,11 +166,11 @@ function GateModal({ msg, featureLabel, required, onClose }: {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="fixed left-1/2 top-1/2 z-[301] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
+        className="fixed left-1/2 top-1/2 z-301 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
       >
         <div className="rounded-3xl border border-outline-variant/20 bg-surface-container/95 shadow-2xl backdrop-blur-xl overflow-hidden">
           {/* Header */}
-          <div className="relative bg-gradient-to-br from-indigo-500/10 to-purple-500/5 px-6 pt-8 pb-6 text-center border-b border-outline-variant/10">
+          <div className="relative bg-linear-to-br from-indigo-500/10 to-purple-500/5 px-6 pt-8 pb-6 text-center border-b border-outline-variant/10">
             <button
               type="button"
               onClick={onClose}

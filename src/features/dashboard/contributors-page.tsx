@@ -179,7 +179,7 @@ function PeakPerformance({ weeks }: { weeks: CommitActivityWeek[] }) {
       </div>
 
       {/* Cycle Time */}
-      <div className="mt-4 rounded-lg bg-gradient-to-r from-tertiary/20 to-tertiary/5 p-4">
+      <div className="mt-4 rounded-lg bg-linear-to-r from-tertiary/20 to-tertiary/5 p-4">
         <p className="font-mono text-[9px] tracking-widest text-tertiary uppercase">
           Avg Weekly Commits
         </p>

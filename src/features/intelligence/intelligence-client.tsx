@@ -163,7 +163,7 @@ export function IntelligenceClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm overflow-x-auto">
+        <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm overflow-x-auto scrollbar-none">
           {[
             { id: "codelens",  icon: "rate_review",    label: "Code Lens"  },
             { id: "orghealth", icon: "corporate_fare", label: "Org Health" },
@@ -264,7 +264,7 @@ export function IntelligenceClient() {
             return (
               <div className="space-y-4">
                 {/* Fleet summary strip */}
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                   {[
                     { label: "Avg Score", value: avgScore, color: avgScore >= 70 ? "text-emerald-400" : avgScore >= 50 ? "text-amber-400" : "text-red-400" },
                     { label: "Healthy", value: `${healthy} / ${sorted.length}`, color: "text-emerald-400" },

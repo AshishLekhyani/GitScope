@@ -1,118 +1,126 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
-import Link from "next/link";
 
-const STORAGE_KEY = "gitscope_tour_completed";
+const STORAGE_KEY = "gitscope_tour_v2_completed";
 
-type TourStep = {
+type Step = {
   id: string;
   icon: string;
-  color: string;
-  bg: string;
+  accentClass: string;
+  accentBg: string;
   title: string;
-  body: string | ReactNode;
-  cta: string;
-  skip: boolean;
-  action?: { label: string; href: string };
+  body: string;
+  bullets?: string[];
+  primaryCta: string;
+  secondaryCta?: { label: string; href: string };
 };
 
-const STEPS: TourStep[] = [
+const STEPS: Step[] = [
   {
     id: "welcome",
     icon: "rocket_launch",
-    color: "text-indigo-400",
-    bg: "bg-indigo-500/10 border-indigo-500/20",
-    title: "Welcome to GitScope!",
-    body: "GitScope is your engineering intelligence dashboard. Analyze public GitHub repositories, compare projects, track activity, and get AI-powered insights.",
-    cta: "Start Tour",
-    skip: true,
+    accentClass: "text-indigo-400",
+    accentBg: "bg-indigo-500/10 border-indigo-500/25",
+    title: "Welcome to GitScope",
+    body: "Your engineering intelligence dashboard — AI-powered repo health scans, CVE detection, PR reviews, CI/CD analytics, and team dashboards all in one place.",
+    bullets: ["Analyze any public or private GitHub repo", "AI scans with Anthropic, OpenAI, or Gemini", "Team workspaces, DORA metrics & more"],
+    primaryCta: "Start Tour →",
   },
   {
     id: "search",
     icon: "travel_explore",
-    color: "text-blue-400",
-    bg: "bg-blue-500/10 border-blue-500/20",
-    title: "Search and Analyze Repos",
-    body: "Use the top search bar (or press /), type owner/repo like vercel/next.js, and press Enter. You get stars, commit history, contributors, code structure, and more.",
-    cta: "Got it",
-    skip: false,
-    action: { label: "Try Search", href: "/search" },
+    accentClass: "text-blue-400",
+    accentBg: "bg-blue-500/10 border-blue-500/25",
+    title: "Search & Analyze Any Repo",
+    body: "Type owner/repo in the search bar (or press / to focus it instantly). GitScope pulls real-time data — stars, commit cadence, contributors, language mix, and more.",
+    bullets: [
+      "Try: vercel/next.js, facebook/react, or any repo",
+      "Use @username to look up a GitHub user's profile",
+      "Press Enter or click Analyze to dive in",
+    ],
+    primaryCta: "Next",
+    secondaryCta: { label: "Open Search", href: "/search" },
   },
   {
     id: "intelligence",
     icon: "psychology",
-    color: "text-purple-400",
-    bg: "bg-purple-500/10 border-purple-500/20",
-    title: "Use Intelligence Hub",
-    body: "Intelligence Hub gives AI-driven analysis for code health, PR risk, dependency mapping, and repository momentum.",
-    cta: "Got it",
-    skip: false,
-    action: { label: "Open Hub", href: "/intelligence" },
+    accentClass: "text-purple-400",
+    accentBg: "bg-purple-500/10 border-purple-500/25",
+    title: "Intelligence Hub",
+    body: "The hub is where deep analysis lives. Switch between tabs to run AI repo scans, OSV CVE checks, PR reviews, code ownership maps, CI/CD run history, and test coverage reports.",
+    bullets: [
+      "Code Lens → AI Repo Scan, OSV CVE, PR Review, Test Coverage",
+      "Ownership → bus factor + per-contributor commit %",
+      "CI/CD → GitHub Actions pass rates and run streaks",
+    ],
+    primaryCta: "Next",
+    secondaryCta: { label: "Open Intelligence Hub", href: "/intelligence" },
   },
   {
-    id: "github-token",
+    id: "github",
+    icon: "hub",
+    accentClass: "text-emerald-400",
+    accentBg: "bg-emerald-500/10 border-emerald-500/25",
+    title: "Connect Your GitHub Account",
+    body: "OAuth sign-in gives you 5,000 GitHub API requests/hour and unlocks private repo analysis. Alternatively, paste a Personal Access Token if you prefer email/password login.",
+    bullets: [
+      "Settings → Account → Connect GitHub to link OAuth",
+      "Or: Settings → Account → Personal GitHub Token for a PAT",
+      "PAT needs repo, read:user scopes for full access",
+    ],
+    primaryCta: "Next",
+    secondaryCta: { label: "Go to Account Settings", href: "/settings?tab=account" },
+  },
+  {
+    id: "byok",
     icon: "vpn_key",
-    color: "text-amber-400",
-    bg: "bg-amber-500/10 border-amber-500/20",
-    title: "Add Your GitHub Token",
-    body: (
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">If you use email/password login, add your own GitHub token to increase API limits.</p>
-        <ol className="list-decimal pl-4 space-y-1 text-xs text-muted-foreground">
-          <li>Open Settings - Account.</li>
-          <li>Create a Personal Access Token in GitHub settings.</li>
-          <li>Paste it into Personal GitHub Token and click Save.</li>
-          <li>Confirm status shows Token active - 5,000 req/hr.</li>
-        </ol>
-        <a
-          href="https://github.com/settings/tokens"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-        >
-          Open GitHub Token Settings
-          <MaterialIcon name="open_in_new" size={12} />
-        </a>
-      </div>
-    ),
-    cta: "Got it",
-    skip: false,
-    action: { label: "Open Account Settings", href: "/settings?tab=account" },
+    accentClass: "text-amber-400",
+    accentBg: "bg-amber-500/10 border-amber-500/25",
+    title: "Bring Your Own AI Keys",
+    body: "On the Developer plan and above, paste your own API keys to run unlimited AI scans at zero extra cost. GitScope supports Anthropic, OpenAI, and Google Gemini.",
+    bullets: [
+      "Settings → Integrations → AI Provider API Keys",
+      "Anthropic: claude-sonnet-4-6 — best overall quality",
+      "OpenAI: gpt-4o — strong alternative",
+      "Gemini: gemini-1.5-pro — fast and cost-efficient",
+    ],
+    primaryCta: "Next",
+    secondaryCta: { label: "Add API Keys", href: "/settings?tab=integrations" },
   },
   {
-    id: "shortcuts",
-    icon: "keyboard",
-    color: "text-emerald-400",
-    bg: "bg-emerald-500/10 border-emerald-500/20",
-    title: "Power User Shortcuts",
-    body: (
-      <div className="space-y-2">
-        <p className="text-sm text-muted-foreground">Navigate quickly with keyboard:</p>
-        <div className="grid grid-cols-2 gap-2 mt-3">
-          {[
-            ["Cmd+K / Ctrl+K", "Command palette"],
-            ["/", "Focus search"],
-            ["T", "Toggle theme"],
-            ["F", "Fullscreen"],
-            ["G -> O", "Go to Overview"],
-            ["G -> E", "Go to Explore"],
-          ].map(([key, desc]) => (
-            <div key={key} className="flex items-center gap-2">
-              <kbd className="px-1.5 py-0.5 rounded bg-surface-container border border-outline-variant/20 font-mono text-[10px] text-foreground shrink-0">
-                {key}
-              </kbd>
-              <span className="text-[11px] text-muted-foreground">{desc}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    ),
-    cta: "Finish Tour",
-    skip: false,
+    id: "notifications",
+    icon: "notifications_active",
+    accentClass: "text-cyan-400",
+    accentBg: "bg-cyan-500/10 border-cyan-500/25",
+    title: "Slack & Discord Alerts",
+    body: "Get scan results, CVE alerts, and weekly digests delivered directly to your team's Slack or Discord channel. Set up a webhook in under a minute.",
+    bullets: [
+      "Settings → Integrations → Slack Webhook URL",
+      "Settings → Integrations → Discord Webhook URL",
+      "Use the Test button to verify delivery before saving",
+    ],
+    primaryCta: "Next",
+    secondaryCta: { label: "Set Up Integrations", href: "/settings?tab=integrations" },
+  },
+  {
+    id: "tips",
+    icon: "tips_and_updates",
+    accentClass: "text-rose-400",
+    accentBg: "bg-rose-500/10 border-rose-500/25",
+    title: "Power Tips",
+    body: "A few things that will make your GitScope experience 10× faster:",
+    bullets: [
+      "/ to focus search instantly from anywhere",
+      "Cmd+K / Ctrl+K opens the command palette",
+      "T toggles dark/light theme",
+      "Embed a live health badge in any README: /api/badge?repo=owner/repo",
+      "Organizations tab → Shared Workspace shows all team scan history",
+    ],
+    primaryCta: "Start Exploring →",
   },
 ];
 
@@ -126,21 +134,13 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
 
   useEffect(() => {
     if (!userKey) return;
-
     try {
-      const done = localStorage.getItem(`${STORAGE_KEY}:${userKey}`);
-      if (!done) setVisible(true);
-    } catch {
-      // localStorage may be blocked
-    }
+      if (!localStorage.getItem(`${STORAGE_KEY}:${userKey}`)) setVisible(true);
+    } catch { /* localStorage blocked */ }
   }, [userKey]);
 
   const complete = () => {
-    try {
-      localStorage.setItem(`${STORAGE_KEY}:${userKey}`, "1");
-    } catch {
-      // ignore storage failures
-    }
+    try { localStorage.setItem(`${STORAGE_KEY}:${userKey}`, "1"); } catch { /* ignore */ }
     setVisible(false);
   };
 
@@ -149,92 +149,128 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
     else complete();
   };
 
-  const current = STEPS[step];
+  const cur = STEPS[step];
+  const progress = ((step + 1) / STEPS.length) * 100;
 
   return (
     <AnimatePresence>
       {visible && (
         <>
+          {/* Backdrop */}
           <motion.div
             key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[200] h-screen w-screen bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-200 bg-black/70 backdrop-blur-md"
+            onClick={complete}
           />
 
+          {/* Modal */}
           <motion.div
-            key="card"
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            key="modal"
+            initial={{ opacity: 0, scale: 0.92, y: 24 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            transition={{ type: "spring", stiffness: 300, damping: 25 }}
-            className="fixed bottom-6 left-1/2 z-[201] w-full max-w-md -translate-x-1/2 px-4 sm:px-0"
+            exit={{ opacity: 0, scale: 0.92, y: 24 }}
+            transition={{ type: "spring", stiffness: 340, damping: 28 }}
+            className="fixed inset-x-4 bottom-6 z-201 mx-auto max-w-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2"
           >
-            <div className="overflow-hidden rounded-3xl border border-outline-variant/20 bg-surface-container/95 shadow-2xl backdrop-blur-xl">
-              <div className="h-0.5 w-full bg-outline-variant/10">
+            <div className="overflow-hidden rounded-3xl border border-white/8 bg-[#0f1629]/96 shadow-[0_32px_80px_-12px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
+
+              {/* Progress bar */}
+              <div className="h-0.5 bg-white/5">
                 <motion.div
                   className="h-full bg-indigo-500"
-                  animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
-                  transition={{ ease: "easeOut" }}
+                  animate={{ width: `${progress}%` }}
+                  transition={{ ease: "easeOut", duration: 0.4 }}
                 />
               </div>
 
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-4">
+              <div className="p-6 space-y-5">
+                {/* Header row */}
+                <div className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
-                    {STEPS.map((_, i) => (
-                      <div
+                    {STEPS.map((s, i) => (
+                      <button
                         key={i}
+                        type="button"
+                        title={`Go to step ${i + 1}: ${s.title}`}
+                        onClick={() => setStep(i)}
                         className={cn(
-                          "rounded-full transition-all",
-                          i === step ? "w-4 h-1.5 bg-indigo-500" : i < step ? "size-1.5 bg-indigo-500/40" : "size-1.5 bg-outline-variant/20"
+                          "rounded-full transition-all duration-300",
+                          i === step
+                            ? "w-5 h-1.5 bg-indigo-400"
+                            : i < step
+                            ? "size-1.5 bg-indigo-400/40"
+                            : "size-1.5 bg-white/10"
                         )}
                       />
                     ))}
                   </div>
-                  <span className="text-[10px] font-mono text-muted-foreground/50">
-                    {step + 1} / {STEPS.length}
-                  </span>
-                </div>
-
-                <div className={cn("inline-flex size-12 items-center justify-center rounded-2xl border mb-4", current.bg)}>
-                  <MaterialIcon name={current.icon} size={24} className={current.color} />
-                </div>
-
-                <h3 className="text-lg font-bold tracking-tight mb-2">{current.title}</h3>
-                {typeof current.body === "string" ? (
-                  <p className="text-sm text-muted-foreground leading-relaxed">{current.body}</p>
-                ) : (
-                  current.body
-                )}
-
-                <div className="flex items-center gap-3 mt-6">
-                  <button
-                    type="button"
-                    onClick={next}
-                    className="flex-1 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-bold text-white hover:bg-indigo-600 transition-colors"
-                  >
-                    {current.cta}
-                  </button>
-                  {current.action && (
-                    <Link
-                      href={current.action.href}
-                      onClick={next}
-                      className="flex items-center gap-1.5 rounded-xl border border-outline-variant/20 px-4 py-2.5 text-sm font-medium text-muted-foreground hover:text-foreground hover:border-outline-variant/40 transition-colors whitespace-nowrap"
-                    >
-                      {current.action.label}
-                      <MaterialIcon name="arrow_forward" size={14} />
-                    </Link>
-                  )}
-                  {current.skip && (
+                  <div className="flex items-center gap-3">
+                    <span className="text-[10px] font-mono text-white/30">
+                      {step + 1} / {STEPS.length}
+                    </span>
                     <button
                       type="button"
                       onClick={complete}
-                      className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors px-2"
+                      className="text-[10px] text-white/25 hover:text-white/50 transition-colors"
                     >
-                      Skip
+                      Skip all
                     </button>
+                  </div>
+                </div>
+
+                {/* Icon + Content */}
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={cur.id}
+                    initial={{ opacity: 0, x: 12 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -12 }}
+                    transition={{ duration: 0.22 }}
+                    className="space-y-4"
+                  >
+                    <div className={cn("inline-flex size-12 items-center justify-center rounded-2xl border", cur.accentBg)}>
+                      <MaterialIcon name={cur.icon} size={24} className={cur.accentClass} />
+                    </div>
+
+                    <div className="space-y-2">
+                      <h3 className="text-lg font-black tracking-tight text-white">{cur.title}</h3>
+                      <p className="text-sm text-white/55 leading-relaxed">{cur.body}</p>
+                    </div>
+
+                    {cur.bullets && (
+                      <ul className="space-y-1.5">
+                        {cur.bullets.map((b) => (
+                          <li key={b} className="flex items-start gap-2 text-[11px] text-white/45">
+                            <span className={cn("mt-0.5 shrink-0", cur.accentClass)}>▸</span>
+                            <span className="leading-relaxed">{b}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
+
+                {/* Actions */}
+                <div className="flex items-center gap-2.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={next}
+                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-400 px-4 py-2.5 text-sm font-black text-white transition-colors"
+                  >
+                    {cur.primaryCta}
+                  </button>
+                  {cur.secondaryCta && (
+                    <a
+                      href={cur.secondaryCta.href}
+                      onClick={next}
+                      className="flex items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/50 hover:text-white hover:border-white/20 transition-all whitespace-nowrap"
+                    >
+                      {cur.secondaryCta.label}
+                      <MaterialIcon name="arrow_forward" size={14} />
+                    </a>
                   )}
                 </div>
               </div>

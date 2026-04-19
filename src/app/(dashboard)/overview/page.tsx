@@ -145,7 +145,7 @@ export default async function OverviewPage() {
         </div>
       </Card>
 
-      <div className="grid gap-4 grid-cols-2 sm:gap-6 lg:grid-cols-4">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
         {quickActions.map((action) => (
           <Link key={action.title} href={action.href}>
             <Card className="group relative overflow-hidden flex h-full flex-col justify-between p-4 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-1 sm:p-6">

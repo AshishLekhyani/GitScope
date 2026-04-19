@@ -13,6 +13,156 @@ interface CoverageData {
   trend?: { date: string; coverage: number }[];
 }
 
+interface PrCoverage {
+  prNumber: number;
+  baseCoverage: number | null;
+  headCoverage: number | null;
+  delta: number | null;
+  status: "improved" | "degraded" | "unchanged" | "unknown";
+  source: string;
+  filesChanged: { filename: string; additions: number; deletions: number; isTestFile: boolean }[];
+  testFilesCount: number;
+  totalFilesChanged: number;
+}
+
+function PrCoverageChecker({ repo }: { repo: string }) {
+  const [prInput, setPrInput] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState<PrCoverage | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const check = async () => {
+    const n = parseInt(prInput.trim(), 10);
+    if (isNaN(n) || n < 1) { setError("Enter a valid PR number"); return; }
+    setLoading(true); setError(null); setResult(null);
+    try {
+      const res = await fetch(`/api/github/coverage/pr?repo=${encodeURIComponent(repo)}&pr=${n}`);
+      if (!res.ok) throw new Error((await res.json() as { error?: string }).error ?? "Failed");
+      setResult(await res.json() as PrCoverage);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to fetch PR coverage");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const statusColor = result?.status === "improved" ? "text-emerald-400"
+    : result?.status === "degraded" ? "text-red-400"
+    : "text-muted-foreground";
+
+  const statusIcon = result?.status === "improved" ? "trending_up"
+    : result?.status === "degraded" ? "trending_down"
+    : "trending_flat";
+
+  return (
+    <div className="p-5 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-4">
+      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+        <MaterialIcon name="difference" size={12} /> PR Coverage Diff
+      </p>
+
+      <div className="flex gap-2">
+        <input
+          type="number"
+          min="1"
+          placeholder="PR number (e.g. 42)"
+          value={prInput}
+          onChange={(e) => setPrInput(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && check()}
+          className="flex-1 text-sm bg-surface-container-highest border border-outline-variant/20 rounded-xl px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+          title="PR number"
+        />
+        <button
+          type="button"
+          onClick={check}
+          disabled={loading || !prInput}
+          className="px-4 py-2 rounded-xl bg-primary/90 hover:bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
+        >
+          {loading ? "…" : "Check"}
+        </button>
+      </div>
+
+      {error && (
+        <p className="text-xs text-red-400 flex items-center gap-1.5">
+          <MaterialIcon name="error" size={13} />{error}
+        </p>
+      )}
+
+      {result && (
+        <div className="space-y-3">
+          {/* Delta summary */}
+          <div className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/10 bg-surface-container-highest/30">
+            <MaterialIcon name={statusIcon} size={20} className={statusColor} />
+            <div className="flex-1">
+              <p className={cn("text-sm font-black", statusColor)}>
+                {result.status === "improved" ? `+${result.delta}% coverage` :
+                 result.status === "degraded" ? `${result.delta}% coverage` :
+                 result.status === "unchanged" ? "Coverage unchanged" : "Coverage data unavailable"}
+              </p>
+              <p className="text-[10px] text-muted-foreground/50 font-mono">
+                {result.baseCoverage !== null && result.headCoverage !== null
+                  ? `${result.baseCoverage}% → ${result.headCoverage}%`
+                  : "No baseline data"}
+                {result.source === "estimated" && " (estimated)"}
+                {result.source === "codecov" && " · via Codecov"}
+              </p>
+            </div>
+            <span className={cn("text-[9px] font-black px-2 py-1 rounded-lg border",
+              result.status === "improved" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
+              result.status === "degraded" ? "bg-red-500/10 border-red-500/20 text-red-400" :
+              "bg-muted border-outline-variant/20 text-muted-foreground"
+            )}>
+              PR #{result.prNumber}
+            </span>
+          </div>
+
+          {/* File stats */}
+          <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+            <div className="p-2 rounded-xl bg-surface-container-highest/20 border border-outline-variant/10">
+              <p className="font-black text-foreground/80">{result.totalFilesChanged}</p>
+              <p className="text-muted-foreground/50 uppercase tracking-widest">Files Changed</p>
+            </div>
+            <div className="p-2 rounded-xl bg-surface-container-highest/20 border border-outline-variant/10">
+              <p className={cn("font-black", result.testFilesCount > 0 ? "text-emerald-400" : "text-red-400")}>
+                {result.testFilesCount}
+              </p>
+              <p className="text-muted-foreground/50 uppercase tracking-widest">Test Files</p>
+            </div>
+            <div className="p-2 rounded-xl bg-surface-container-highest/20 border border-outline-variant/10">
+              <p className="font-black text-foreground/80">
+                {result.totalFilesChanged > 0
+                  ? `${Math.round((result.testFilesCount / result.totalFilesChanged) * 100)}%`
+                  : "—"}
+              </p>
+              <p className="text-muted-foreground/50 uppercase tracking-widest">Test Ratio</p>
+            </div>
+          </div>
+
+          {/* File list (collapsed if > 8) */}
+          {result.filesChanged.length > 0 && (
+            <div className="space-y-1 max-h-48 overflow-y-auto">
+              {result.filesChanged.slice(0, 12).map((f) => (
+                <div key={f.filename} className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-surface-container-highest/20 transition-colors">
+                  <MaterialIcon
+                    name={f.isTestFile ? "science" : "code"}
+                    size={11}
+                    className={f.isTestFile ? "text-teal-400 shrink-0" : "text-muted-foreground/40 shrink-0"}
+                  />
+                  <span className="font-mono text-[10px] text-foreground/60 truncate flex-1 min-w-0">{f.filename}</span>
+                  <span className="text-[9px] text-emerald-400 font-mono shrink-0">+{f.additions}</span>
+                  <span className="text-[9px] text-red-400 font-mono shrink-0">-{f.deletions}</span>
+                </div>
+              ))}
+              {result.filesChanged.length > 12 && (
+                <p className="text-[9px] text-muted-foreground/40 px-2">+{result.filesChanged.length - 12} more files</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface TestCoverageProps {
   repos: string[];
 }
@@ -94,7 +244,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
               return (
                 <div className="space-y-5">
                   {/* Main coverage card */}
-                  <div className="flex flex-col sm:flex-row items-center gap-6 p-6 rounded-2xl border border-outline-variant/10 bg-surface-container/20">
+                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-outline-variant/10 bg-surface-container/20">
                     {/* Ring gauge */}
                     <div className="shrink-0 relative">
                       <svg width="120" height="120" viewBox="0 0 120 120" aria-label={`Coverage: ${d.coverage ?? "unknown"}%`}>
@@ -141,7 +291,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
                           style={{ width: `${d.coverage ?? 0}%` }} />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 text-[10px]">
+                      <div className="grid grid-cols-2 gap-2 sm:gap-3 text-[10px]">
                         <div>
                           <p className="font-black text-muted-foreground/40 uppercase tracking-widest">Source</p>
                           <p className="font-bold text-foreground/70 capitalize">{d.source === "none" ? "Not detected" : d.source}</p>
@@ -248,6 +398,9 @@ export function TestCoverage({ repos }: TestCoverageProps) {
                       </div>
                     </div>
                   )}
+
+                  {/* PR Coverage Diff */}
+                  <PrCoverageChecker repo={repo} />
                 </div>
               );
             })()}

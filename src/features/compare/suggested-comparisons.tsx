@@ -89,7 +89,7 @@ export function SuggestedComparisons({ onSelect }: SuggestedComparisonsProps) {
             className="group rounded-2xl border border-outline-variant/10 bg-surface-container/30 p-5 hover:bg-surface-container/60 transition-all duration-300"
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className={`size-10 rounded-xl bg-gradient-to-br ${category.color} flex items-center justify-center`}>
+              <div className={`size-10 rounded-xl bg-linear-to-br ${category.color} flex items-center justify-center`}>
                 <MaterialIcon name={category.icon} size={20} className="text-white" />
               </div>
               <h4 className="font-bold text-sm">{category.title}</h4>

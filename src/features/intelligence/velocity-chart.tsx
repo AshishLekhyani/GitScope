@@ -302,7 +302,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* ── DORA explainer banner ── */}
-      <div className="p-5 rounded-3xl bg-gradient-to-br from-indigo-500/8 to-violet-500/5 border border-indigo-500/15 space-y-2">
+      <div className="p-5 rounded-3xl bg-linear-to-br from-indigo-500/8 to-violet-500/5 border border-indigo-500/15 space-y-2">
         <div className="flex items-center gap-2.5">
           <div className="size-8 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center shrink-0">
             <MaterialIcon name="insights" size={16} className="text-indigo-400" />
@@ -360,6 +360,29 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
             <p className="text-[10px] text-muted-foreground/50 mt-0.5">
               {activeData.name} · {m.count} merges analyzed · {m.busFactor} active contributors
             </p>
+            <div className="flex flex-wrap gap-2 mt-1.5">
+              {m.deploySource && (
+                <span className="inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded bg-surface-container-highest border border-outline-variant/20 text-muted-foreground/50">
+                  <MaterialIcon name="hub" size={9} />
+                  {m.deploySource === "github-deployments"
+                    ? "GitHub Deployments"
+                    : m.deploySource === "actions-workflows"
+                    ? "GitHub Actions"
+                    : "PR Merges"}
+                </span>
+              )}
+              {m.workflowPassRate != null && (
+                <span className={cn(
+                  "inline-flex items-center gap-1 text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border",
+                  m.workflowPassRate >= 90 ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  : m.workflowPassRate >= 70 ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                  : "bg-red-500/10 border-red-500/20 text-red-400"
+                )}>
+                  <MaterialIcon name="check_circle" size={9} />
+                  CI pass rate: {m.workflowPassRate}%
+                </span>
+              )}
+            </div>
           </div>
           <div className="shrink-0 text-right space-y-1 hidden sm:block">
             <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Bus Factor</p>
@@ -478,7 +501,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
               return (
                 <div key={d.name} className="flex items-center gap-3">
                   <span className="text-[10px] font-mono text-muted-foreground/40 w-24 truncate shrink-0">{d.name.split("/")[1]}</span>
-                  <div className="flex-1 grid grid-cols-4 gap-1">
+                  <div className="flex-1 grid grid-cols-2 sm:grid-cols-4 gap-1">
                     {[
                       { tier: dm.leadTimeTier,   val: DORA_METRICS[0].format(dm.leadTime) },
                       { tier: dm.deployFreqTier, val: DORA_METRICS[1].format(dm.deployFreq) },

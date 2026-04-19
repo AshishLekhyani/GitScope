@@ -26,7 +26,7 @@ interface ReviewResult {
   prNumber: number;
   verdict: string;
   summary: string;
-  riskLevel: string;
+  mergeRisk: string;
   findings: { severity: string; description: string }[];
   loading: boolean;
   error?: string;
@@ -111,7 +111,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
     // Mark all as loading
     const init = new Map<number, ReviewResult>();
     toReview.forEach((pr) => init.set(pr.number, {
-      prNumber: pr.number, verdict: "", summary: "", riskLevel: "", findings: [], loading: true,
+      prNumber: pr.number, verdict: "", summary: "", mergeRisk: "", findings: [], loading: true,
     }));
     setReviews(init);
 
@@ -128,7 +128,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
         const data = await res.json();
         if (!res.ok) {
           setReviews((prev) => new Map(prev).set(pr.number, {
-            prNumber: pr.number, verdict: "COMMENT", summary: "", riskLevel: "unknown",
+            prNumber: pr.number, verdict: "COMMENT", summary: "", mergeRisk: "unknown",
             findings: [], loading: false, error: data.error ?? "Review failed",
           }));
         } else {
@@ -136,14 +136,14 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
             prNumber: pr.number,
             verdict: data.verdict ?? "COMMENT",
             summary: data.summary ?? "",
-            riskLevel: data.riskLevel ?? "unknown",
+            mergeRisk: data.mergeRisk ?? "unknown",
             findings: (data.findings ?? []).slice(0, 3),
             loading: false,
           }));
         }
       } catch {
         setReviews((prev) => new Map(prev).set(pr.number, {
-          prNumber: pr.number, verdict: "COMMENT", summary: "", riskLevel: "unknown",
+          prNumber: pr.number, verdict: "COMMENT", summary: "", mergeRisk: "unknown",
           findings: [], loading: false, error: "Network error",
         }));
       }
@@ -171,25 +171,26 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
   return (
     <div className="space-y-6">
       {/* Repo input */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <MaterialIcon name="folder" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
+          <MaterialIcon name="folder" size={15} className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
           <input
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && fetchPRs()}
-            placeholder="owner/repo (e.g. vercel/next.js)"
-            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-10 pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+            placeholder="owner/repo"
+            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
           />
         </div>
         <button
           type="button"
           onClick={fetchPRs}
           disabled={loading || !repo.trim()}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 sm:px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
         >
-          {loading ? <MaterialIcon name="sync" size={15} className="animate-spin" /> : <MaterialIcon name="refresh" size={15} />}
-          {loading ? "Loading…" : "Load PRs"}
+          {loading ? <MaterialIcon name="sync" size={14} className="animate-spin" /> : <MaterialIcon name="refresh" size={14} />}
+          <span className="hidden sm:inline">{loading ? "Loading…" : "Load PRs"}</span>
+          <span className="sm:hidden">{loading ? "…" : "Load"}</span>
         </button>
       </div>
 
@@ -211,7 +212,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
       {prs.length > 0 && (
         <>
           {/* Toolbar */}
-          <div className="flex items-center justify-between flex-wrap gap-3">
+          <div className="flex items-center justify-between flex-wrap gap-2 sm:gap-3">
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
                 {prs.length} open PR{prs.length !== 1 ? "s" : ""} · {selected.size} selected
@@ -246,7 +247,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                   isSelected ? "border-indigo-500/30 bg-indigo-500/3" : "border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20"
                 )}>
                   {/* PR row */}
-                  <div className="flex items-start gap-3 p-4">
+                  <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4">
                     <input
                       type="checkbox"
                       checked={isSelected}
@@ -263,14 +264,14 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                           <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-muted border border-outline-variant/20 text-muted-foreground">Draft</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 flex-wrap text-[9px]">
+                      <div className="flex items-center gap-1 sm:gap-2 flex-wrap text-[9px]">
                         {pr.authorAvatar && (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={pr.authorAvatar} alt={pr.author} className="size-4 rounded-full" />
                         )}
                         <span className="font-mono text-muted-foreground/50">{pr.author}</span>
-                        <span className="text-muted-foreground/30">·</span>
-                        <span className="font-mono text-muted-foreground/40">{pr.head} → {pr.base}</span>
+                        <span className="text-muted-foreground/30 hidden sm:inline">·</span>
+                        <span className="font-mono text-muted-foreground/40 hidden sm:inline">{pr.head} → {pr.base}</span>
                         <span className="text-muted-foreground/30">·</span>
                         <span className="text-emerald-400 font-mono">+{pr.additions}</span>
                         <span className="text-red-400 font-mono">-{pr.deletions}</span>
@@ -313,8 +314,8 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                                 <MaterialIcon name={vs.icon} size={12} />
                                 {vs.label}
                               </div>
-                              <span className={cn("text-[9px] font-black uppercase tracking-widest", riskColor(review.riskLevel))}>
-                                {review.riskLevel} risk
+                              <span className={cn("text-[9px] font-black uppercase tracking-widest", riskColor(review.mergeRisk))}>
+                                {review.mergeRisk} risk
                               </span>
                             </div>
                             {review.summary && (
@@ -323,7 +324,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                             {review.findings.length > 0 && (
                               <div className="space-y-1">
                                 {review.findings.map((f, i) => (
-                                  <div key={i} className="flex items-start gap-1.5 text-[10px]">
+                                  <div key={`${f.severity}-${i}`} className="flex items-start gap-1.5 text-[10px]">
                                     <span className={cn("font-black shrink-0 mt-0.5",
                                       f.severity === "critical" ? "text-red-400" :
                                       f.severity === "high" ? "text-orange-400" :

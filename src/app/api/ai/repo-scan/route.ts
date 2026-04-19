@@ -15,6 +15,8 @@ import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "
 import { sendEmail, buildScanAlertEmail } from "@/lib/email";
 import { sendScanAlert as sendSlackScanAlert } from "@/lib/slack";
 import { sendDiscordScanAlert } from "@/lib/discord";
+import { triggerWebhookRules } from "@/lib/webhook-rules-trigger";
+import { checkPublicScanCache, savePublicScanCache } from "@/lib/scan-cache";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -637,6 +639,20 @@ export async function POST(req: NextRequest) {
 
         let result: RepoScanResult;
 
+        // ── Public scan cache — serve cached LLM result if available ─────────
+        // Skips the LLM call entirely for public repos scanned recently by any user.
+        // Private repos are NEVER cached here (safety: no cross-user data leakage).
+        const isPrivateRepo = Boolean(meta.private);
+        if (!isPrivateRepo && hasAnyAIProvider(byokKeys)) {
+          const cached = await checkPublicScanCache(repo, scanMode, isPrivateRepo);
+          if (cached) {
+            emit({ type: "progress", step: "Serving cached analysis…", percent: 90 });
+            result = { ...internalScanResult, ...(cached as Partial<RepoScanResult>), fromCache: true } as RepoScanResult;
+            done(result);
+            return;
+          }
+        }
+
         // ── Daily LLM cost gate ───────────────────────────────────────────────
         // BYOK users bypass this check entirely — they pay their own API bills.
         // For server-key users: check the daily LLM budget before calling the provider.
@@ -756,6 +772,10 @@ export async function POST(req: NextRequest) {
               const extra = internalScanResult.security.issues.filter((i) => !llmDescs.has(i.description.slice(0, 40)));
               result.security.issues = [...result.security.issues, ...extra].slice(0, 8);
 
+              // Populate public cache so the next user gets this result instantly
+              savePublicScanCache(repo, scanMode, result as unknown as Record<string, unknown>, isPrivateRepo)
+                .catch(() => { /* non-blocking */ });
+
               await Promise.all([
                 prisma.codeReviewScan.create({
                   data: {
@@ -804,6 +824,13 @@ export async function POST(req: NextRequest) {
             const highCount = secIssues.filter((i) => i.severity === "high").length;
             const medCount  = secIssues.filter((i) => i.severity === "medium").length;
 
+            // Fetch previous scan score for drop_by rule comparison
+            const prevScan = await prisma.repoScanHistory.findFirst({
+              where: { userId: session.user.id, repo },
+              orderBy: { createdAt: "desc" },
+              select: { healthScore: true },
+            });
+
             await prisma.repoScanHistory.create({
               data: {
                 userId: session.user.id,
@@ -830,6 +857,16 @@ export async function POST(req: NextRequest) {
             await prisma.repoScanHistory.deleteMany({
               where: { userId: session.user.id, repo, createdAt: { lt: cutoff } },
             });
+
+            // ── Fire outbound automation rules (Team+) ────────────────────
+            triggerWebhookRules(session.user.id, {
+              repo,
+              healthScore:   result.healthScore ?? 0,
+              securityScore: result.security?.score ?? 0,
+              qualityScore:  result.codeQuality?.score ?? 0,
+              criticalCount: critCount,
+              prevHealthScore: prevScan?.healthScore ?? null,
+            }).catch(() => { /* non-blocking */ });
 
             // ── Check scheduled scan alert threshold ──────────────────────
             if (caps.scheduledScansAllowed) {

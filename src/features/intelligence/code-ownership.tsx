@@ -35,11 +35,14 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
 
   useEffect(() => {
     repos.forEach((repo) => {
-      if (data[repo]) return;
-      setData((prev) => ({ ...prev, [repo]: "loading" }));
-      fetchOwnership(repo);
+      setData((prev) => {
+        if (prev[repo]) return prev;
+        fetchOwnership(repo);
+        return { ...prev, [repo]: "loading" };
+      });
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // fetchOwnership is stable (defined in component body, no deps that change)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repos]);
 
   async function fetchOwnership(repo: string, retry = false) {
@@ -83,11 +86,9 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
       .sort((a, b) => b.totalCommits - a.totalCommits);
 
     const totalCommits = contributors.reduce((s, c) => s + c.totalCommits, 0);
-    const totalAdditions = contributors.reduce((s, c) => s + c.additions, 0);
     contributors.forEach((c) => {
       c.commitPct = totalCommits > 0 ? Math.round((c.totalCommits / totalCommits) * 100) : 0;
     });
-    void totalAdditions;
 
     let cumulative = 0;
     let busFactor = 0;
@@ -152,7 +153,7 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
               return (
                 <div className="space-y-4">
                   {/* Summary strip */}
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
                       <p className="text-lg font-black text-foreground">{d.contributors.length}</p>
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Contributors</p>

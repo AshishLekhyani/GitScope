@@ -417,7 +417,7 @@ function HeatmapViz() {
   ];
 
   return (
-    <div className="w-full overflow-x-auto pb-1">
+    <div className="w-full overflow-x-auto pb-1 scrollbar-none">
       <div className="inline-flex flex-col gap-1 min-w-max">
         {/* Label row */}
         <div className="flex gap-1 mb-1">

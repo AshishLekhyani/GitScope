@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/tooltip";
 import { Separator } from "@/components/ui/separator";
 import { motion, AnimatePresence } from "framer-motion";
+import { WorkspacesPanel } from "@/features/organizations/workspaces-panel";
 import {
   Search,
   Building2,
@@ -100,6 +101,8 @@ interface OrgRepo {
 interface OrganizationsClientProps {
   orgs: GitHubOrg[];
   username: string;
+  userId?: string;
+  plan?: string;
 }
 
 type ViewMode = "grid" | "list";
@@ -129,7 +132,7 @@ const languageColors: Record<string, string> = {
   null: "#6b7280",
 };
 
-export function OrganizationsClient({ orgs, username }: OrganizationsClientProps) {
+export function OrganizationsClient({ orgs, username, userId = "", plan = "free" }: OrganizationsClientProps) {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -349,6 +352,9 @@ export function OrganizationsClient({ orgs, username }: OrganizationsClientProps
             </div>
           </div>
         </motion.div>
+
+        {/* Workspaces — seat management */}
+        <WorkspacesPanel currentUserId={userId} plan={plan} />
 
         {/* Bento Stats Grid */}
         <motion.div
@@ -579,7 +585,7 @@ export function OrganizationsClient({ orgs, username }: OrganizationsClientProps
 
             {!workspaceLoading && workspaceOrg && workspaceData && (
               <div className="px-4 pb-5 space-y-4">
-                <div className="grid grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
                   {[
                     { label: "Repos Scanned", value: workspaceData.total, color: "text-foreground" },
                     { label: "Avg Health", value: workspaceData.avgHealth, color: workspaceData.avgHealth >= 70 ? "text-emerald-400" : workspaceData.avgHealth >= 50 ? "text-amber-400" : "text-red-400" },
@@ -698,7 +704,7 @@ export function OrganizationsClient({ orgs, username }: OrganizationsClientProps
                 </DialogHeader>
 
                 {/* Quick Stats */}
-                <div className="grid grid-cols-3 gap-4 mt-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
                   <div className="p-4 rounded-xl bg-muted/50 text-center">
                     <GitFork className="w-5 h-5 mx-auto mb-2 text-indigo-500" />
                     <div className="text-xl font-bold">{selectedOrg.public_repos}</div>

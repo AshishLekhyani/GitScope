@@ -15,7 +15,7 @@ import { useGitHubRateLimit } from "@/hooks/use-github-rate-limit";
 import { useSession, signIn } from "next-auth/react";
 import { performLogout } from "@/lib/client-auth";
 
-type SettingsTab = "profile" | "account" | "appearance" | "workspace" | "integrations";
+type SettingsTab = "profile" | "account" | "appearance" | "workspace" | "integrations" | "automation" | "api-keys";
 type ThemeOption = "light" | "dark" | "system";
 type AiPlan = "free" | "professional" | "developer" | "team" | "enterprise";
 
@@ -43,6 +43,8 @@ const TABS: { id: SettingsTab; label: string; icon: string }[] = [
   { id: "appearance",   label: "Appearance",   icon: "palette" },
   { id: "workspace",    label: "Workspace",    icon: "tune" },
   { id: "integrations", label: "Integrations", icon: "extension" },
+  { id: "automation",   label: "Automation",   icon: "bolt" },
+  { id: "api-keys",     label: "API Keys",     icon: "vpn_key" },
 ];
 
 export function SettingsPanel() {
@@ -89,6 +91,36 @@ export function SettingsPanel() {
   const [byokGeminiInput, setByokGeminiInput]       = useState("");
   const [byokSaving, setByokSaving]               = useState(false);
   const [byokMsg, setByokMsg]                     = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Automation rules state
+  const [autoRules, setAutoRules] = useState<{
+    id: string; name: string; enabled: boolean;
+    triggerMetric: string; triggerOp: string; triggerThreshold: number;
+    actionType: string; actionUrl: string | null; repoFilter: string | null;
+    lastTriggeredAt: string | null; triggerCount: number;
+  }[]>([]);
+  const [autoLoading,   setAutoLoading]   = useState(false);
+  const [showRuleForm,  setShowRuleForm]  = useState(false);
+  const [ruleFormState, setRuleFormState] = useState({
+    name: "", triggerMetric: "healthScore", triggerOp: "lt",
+    triggerThreshold: "60", actionType: "slack", actionUrl: "", repoFilter: "",
+  });
+  const [ruleSaving, setRuleSaving] = useState(false);
+  const [ruleMsg,    setRuleMsg]    = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Public API Keys (REST API key management) state
+  const [pubApiKeys, setPubApiKeys] = useState<{
+    id: string; name: string; prefix: string; scopes: string[];
+    lastUsedAt: string | null; expiresAt: string | null; createdAt: string;
+  }[]>([]);
+  const [pubApiKeysLoading, setPubApiKeysLoading] = useState(false);
+  const [pubApiKeyMaxKeys, setPubApiKeyMaxKeys] = useState(0);
+  const [newPubKeyName, setNewPubKeyName] = useState("");
+  const [newPubKeyScopes, setNewPubKeyScopes] = useState<string[]>(["repos:read", "scans:read"]);
+  const [newPubKeyExpiry, setNewPubKeyExpiry] = useState("90");
+  const [pubApiKeyCreating, setPubApiKeyCreating] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [pubApiKeyMsg, setPubApiKeyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
   // Delete account state
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -294,6 +326,37 @@ export function SettingsPanel() {
       cancelled = true;
     };
   }, [activeTab, session?.user?.id]);
+
+  // Load automation rules when the automation tab is activated
+  useEffect(() => {
+    if (activeTab !== "automation") return;
+    void (async () => {
+      setAutoLoading(true);
+      try {
+        const res = await fetch("/api/webhook-rules");
+        if (res.ok) { const d = await res.json(); setAutoRules(d.rules ?? []); }
+      } catch { /* ignore */ }
+      finally { setAutoLoading(false); }
+    })();
+  }, [activeTab]);
+
+  // Load public API keys when the api-keys tab is activated
+  useEffect(() => {
+    if (activeTab !== "api-keys") return;
+    void (async () => {
+      setPubApiKeysLoading(true);
+      try {
+        const res = await fetch("/api/user/api-keys");
+        if (res.ok) {
+          const d = await res.json() as { keys: typeof pubApiKeys; maxKeys: number };
+          setPubApiKeys(d.keys ?? []);
+          setPubApiKeyMaxKeys(d.maxKeys ?? 0);
+        }
+      } catch { /* ignore */ }
+      finally { setPubApiKeysLoading(false); }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   const handleDiscard = () => {
     fetch("/api/user/profile")
@@ -899,7 +962,7 @@ export function SettingsPanel() {
 
                 {/* GitHub connect card */}
                 {!hasGithub && (
-                  <div className="rounded-xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 p-4 mb-3">
+                  <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-indigo-500/5 to-purple-500/5 p-4 mb-3">
                     <div className="flex items-start gap-3">
                       <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
                         <MaterialIcon name="hub" size={20} className="text-indigo-500" />
@@ -933,7 +996,7 @@ export function SettingsPanel() {
 
                 {/* Google connect card */}
                 {!hasGoogle && (
-                  <div className="rounded-xl border border-blue-500/20 bg-gradient-to-br from-blue-500/5 to-cyan-500/5 p-4">
+                  <div className="rounded-xl border border-blue-500/20 bg-linear-to-br from-blue-500/5 to-cyan-500/5 p-4">
                     <div className="flex items-start gap-3">
                       <div className="size-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
                         <MaterialIcon name="person" size={20} className="text-blue-500" />
@@ -2004,6 +2067,441 @@ export function SettingsPanel() {
               </p>
             )}
           </div>
+          )}
+        </div>
+      )}
+
+      {/* ── Automation Rules Tab ─────────────────────────────────────────────── */}
+      {activeTab === "automation" && (
+        <div className="space-y-6">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <h2 className="text-lg font-black tracking-tight flex items-center gap-2">
+                <MaterialIcon name="bolt" size={20} className="text-amber-500" />
+                Automation Rules
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">Trigger Slack, Discord, GitHub Issues, or webhooks when scan metrics cross a threshold. Team plan required.</p>
+            </div>
+            {(tierInfo?.resolvedPlan === "team" || tierInfo?.resolvedPlan === "enterprise") && (
+              <button
+                type="button"
+                onClick={() => { setShowRuleForm((v) => !v); setRuleMsg(null); }}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+              >
+                <MaterialIcon name="add" size={14} /> New Rule
+              </button>
+            )}
+          </div>
+
+          {/* Create rule form */}
+          {showRuleForm && (
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 space-y-4">
+              <h3 className="text-xs font-black uppercase tracking-widest text-amber-500">New Automation Rule</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Rule Name</label>
+                  <input
+                    type="text" placeholder="e.g. Alert if health drops below 60"
+                    value={ruleFormState.name}
+                    onChange={(e) => setRuleFormState((s) => ({ ...s, name: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Metric</label>
+                  <select
+                    title="Trigger metric"
+                    value={ruleFormState.triggerMetric}
+                    onChange={(e) => setRuleFormState((s) => ({ ...s, triggerMetric: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="healthScore">Health Score</option>
+                    <option value="securityScore">Security Score</option>
+                    <option value="qualityScore">Quality Score</option>
+                    <option value="criticalCount">Critical Issues Count</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Condition</label>
+                  <select
+                    title="Trigger condition"
+                    value={ruleFormState.triggerOp}
+                    onChange={(e) => setRuleFormState((s) => ({ ...s, triggerOp: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="lt">Falls below ( &lt; )</option>
+                    <option value="gt">Exceeds ( &gt; )</option>
+                    <option value="drop_by">Drops by ≥ N points</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Threshold</label>
+                  <input
+                    type="number" min="0" max="999"
+                    title="Threshold value"
+                    placeholder="e.g. 60"
+                    value={ruleFormState.triggerThreshold}
+                    onChange={(e) => setRuleFormState((s) => ({ ...s, triggerThreshold: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Action</label>
+                  <select
+                    title="Action to perform"
+                    value={ruleFormState.actionType}
+                    onChange={(e) => setRuleFormState((s) => ({ ...s, actionType: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  >
+                    <option value="slack">Slack (saved webhook)</option>
+                    <option value="discord">Discord (saved webhook)</option>
+                    <option value="github_issue">Open GitHub Issue</option>
+                    <option value="webhook">Custom Webhook URL</option>
+                  </select>
+                </div>
+                {(ruleFormState.actionType === "webhook" || ruleFormState.actionType === "github_issue") && (
+                  <div className="sm:col-span-2">
+                    <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+                      {ruleFormState.actionType === "github_issue" ? "GitHub Issues API URL" : "Webhook URL"}
+                    </label>
+                    <input
+                      type="url"
+                      placeholder={ruleFormState.actionType === "github_issue" ? "https://api.github.com/repos/owner/repo/issues" : "https://hooks.example.com/..."}
+                      value={ruleFormState.actionUrl}
+                      onChange={(e) => setRuleFormState((s) => ({ ...s, actionUrl: e.target.value }))}
+                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    />
+                  </div>
+                )}
+                <div className="sm:col-span-2">
+                  <label className="block text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Repo Filter (optional)</label>
+                  <input
+                    type="text" placeholder="owner/repo — leave blank to apply to all repos"
+                    value={ruleFormState.repoFilter}
+                    onChange={(e) => setRuleFormState((s) => ({ ...s, repoFilter: e.target.value }))}
+                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                  />
+                </div>
+              </div>
+              {ruleMsg && (
+                <p className={cn("text-[11px]", ruleMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>{ruleMsg.text}</p>
+              )}
+              <div className="flex gap-2 justify-end">
+                <button type="button" onClick={() => setShowRuleForm(false)} className="rounded-xl border border-border px-4 py-2 text-[11px] font-bold text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+                <button
+                  type="button"
+                  disabled={ruleSaving || !ruleFormState.name.trim()}
+                  onClick={async () => {
+                    setRuleSaving(true); setRuleMsg(null);
+                    try {
+                      const res = await fetch("/api/webhook-rules", {
+                        method: "POST", headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          name: ruleFormState.name,
+                          triggerMetric: ruleFormState.triggerMetric,
+                          triggerOp: ruleFormState.triggerOp,
+                          triggerThreshold: Number(ruleFormState.triggerThreshold),
+                          actionType: ruleFormState.actionType,
+                          actionUrl: ruleFormState.actionUrl || null,
+                          repoFilter: ruleFormState.repoFilter || null,
+                        }),
+                      });
+                      const d = await res.json() as { error?: string; rule?: unknown };
+                      if (!res.ok) { setRuleMsg({ type: "error", text: d.error ?? "Failed to create rule." }); return; }
+                      setRuleMsg({ type: "success", text: "Rule created!" });
+                      setShowRuleForm(false);
+                      setRuleFormState({ name: "", triggerMetric: "healthScore", triggerOp: "lt", triggerThreshold: "60", actionType: "slack", actionUrl: "", repoFilter: "" });
+                      const listRes = await fetch("/api/webhook-rules");
+                      if (listRes.ok) { const ld = await listRes.json(); setAutoRules(ld.rules ?? []); }
+                    } catch { setRuleMsg({ type: "error", text: "Network error." }); }
+                    finally { setRuleSaving(false); }
+                  }}
+                  className="rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                >
+                  {ruleSaving ? "Saving…" : "Create Rule"}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Upgrade gate */}
+          {tierInfo && tierInfo.resolvedPlan !== "team" && tierInfo.resolvedPlan !== "enterprise" && (
+            <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-3">
+              <MaterialIcon name="bolt" size={32} className="text-amber-500/40 mx-auto" />
+              <p className="text-sm font-bold">Team plan required</p>
+              <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                Automation rules trigger Slack, Discord, GitHub Issues, or custom webhooks when your repo health crosses a threshold.
+              </p>
+              <a href="/pricing" className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors">
+                <MaterialIcon name="upgrade" size={13} /> Upgrade to Team
+              </a>
+            </div>
+          )}
+
+          {/* Rules list */}
+          {autoLoading && (
+            <div className="text-center py-6 text-muted-foreground text-sm">Loading rules…</div>
+          )}
+          {!autoLoading && autoRules.length > 0 && (
+            <div className="space-y-3">
+              {autoRules.map((rule) => (
+                <div key={rule.id} className="rounded-2xl border border-border bg-card p-4 flex items-start gap-4">
+                  <div className="flex-1 min-w-0 space-y-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold">{rule.name}</span>
+                      <span className={cn("text-[9px] font-black uppercase tracking-wider rounded-full border px-2 py-0.5", rule.enabled ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" : "border-border text-muted-foreground")}>
+                        {rule.enabled ? "Active" : "Paused"}
+                      </span>
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      When <strong>{rule.triggerMetric}</strong> {rule.triggerOp === "lt" ? "falls below" : rule.triggerOp === "gt" ? "exceeds" : "drops by ≥"} <strong>{rule.triggerThreshold}</strong>
+                      {rule.repoFilter && <> in <strong>{rule.repoFilter}</strong></>}
+                      {" → "}<strong>{rule.actionType}</strong>
+                    </p>
+                    {rule.lastTriggeredAt && (
+                      <p className="text-[10px] text-muted-foreground/60">Last fired: {new Date(rule.lastTriggeredAt).toLocaleString()} · {rule.triggerCount} times total</p>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      type="button"
+                      title={rule.enabled ? "Pause rule" : "Activate rule"}
+                      onClick={async () => {
+                        const res = await fetch(`/api/webhook-rules/${rule.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !rule.enabled }) });
+                        if (res.ok) { const d = await res.json(); setAutoRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: d.rule.enabled } : r)); }
+                      }}
+                      className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                    >
+                      <MaterialIcon name={rule.enabled ? "pause" : "play_arrow"} size={14} className="text-muted-foreground" />
+                    </button>
+                    <button
+                      type="button"
+                      title="Delete rule"
+                      onClick={async () => {
+                        const res = await fetch(`/api/webhook-rules/${rule.id}`, { method: "DELETE" });
+                        if (res.ok) setAutoRules((prev) => prev.filter((r) => r.id !== rule.id));
+                      }}
+                      className="p-1.5 rounded-lg border border-destructive/30 hover:bg-destructive/10 transition-colors"
+                    >
+                      <MaterialIcon name="delete" size={14} className="text-destructive" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+          {!autoLoading && autoRules.length === 0 && (tierInfo?.resolvedPlan === "team" || tierInfo?.resolvedPlan === "enterprise") && (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
+              <MaterialIcon name="bolt" size={28} className="text-muted-foreground/30 mx-auto" />
+              <p className="text-sm font-semibold text-muted-foreground">No automation rules yet</p>
+              <p className="text-[11px] text-muted-foreground/70">Create a rule to automatically notify your team when scan scores drop.</p>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── API Keys Tab ─────────────────────────────────────────────────────── */}
+      {activeTab === "api-keys" && (
+        <div className="space-y-6">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground/50">API Keys</p>
+            <p className="text-[11px] text-muted-foreground/60 mt-1">Use API keys to access GitScope data from your own tools and integrations.</p>
+          </div>
+
+          {/* Plan gate */}
+          {pubApiKeyMaxKeys === 0 && !pubApiKeysLoading && (
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 space-y-2">
+              <p className="text-sm font-black text-primary flex items-center gap-2">
+                <MaterialIcon name="vpn_key" size={16} /> API Keys require Professional plan or higher
+              </p>
+              <p className="text-[11px] text-muted-foreground/60">Upgrade to generate machine-readable keys for the GitScope REST API.</p>
+            </div>
+          )}
+
+          {/* Revealed key one-time banner */}
+          {revealedKey && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
+              <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
+                <MaterialIcon name="check_circle" size={13} /> Key created — copy it now, it will never be shown again
+              </p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 font-mono text-[11px] bg-surface-container-highest px-3 py-2 rounded-xl border border-outline-variant/20 text-foreground/80 break-all select-all">
+                  {revealedKey}
+                </code>
+                <button
+                  type="button"
+                  title="Copy API key"
+                  onClick={() => { void navigator.clipboard.writeText(revealedKey); }}
+                  className="p-2 rounded-xl border border-outline-variant/20 hover:bg-surface-container-highest transition-colors shrink-0"
+                >
+                  <MaterialIcon name="content_copy" size={14} className="text-muted-foreground" />
+                </button>
+              </div>
+              <button type="button" onClick={() => setRevealedKey(null)} className="text-[10px] text-muted-foreground/50 hover:text-muted-foreground transition-colors">
+                Dismiss
+              </button>
+            </div>
+          )}
+
+          {/* Create key form */}
+          {pubApiKeyMaxKeys > 0 && pubApiKeys.length < pubApiKeyMaxKeys && (
+            <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-5 space-y-4">
+              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Create New Key</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Key Name</label>
+                  <input
+                    type="text"
+                    placeholder="My CI pipeline"
+                    value={newPubKeyName}
+                    onChange={(e) => setNewPubKeyName(e.target.value)}
+                    maxLength={64}
+                    title="Key name"
+                    className="w-full text-sm bg-surface-container-highest border border-outline-variant/20 rounded-xl px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Expires In (days)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="365"
+                    value={newPubKeyExpiry}
+                    onChange={(e) => setNewPubKeyExpiry(e.target.value)}
+                    placeholder="90"
+                    title="Expiry in days"
+                    className="w-full text-sm bg-surface-container-highest border border-outline-variant/20 rounded-xl px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">Scopes</p>
+                <div className="flex flex-wrap gap-2">
+                  {(["repos:read", "scans:read", "scans:write", "coverage:read", "dora:read"] as const).map((scope) => (
+                    <label key={scope} className="flex items-center gap-1.5 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={newPubKeyScopes.includes(scope)}
+                        onChange={(e) => setNewPubKeyScopes((prev) =>
+                          e.target.checked ? [...prev, scope] : prev.filter((s) => s !== scope)
+                        )}
+                        className="rounded border-border"
+                      />
+                      <span className="font-mono text-[10px] text-foreground/70">{scope}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+              {pubApiKeyMsg && (
+                <p className={`text-xs font-medium ${pubApiKeyMsg.type === "success" ? "text-emerald-400" : "text-red-400"}`}>
+                  {pubApiKeyMsg.text}
+                </p>
+              )}
+              <button
+                type="button"
+                disabled={pubApiKeyCreating || !newPubKeyName.trim()}
+                onClick={async () => {
+                  setPubApiKeyCreating(true); setPubApiKeyMsg(null); setRevealedKey(null);
+                  try {
+                    const res = await fetch("/api/user/api-keys", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({
+                        name: newPubKeyName.trim(),
+                        scopes: newPubKeyScopes,
+                        expiresInDays: parseInt(newPubKeyExpiry, 10) || 90,
+                      }),
+                    });
+                    const d = await res.json() as { rawKey?: string; id?: string; name?: string; prefix?: string; scopes?: string[]; expiresAt?: string | null; createdAt?: string; error?: string };
+                    if (!res.ok) { setPubApiKeyMsg({ type: "error", text: d.error ?? "Failed to create key" }); return; }
+                    setRevealedKey(d.rawKey ?? null);
+                    const { rawKey: _, ...rest } = d;
+                    setPubApiKeys((prev) => [{ ...rest, lastUsedAt: null, expiresAt: rest.expiresAt ?? null, createdAt: rest.createdAt ?? new Date().toISOString() } as typeof pubApiKeys[0], ...prev]);
+                    setNewPubKeyName(""); setNewPubKeyScopes(["repos:read", "scans:read"]);
+                    setPubApiKeyMsg({ type: "success", text: "Key created. Copy it now — you won't see it again." });
+                  } catch { setPubApiKeyMsg({ type: "error", text: "Network error" }); }
+                  finally { setPubApiKeyCreating(false); }
+                }}
+                className="px-4 py-2 rounded-xl bg-primary/90 hover:bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
+              >
+                {pubApiKeyCreating ? "Creating…" : "Generate Key"}
+              </button>
+            </div>
+          )}
+
+          {/* Key list */}
+          {pubApiKeysLoading && (
+            <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground/50 text-sm">
+              <MaterialIcon name="sync" size={16} className="animate-spin" /> Loading keys…
+            </div>
+          )}
+          {!pubApiKeysLoading && pubApiKeys.length > 0 && (
+            <div className="space-y-3">
+              {pubApiKeys.map((key) => (
+                <div key={key.id} className="flex items-start gap-3 p-4 rounded-2xl border border-outline-variant/10 bg-surface-container/20">
+                  <div className="size-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <MaterialIcon name="vpn_key" size={14} className="text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-black">{key.name}</p>
+                    <p className="font-mono text-[10px] text-muted-foreground/50">{key.prefix}…</p>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {key.scopes.map((s) => (
+                        <span key={s} className="font-mono text-[9px] px-1.5 py-0.5 rounded bg-surface-container-highest border border-outline-variant/15 text-muted-foreground/60">{s}</span>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground/40 mt-1">
+                      Created {new Date(key.createdAt).toLocaleDateString()}
+                      {key.lastUsedAt ? ` · Last used ${new Date(key.lastUsedAt).toLocaleDateString()}` : " · Never used"}
+                      {key.expiresAt ? ` · Expires ${new Date(key.expiresAt).toLocaleDateString()}` : ""}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    title="Revoke key"
+                    onClick={async () => {
+                      const res = await fetch(`/api/user/api-keys?id=${key.id}`, { method: "DELETE" });
+                      if (res.ok) setPubApiKeys((prev) => prev.filter((k) => k.id !== key.id));
+                    }}
+                    className="p-1.5 rounded-lg border border-destructive/30 hover:bg-destructive/10 transition-colors shrink-0"
+                  >
+                    <MaterialIcon name="delete" size={14} className="text-destructive" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          {!pubApiKeysLoading && pubApiKeys.length === 0 && pubApiKeyMaxKeys > 0 && (
+            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
+              <MaterialIcon name="vpn_key" size={28} className="text-muted-foreground/30 mx-auto" />
+              <p className="text-sm font-semibold text-muted-foreground">No API keys yet</p>
+              <p className="text-[11px] text-muted-foreground/70">
+                Generate a key to access GitScope data from CI pipelines, scripts, or third-party tools.
+              </p>
+              <p className="text-[10px] text-muted-foreground/50 font-mono">GET /api/v1/repos/&#123;owner&#125;/&#123;repo&#125;/scan</p>
+            </div>
+          )}
+
+          {/* Endpoint reference */}
+          {pubApiKeyMaxKeys > 0 && (
+            <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-5 space-y-3">
+              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Available Endpoints</p>
+              <div className="space-y-2">
+                {[
+                  { method: "GET", path: "/api/v1/repos/{owner}/{repo}/scan", scope: "scans:read", desc: "Latest scan result" },
+                  { method: "GET", path: "/api/v1/repos/{owner}/{repo}/dora", scope: "dora:read",  desc: "DORA metrics" },
+                ].map((ep) => (
+                  <div key={ep.path} className="flex items-start gap-3 p-3 rounded-xl bg-surface-container-highest/30 border border-outline-variant/10">
+                    <span className="font-mono text-[9px] px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 shrink-0">{ep.method}</span>
+                    <div className="min-w-0">
+                      <p className="font-mono text-[10px] text-foreground/70 truncate">{ep.path}</p>
+                      <p className="text-[9px] text-muted-foreground/50">{ep.desc} · scope: <span className="font-mono">{ep.scope}</span></p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground/40">Pass key as <code className="font-mono bg-surface-container-highest px-1 rounded">Authorization: Bearer sk_gs_...</code> or <code className="font-mono bg-surface-container-highest px-1 rounded">X-API-Key</code> header.</p>
+            </div>
           )}
         </div>
       )}

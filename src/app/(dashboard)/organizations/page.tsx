@@ -10,6 +10,7 @@ import { requireTier } from "@/lib/auth-tier";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";
+import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
 import { OrganizationsClient } from "@/features/organizations/organizations-client";
 
 interface GitHubOrg {
@@ -75,6 +76,8 @@ export default async function OrganizationsPage() {
   }
 
   const username = session?.user?.name ?? session?.user?.email?.split("@")[0] ?? "you";
+  const plan = await resolveAiPlanFromSessionDb(session);
+  const userId = session?.user?.id ?? "";
 
-  return <OrganizationsClient orgs={orgs} username={username} />;
+  return <OrganizationsClient orgs={orgs} username={username} userId={userId} plan={plan} />;
 }

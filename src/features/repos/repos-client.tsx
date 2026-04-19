@@ -284,7 +284,7 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
       </div>
 
       {/* Hover action overlay */}
-      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-3xl flex items-end justify-between p-3">
+      <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-3xl flex items-end justify-between p-3">
         <button
           type="button"
           title={isHidden ? "Show in list" : "Hide from list"}
@@ -530,7 +530,7 @@ export function ReposClient() {
                 { label: "Public", value: meta.public, icon: "public", color: "text-emerald-400" },
                 { label: "Owned", value: meta.owned, icon: "person", color: "text-violet-400" },
               ].map((s) => (
-                <div key={s.label} className="flex flex-col items-center px-4 py-2.5 rounded-2xl bg-surface-container/30 border border-outline-variant/10 min-w-[68px]">
+                <div key={s.label} className="flex flex-col items-center px-4 py-2.5 rounded-2xl bg-surface-container/30 border border-outline-variant/10 min-w-17">
                   <span className={cn("text-xl font-black", s.color)}>{s.value}</span>
                   <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mt-0.5">{s.label}</span>
                 </div>

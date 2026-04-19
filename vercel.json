@@ -3,6 +3,10 @@
     {
       "path": "/api/internal/ai-jobs/cron",
       "schedule": "0 8 * * *"
+    },
+    {
+      "path": "/api/internal/prune-scan-cache",
+      "schedule": "0 3 * * *"
     }
   ]
 }

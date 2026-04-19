@@ -166,6 +166,7 @@ export default function FeaturesPage() {
 
   useLayoutEffect(() => {
     if (!containerRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
     const ctx = gsap.context(() => {
       gsap.from(".hero-text", {
         y: 50, opacity: 0, duration: 0.9, ease: "power4.out", stagger: 0.12,
@@ -275,7 +276,7 @@ export default function FeaturesPage() {
             <p className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400 mb-3">Workflow</p>
             <h2 className="font-heading text-4xl font-black tracking-tight">How it works</h2>
           </div>
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
+          <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {HOW_IT_WORKS.map((s, i) => (
               <div key={i} className="step-item flex flex-col gap-4">
                 <span className="font-mono text-4xl font-black text-indigo-500/20">{s.step}</span>
@@ -297,7 +298,7 @@ export default function FeaturesPage() {
               Press <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">⌘K</kbd> to open the command palette, <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">T</kbd> to toggle theme, <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">F</kbd> for fullscreen, and <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">G→O</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">G→E</kbd> to jump between views — no mouse required.
             </p>
           </div>
-          <div className="grid grid-cols-2 gap-2 shrink-0 text-[11px] font-mono">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 shrink-0 text-[11px] font-mono w-full sm:w-auto">
             {[
               ["⌘K", "Command palette"],
               ["/", "Focus search"],
@@ -317,7 +318,7 @@ export default function FeaturesPage() {
 
       {/* CTA */}
       <section className="py-20 px-6">
-        <div className="cta-block max-w-4xl mx-auto rounded-3xl bg-gradient-to-br from-indigo-600 to-indigo-900 p-12 md:p-20 text-center text-white relative overflow-hidden">
+        <div className="cta-block max-w-4xl mx-auto rounded-3xl bg-linear-to-br from-indigo-600 to-indigo-900 p-12 md:p-20 text-center text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.07)_0%,_transparent_70%)]" />
           <div className="relative z-10">
             <h2 className="font-heading text-4xl md:text-5xl font-black mb-5 tracking-tight">

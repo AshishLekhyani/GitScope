@@ -663,7 +663,7 @@ export function UserProfile({ username }: { username: string }) {
           <UserStatsCards user={user} repos={repos} loading={loading} />
           
           <Tabs defaultValue="repositories" className="w-full">
-            <TabsList className="w-full justify-start bg-white/5 border border-white/10 p-1 overflow-x-auto">
+            <TabsList className="w-full justify-start bg-white/5 border border-white/10 p-1 overflow-x-auto scrollbar-none">
               <TabsTrigger value="repositories" className="text-xs">
                 <FolderGit className="mr-2 h-3.5 w-3.5" />
                 Repositories

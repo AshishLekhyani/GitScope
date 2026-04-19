@@ -436,7 +436,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
           {scanState === "done" && (
             <>
               {/* Severity summary */}
-              <div className="grid grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
                 {[
                   { label: "Critical", count: criticalCount, color: "#ef4444" },
                   { label: "High",     count: highCount,     color: "#f97316" },

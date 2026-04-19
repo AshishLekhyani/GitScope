@@ -175,7 +175,7 @@ export default async function LanguagesPage() {
           </div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
             <MaterialIcon name="code" size={32} className="text-blue-500" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-blue-500 to-cyan-500">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-500 to-cyan-500">
               Language Analytics
             </span>
           </h1>

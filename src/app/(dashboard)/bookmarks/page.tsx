@@ -233,7 +233,7 @@ export default function ActionItemsPage() {
 
       {/* Stats strip */}
       {!loading && items.length > 0 && (
-        <div className="grid grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {[
             { label: "Open",        count: counts.open,        color: "text-red-400",     bg: "bg-red-500/8 border-red-500/15" },
             { label: "In Progress", count: counts.in_progress, color: "text-amber-400",   bg: "bg-amber-500/8 border-amber-500/15" },

@@ -20,19 +20,32 @@ export default function APIPage() {
         <p className="mt-4 text-xl text-muted-foreground">Integrate GitHub analytics into your workflows with the GitScope REST API.</p>
       </div>
 
-      <div className="grid gap-12 lg:grid-cols-3">
+      <div className="grid gap-12 md:grid-cols-3">
         <div className="lg:col-span-2 space-y-12">
           <section>
             <h2 className="mb-4 text-2xl font-bold text-foreground">Authentication</h2>
             <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
-              All API requests must include a valid session cookie from NextAuth.js. 
-              The API uses the same authentication as the web interface — there are no separate API tokens.
-              All requests must be made over HTTPS.
+              GitScope supports two authentication methods:
             </p>
-            <div className="rounded-xl border border-white/5 bg-[#0b1326] p-4 font-mono text-xs text-indigo-300">
-              <div className="flex items-center gap-2 text-slate-400 mb-2">
-                <Shield className="size-3" />
-                <span>Session-based authentication (automatic with browser cookies)</span>
+            <div className="space-y-3">
+              <div className="rounded-xl border border-white/5 bg-[#0b1326] p-4 font-mono text-xs">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                  <Shield className="size-3" />
+                  <span className="text-indigo-300">Session cookies</span>
+                  <span>— all dashboard endpoints (automatic with browser)</span>
+                </div>
+              </div>
+              <div className="rounded-xl border border-indigo-500/20 bg-[#0b1326] p-4 font-mono text-xs">
+                <div className="flex items-center gap-2 text-slate-400 mb-2">
+                  <Lock className="size-3" />
+                  <span className="text-indigo-300">API key</span>
+                  <span>— <code>/api/v1/</code> endpoints (Professional plan+)</span>
+                </div>
+                <div className="text-slate-400 space-y-1 mt-2">
+                  <div><span className="text-emerald-400">Authorization:</span> Bearer sk_gs_your_key_here</div>
+                  <div className="text-slate-600">— or —</div>
+                  <div><span className="text-emerald-400">X-API-Key:</span> sk_gs_your_key_here</div>
+                </div>
               </div>
             </div>
           </section>
@@ -174,6 +187,11 @@ export default function APIPage() {
               />
               <EndpointCard
                 method="GET"
+                path="/api/github/coverage/pr?repo={owner/repo}&pr={number}"
+                description="PR-level coverage diff — base vs head coverage, delta, status (improved/degraded/unchanged), and per-file breakdown with test file detection. Pulls from Codecov PR comparison API."
+              />
+              <EndpointCard
+                method="GET"
                 path="/api/github/open-prs?repo={owner/repo}"
                 description="Open pull requests for a repository — title, author, head/base branch, additions, deletions, labels, and PR URL."
               />
@@ -181,6 +199,36 @@ export default function APIPage() {
                 method="GET"
                 path="/api/ai/team-scans?org={org-name}"
                 description="Aggregated scan history for all repositories in an organization, across all GitScope users. Returns per-repo latest health score, critical count, and scanner identity."
+              />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="mb-4 text-2xl font-bold text-foreground">Public REST API (v1)</h2>
+            <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
+              Machine-readable endpoints for CI pipelines and third-party integrations. Authenticate with an API key — generate one in{" "}
+              <Link href="/settings?tab=api-keys" className="text-indigo-400 hover:underline">Settings → API Keys</Link>.
+              Pass the key as <code className="text-xs bg-white/5 px-1 rounded">Authorization: Bearer sk_gs_...</code> or{" "}
+              <code className="text-xs bg-white/5 px-1 rounded">X-API-Key</code>.
+              Rate limit: 120 req/min per key. Available on Professional plan and above.
+            </p>
+            <div className="space-y-6">
+              <EndpointCard
+                method="GET"
+                path="/api/v1"
+                description="API discovery — returns available endpoints, scopes, and authentication instructions."
+              />
+              <EndpointCard
+                method="GET"
+                path="/api/v1/repos/{owner}/{repo}/scan"
+                description="Latest scan result for a repository — healthScore, securityScore, qualityScore, criticalCount, summary, and timestamp. Scope: scans:read."
+                example='curl -H "Authorization: Bearer sk_gs_..." https://gitscope.dev/api/v1/repos/vercel/next.js/scan'
+              />
+              <EndpointCard
+                method="GET"
+                path="/api/v1/repos/{owner}/{repo}/dora"
+                description="DORA metrics for a repository — leadTime, deployFreq, cfr, mttr, deploySource (github-deployments | actions-workflows | pr-merges). Scope: dora:read."
+                example='curl -H "X-API-Key: sk_gs_..." https://gitscope.dev/api/v1/repos/vercel/next.js/dora'
               />
             </div>
           </section>

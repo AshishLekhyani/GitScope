@@ -246,7 +246,7 @@ function ForecastingMock() {
       </div>
 
       <div className="relative rounded-2xl border border-border bg-card p-8 overflow-hidden shadow-sm">
-         <div className="absolute inset-x-0 bottom-0 top-1/2 bg-gradient-to-t from-primary/5 to-transparent" />
+         <div className="absolute inset-x-0 bottom-0 top-1/2 bg-linear-to-t from-primary/5 to-transparent" />
          
          <div className="relative z-10 flex items-end gap-1 h-[240px] border-b border-border">
             {FORECAST_BARS.map(({ h }, i) => (

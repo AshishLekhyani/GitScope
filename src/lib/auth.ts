@@ -220,11 +220,11 @@ export const authOptions: NextAuthOptions = {
           where: { email: profile.email },
           select: { id: true, emailVerified: true, name: true },
         });
-        
+
         if (existingUser && existingUser.id !== user.id) {
           // Automatic linking detected - log to audit system and notify user
           const providerName = account.provider.charAt(0).toUpperCase() + account.provider.slice(1);
-          
+
           // 1. Persist audit log to database
           await logSecurityEvent({
             eventType: "auth:oauth_connect",
@@ -241,7 +241,7 @@ export const authOptions: NextAuthOptions = {
             severity: "warning",
             success: true,
           }, { persistToDb: true, logToConsole: true });
-          
+
           // 2. Create in-app notification for the user
           await prisma.notification.create({
             data: {
@@ -253,8 +253,30 @@ export const authOptions: NextAuthOptions = {
               link: "/settings",
             },
           });
-          
+
           console.warn(`[Security] OAuth automatic linking: ${account.provider} account linked to existing user ${existingUser.id}`);
+        }
+
+        // SSO Domain Auto-Join: if user email matches an org's allowedDomain, auto-add as member
+        if (user.id && profile.email) {
+          const emailDomain = profile.email.split("@")[1]?.toLowerCase();
+          if (emailDomain) {
+            try {
+              const matchingOrgs = await prisma.organization.findMany({
+                where: { allowedDomain: emailDomain },
+                select: { id: true },
+              });
+              for (const org of matchingOrgs) {
+                await prisma.orgMember.upsert({
+                  where: { orgId_userId: { orgId: org.id, userId: user.id } },
+                  create: { orgId: org.id, userId: user.id, role: "member" },
+                  update: {},
+                });
+              }
+            } catch {
+              // Non-fatal — auto-join failure never blocks sign-in
+            }
+          }
         }
       }
       return true;

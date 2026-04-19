@@ -99,7 +99,7 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
           placeholder="PR number (e.g. 42)"
           className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
       ) : (
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           <input value={baseBranch} onChange={(e) => setBaseBranch(e.target.value)}
             placeholder="Base branch (e.g. main)"
             className="bg-surface-container/40 border border-outline-variant/15 rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
@@ -131,7 +131,7 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
               {copied ? "Copied!" : "Copy Markdown"}
             </button>
           </div>
-          <pre className="whitespace-pre-wrap font-mono text-[11px] text-foreground/80 leading-relaxed bg-surface-container/30 rounded-2xl border border-outline-variant/10 p-5 overflow-x-auto max-h-[480px] overflow-y-auto">
+          <pre className="whitespace-pre-wrap font-mono text-[11px] text-foreground/80 leading-relaxed bg-surface-container/30 rounded-2xl border border-outline-variant/10 p-5 overflow-x-auto max-h-120 overflow-y-auto">
             {result.description}
           </pre>
         </div>

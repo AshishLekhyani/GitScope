@@ -64,7 +64,7 @@ export function SourceExplorerClient({
         </h1>
         
         {/* Breadcrumb Navigation */}
-        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap font-mono text-sm text-muted-foreground pb-2">
+        <div className="flex items-center gap-2 overflow-x-auto whitespace-nowrap font-mono text-sm text-muted-foreground pb-2 scrollbar-none">
           <Link
             href={ROUTES.source(owner, repo)}
             className="hover:text-primary transition-colors hover:underline"

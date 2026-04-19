@@ -112,6 +112,10 @@ model User {
   scheduledScans  ScheduledScan[]
   customScanRules CustomScanRule[]
   actionItems     ActionItem[]
+  ownedOrgs       Organization[]    @relation("OrgOwner")
+  orgMemberships  OrgMember[]       @relation("OrgMemberships")
+  webhookRules    WebhookRule[]
+  apiKeys         ApiKey[]
 
   @@map("users")
 }
@@ -396,7 +400,126 @@ model ActionItem {
   @@map("action_items")
 }
 
+// ── Public Repo Scan Cache ─────────────────────────────────────────────────────
+// Shared cross-user cache for public repos. Before calling the LLM for a public
+// repo scan, check here first. Populated after every successful LLM scan.
+// TTL: 24h for quick scans, 48h for deep scans.
+model PublicScanCache {
+  id        String   @id @default(cuid())
+  repo      String
+  scanMode  String   @default("quick") @map("scan_mode")
+  result    Json
+  hitCount  Int      @default(0) @map("hit_count")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([repo, scanMode])
+  @@index([expiresAt])
+  @@map("public_scan_cache")
+}
+
+// ── Team / Workspace Seat Management ──────────────────────────────────────────
+enum OrgRole {
+  owner
+  admin
+  member
+  viewer
+}
+
+model Organization {
+  id            String   @id @default(cuid())
+  name          String
+  slug          String   @unique
+  ownerId       String   @map("owner_id")
+  owner         User     @relation("OrgOwner", fields: [ownerId], references: [id])
+  plan          AiTier   @default(free)
+  maxSeats      Int      @default(10)
+  allowedDomain String?  @map("allowed_domain") // SSO: auto-join users from this email domain
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  members OrgMember[]
+  invites OrgInvite[]
+
+  @@map("organizations")
+}
+
+model OrgMember {
+  id       String       @id @default(cuid())
+  orgId    String       @map("org_id")
+  org      Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  userId   String       @map("user_id")
+  user     User         @relation("OrgMemberships", fields: [userId], references: [id], onDelete: Cascade)
+  role     OrgRole      @default(member)
+  joinedAt DateTime     @default(now()) @map("joined_at")
+
+  @@unique([orgId, userId])
+  @@index([userId])
+  @@map("org_members")
+}
+
+model OrgInvite {
+  id        String       @id @default(cuid())
+  orgId     String       @map("org_id")
+  org       Organization @relation(fields: [orgId], references: [id], onDelete: Cascade)
+  email     String
+  role      OrgRole      @default(member)
+  token     String       @unique @default(cuid())
+  expiresAt DateTime     @map("expires_at")
+  createdAt DateTime     @default(now()) @map("created_at")
+
+  @@unique([orgId, email])
+  @@index([token])
+  @@map("org_invites")
+}
+
+// ── Outbound Webhook Automation Rules ─────────────────────────────────────────
+// Team+ feature: fire Slack/Discord/GitHub Issue/custom webhook when a metric crosses a threshold.
+model WebhookRule {
+  id               String    @id @default(cuid())
+  userId           String    @map("user_id")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name             String
+  enabled          Boolean   @default(true)
+  // Trigger
+  triggerMetric    String    @map("trigger_metric")    // "healthScore" | "securityScore" | "qualityScore" | "criticalCount"
+  triggerOp        String    @map("trigger_op")        // "lt" | "gt" | "drop_by"
+  triggerThreshold Float     @map("trigger_threshold")
+  // Action
+  actionType       String    @map("action_type")       // "slack" | "discord" | "github_issue" | "webhook"
+  actionUrl        String?   @map("action_url")
+  repoFilter       String?   @map("repo_filter")       // null = all repos; "owner/repo" = scoped
+  // Stats
+  lastTriggeredAt  DateTime? @map("last_triggered_at")
+  triggerCount     Int       @default(0) @map("trigger_count")
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@map("webhook_rules")
+}
+
+// ── Public API Keys ───────────────────────────────────────────────────────────
+// Team+ feature: machine-readable API keys for the /api/v1/ public REST namespace.
+// Keys are stored as SHA-256 hash only — the raw key is shown once at creation.
+model ApiKey {
+  id         String    @id @default(cuid())
+  userId     String    @map("user_id")
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name       String
+  keyHash    String    @unique @map("key_hash") // SHA-256 of the raw key
+  prefix     String    // first 8 chars (sk_gs_XXXX) for display identification
+  scopes     String[]  @default(["repos:read", "scans:read"])
+  lastUsedAt DateTime? @map("last_used_at")
+  expiresAt  DateTime? @map("expires_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([keyHash])
+  @@map("api_keys")
+}
+
 // identifier prefixes:
 //   "verify:{email}"  — email address verification (expires 24h)
 //   "reset:{email}"   — password reset (expires 1h)
-// Prisma schema v4 - slackWebhookUrl, weeklyDigest, githubAppInstallId, BenchmarkStat added
+// Prisma schema v5 - OrgRole, Organization, OrgMember, OrgInvite, WebhookRule, ApiKey, allowedDomain added

@@ -54,7 +54,7 @@ const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
     aiAgentDepth: 1,
     aiRequestsPerHour: 20,
     allowsPrivateRepoAnalysis: false,
-    allowSharedTokenFallback: false,
+    allowSharedTokenFallback: true,    // GitScope AI: 3 free server-key scans/day
     deepScanAllowed: false,
     fixDiffsAllowed: false,
     scanHistoryDays: 0,
@@ -71,7 +71,7 @@ const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
     weeklyDigestAllowed: false,
     benchmarkComparisonAllowed: false,
     monthlyPrReviewLimit: 5,
-    dailyLlmScanLimit: 0,              // free plan: internal AI only, no LLM cost
+    dailyLlmScanLimit: 3,              // GitScope AI: 3 free server-key scans/day (haiku model)
   },
   professional: {
     plan: "professional",

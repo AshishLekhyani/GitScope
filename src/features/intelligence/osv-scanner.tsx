@@ -86,25 +86,26 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
   return (
     <div className="space-y-6">
       {/* Input */}
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <div className="relative flex-1">
-          <MaterialIcon name="security" size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
+          <MaterialIcon name="security" size={15} className="absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground/40 pointer-events-none" />
           <input
             value={repo}
             onChange={(e) => setRepo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && scan()}
-            placeholder="owner/repo (e.g. expressjs/express)"
-            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-10 pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500/40 transition-all"
+            placeholder="owner/repo"
+            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500/40 transition-all"
           />
         </div>
         <button
           type="button"
           onClick={scan}
           disabled={loading || !repo.trim()}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 sm:px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
         >
-          {loading ? <MaterialIcon name="sync" size={15} className="animate-spin" /> : <MaterialIcon name="search" size={15} />}
-          {loading ? "Scanning…" : "Scan CVEs"}
+          {loading ? <MaterialIcon name="sync" size={14} className="animate-spin" /> : <MaterialIcon name="search" size={14} />}
+          <span className="hidden sm:inline">{loading ? "Scanning…" : "Scan CVEs"}</span>
+          <span className="sm:hidden">{loading ? "…" : "Scan"}</span>
         </button>
       </div>
 
@@ -143,7 +144,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
       {result && (
         <div className="space-y-5 animate-in fade-in duration-400">
           {/* Summary strip */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
             {[
               { label: "CVEs Found",    value: result.total,            color: result.total > 0 ? "text-red-400" : "text-emerald-400" },
               { label: "Pkgs Scanned",  value: result.scannedPackages,  color: "text-foreground" },
@@ -168,7 +169,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
           ) : (
             <>
               {/* Severity filter */}
-              <div className="flex gap-2 flex-wrap">
+              <div className="flex gap-1 sm:gap-2 flex-wrap">
                 {severities.map((s) => {
                   const meta = s === "ALL" ? null : sev(s);
                   const count = s === "ALL" ? result.total : (counts[s] ?? 0);
@@ -199,7 +200,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
                     const meta = sev(f.severity);
                     return (
                       <div key={f.id} className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20 transition-all overflow-hidden">
-                        <div className="flex items-start gap-4 p-4">
+                        <div className="flex items-start gap-2 sm:gap-4 p-3 sm:p-4">
                           {/* Severity badge */}
                           <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest shrink-0 mt-0.5", meta.bg, meta.text, "border-current/20")}>
                             <span className={cn("size-1.5 rounded-full", meta.dot)} />

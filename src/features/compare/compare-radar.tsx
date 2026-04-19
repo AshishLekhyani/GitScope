@@ -84,7 +84,7 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
         <div className="size-16 rounded-3xl bg-indigo-500/5 flex items-center justify-center border border-indigo-500/10 mb-6">
           <MaterialIcon name="monitoring" size={32} className="text-indigo-500/20" />
         </div>
-        <h3 className="text-xl font-bold bg-gradient-to-br from-foreground to-foreground/40 bg-clip-text text-transparent mb-2">
+        <h3 className="text-xl font-bold bg-linear-to-br from-foreground to-foreground/40 bg-clip-text text-transparent mb-2">
           Select Repositories to Start Comparison
         </h3>
         <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed">
@@ -306,7 +306,7 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         {/* Clearer Comparison Chart */}
         <div className="relative h-[450px] w-full bg-surface-container border border-outline-variant/20 rounded-3xl p-8 shadow-2xl overflow-hidden group">
-          <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+          <div className="absolute inset-0 bg-linear-to-br from-indigo-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
           <div className="flex items-center justify-between mb-8">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-indigo-500 animate-pulse" />

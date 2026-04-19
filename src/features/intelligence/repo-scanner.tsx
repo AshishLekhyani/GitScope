@@ -5,6 +5,10 @@ import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { getCsrfToken } from "@/lib/csrf-client";
 import type { RepoScanResult, RepoScanFinding } from "@/app/api/ai/repo-scan/route";
+import {
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
+  Legend, ResponsiveContainer,
+} from "recharts";
 
 // ── Radial ring gauge ─────────────────────────────────────────────────────────
 function RingGauge({ score, size = 56 }: { score: number; size?: number }) {
@@ -161,6 +165,89 @@ function TrendChart({
         </>
       )}
     </svg>
+  );
+}
+
+// ── Multi-metric Recharts area chart ─────────────────────────────────────────
+
+interface HistoryPoint {
+  healthScore: number;
+  securityScore: number;
+  qualityScore: number;
+  criticalCount: number;
+  createdAt: string;
+}
+
+function MultiMetricChart({ history }: { history: HistoryPoint[] }) {
+  const data = history.map((h) => ({
+    date: new Date(h.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    Health:    h.healthScore,
+    Security:  h.securityScore,
+    Quality:   h.qualityScore,
+    "Critical Issues": h.criticalCount,
+  }));
+
+  return (
+    <div className="w-full h-56">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gHealth"   x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gSecurity" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%"  stopColor="#10b981" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+            </linearGradient>
+            <linearGradient id="gQuality"  x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%"  stopColor="#3b82f6" stopOpacity={0.3} />
+              <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.08} />
+          <XAxis dataKey="date" tick={{ fontSize: 9, fill: "currentColor", opacity: 0.4 }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 9, fill: "currentColor", opacity: 0.4 }} tickLine={false} axisLine={false} />
+          <Tooltip
+            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11 }}
+            labelStyle={{ fontWeight: 700, marginBottom: 4 }}
+          />
+          <Legend wrapperStyle={{ fontSize: 10, paddingTop: 8 }} />
+          <Area type="monotone" dataKey="Health"   stroke="#6366f1" strokeWidth={2} fill="url(#gHealth)"   dot={false} />
+          <Area type="monotone" dataKey="Security" stroke="#10b981" strokeWidth={2} fill="url(#gSecurity)" dot={false} />
+          <Area type="monotone" dataKey="Quality"  stroke="#3b82f6" strokeWidth={2} fill="url(#gQuality)"  dot={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}
+
+function CveChart({ history }: { history: HistoryPoint[] }) {
+  const data = history.map((h) => ({
+    date: new Date(h.createdAt).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+    Critical: h.criticalCount,
+  }));
+
+  return (
+    <div className="w-full h-32">
+      <ResponsiveContainer width="100%" height="100%">
+        <AreaChart data={data} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
+          <defs>
+            <linearGradient id="gCritical" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="5%"  stopColor="#ef4444" stopOpacity={0.4} />
+              <stop offset="95%" stopColor="#ef4444" stopOpacity={0} />
+            </linearGradient>
+          </defs>
+          <CartesianGrid strokeDasharray="3 3" strokeOpacity={0.08} />
+          <XAxis dataKey="date" tick={{ fontSize: 9, fill: "currentColor", opacity: 0.4 }} tickLine={false} axisLine={false} />
+          <YAxis tick={{ fontSize: 9, fill: "currentColor", opacity: 0.4 }} tickLine={false} axisLine={false} allowDecimals={false} />
+          <Tooltip
+            contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 12, fontSize: 11 }}
+          />
+          <Area type="monotone" dataKey="Critical" stroke="#ef4444" strokeWidth={2} fill="url(#gCritical)" dot={false} />
+        </AreaChart>
+      </ResponsiveContainer>
+    </div>
   );
 }
 
@@ -546,9 +633,9 @@ export function RepoScanner({
 
   // OSV CVE scanner state
   const [osvVulns, setOsvVulns] = useState<{
-    package: string; version: string; devDependency: boolean;
-    vulnId: string; summary: string;
-    severity: "critical" | "high" | "medium" | "low"; url: string;
+    id: string; package: string; version: string; ecosystem: string;
+    summary: string; severity: "critical" | "high" | "medium" | "low";
+    cvss?: string; fixedIn?: string[]; url?: string;
   }[] | null>(null);
   const [osvScanning, setOsvScanning] = useState(false);
   const [osvScanned, setOsvScanned] = useState(0);
@@ -803,7 +890,7 @@ export function RepoScanner({
         </div>
         <div className="w-full max-w-sm space-y-2">
           <div className="h-1.5 w-full rounded-full bg-surface-container-highest overflow-hidden">
-            <div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-violet-500 transition-all duration-500"
+            <div className="h-full rounded-full bg-linear-to-r from-indigo-500 to-violet-500 transition-all duration-500"
               style={{ width: `${progress.percent}%` }} />
           </div>
           <p className="text-center text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
@@ -841,7 +928,7 @@ export function RepoScanner({
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-700">
 
         {/* Health score hero */}
-        <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 via-violet-500/5 to-transparent p-6">
+        <div className="relative overflow-hidden rounded-3xl border border-indigo-500/20 bg-linear-to-br from-indigo-500/5 via-violet-500/5 to-transparent p-6">
           <div className="flex items-start justify-between gap-4">
             <div className="space-y-2">
               <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-indigo-400/70">
@@ -878,7 +965,7 @@ export function RepoScanner({
                     showSchedulePanel
                       ? "bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/30"
                       : schedule
-                      ? "bg-gradient-to-r from-indigo-500/20 to-violet-500/20 border-indigo-500/30 text-indigo-400 hover:from-indigo-500/30 hover:to-violet-500/30"
+                      ? "bg-linear-to-r from-indigo-500/20 to-violet-500/20 border-indigo-500/30 text-indigo-400 hover:from-indigo-500/30 hover:to-violet-500/30"
                       : "bg-surface-container border-outline-variant/20 text-foreground/60 hover:bg-indigo-500/10 hover:border-indigo-500/25 hover:text-indigo-400"
                   )}
                 >
@@ -908,7 +995,7 @@ export function RepoScanner({
 
         {/* Schedule panel */}
         {showSchedulePanel && scheduledScansAllowed && (
-          <div className="rounded-3xl border border-indigo-500/25 bg-gradient-to-br from-indigo-500/8 via-violet-500/5 to-transparent overflow-hidden animate-in fade-in slide-in-from-top-2 duration-250">
+          <div className="rounded-3xl border border-indigo-500/25 bg-linear-to-br from-indigo-500/8 via-violet-500/5 to-transparent overflow-hidden animate-in fade-in slide-in-from-top-2 duration-250">
             {/* Panel header */}
             <div className="flex items-center justify-between px-5 py-3.5 border-b border-indigo-500/15">
               <div className="flex items-center gap-2.5">
@@ -947,11 +1034,11 @@ export function RepoScanner({
                 {/* Frequency selector — visual cards */}
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-2">Scan frequency</p>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1 sm:gap-2">
                     {(["daily", "weekly", "monthly"] as const).map((f) => (
                       <button key={f} type="button" onClick={() => setScheduleFreq(f)}
                         className={cn(
-                          "py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all",
+                          "py-2 sm:py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all",
                           scheduleFreq === f
                             ? "bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20"
                             : "bg-surface-container/50 border-outline-variant/15 text-muted-foreground/60 hover:border-indigo-500/25 hover:text-foreground"
@@ -1001,7 +1088,7 @@ export function RepoScanner({
 
                 <div className="flex items-center gap-2 pt-1">
                   <button type="button" onClick={saveSchedule} disabled={scheduleSaving}
-                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-gradient-to-r from-indigo-500 to-violet-500 text-white text-[10px] font-black uppercase tracking-widest hover:from-indigo-600 hover:to-violet-600 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50">
+                    className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl bg-linear-to-r from-indigo-500 to-violet-500 text-white text-[10px] font-black uppercase tracking-widest hover:from-indigo-600 hover:to-violet-600 transition-all shadow-md shadow-indigo-500/20 disabled:opacity-50">
                     <MaterialIcon name={scheduleSaving ? "sync" : "check"} size={13} className={scheduleSaving ? "animate-spin" : ""} />
                     {scheduleSaving ? "Saving…" : schedule ? "Update Schedule" : "Enable Schedule"}
                   </button>
@@ -1018,7 +1105,7 @@ export function RepoScanner({
         )}
 
         {/* Section tabs */}
-        <div className="flex gap-1 p-1 bg-surface-container/30 rounded-2xl border border-outline-variant/10 overflow-x-auto">
+        <div className="flex gap-1 p-1 bg-surface-container/30 rounded-2xl border border-outline-variant/10 overflow-x-auto scrollbar-none">
           {sections.map((s) => (
             <button key={s.id} type="button" onClick={() => setActiveSection(s.id)}
               className={cn(
@@ -1036,7 +1123,7 @@ export function RepoScanner({
           <div className="space-y-4 animate-in fade-in duration-300">
             {/* Score ring gauges */}
             <div className="p-5 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-4">
-              <div className="grid grid-cols-4 gap-2">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { label: "Security",     score: result.security.score,     grade: result.security.grade },
                   { label: "Quality",      score: result.codeQuality.score,  grade: result.codeQuality.grade },
@@ -1305,7 +1392,7 @@ export function RepoScanner({
         {/* ── Dependencies section ── */}
         {activeSection === "deps" && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
               {[
                 { label: "Total Deps", value: result.dependencies.totalCount, color: "text-indigo-400" },
                 { label: "Dep Score", value: result.dependencies.score, color: result.dependencies.score >= 70 ? "text-emerald-400" : "text-amber-400" },
@@ -1460,18 +1547,15 @@ export function RepoScanner({
               </div>
             ) : (
               <>
-                {/* Full trend chart card */}
+                {/* Multi-metric trend chart */}
                 <div className="p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-                      <MaterialIcon name="show_chart" size={12} /> Health Score Trend
+                      <MaterialIcon name="show_chart" size={12} /> Score Trends
                     </p>
                     <span className="text-[9px] font-mono text-muted-foreground/40">{history.length} scans · {scanHistoryDays}d retention</span>
                   </div>
-                  <TrendChart
-                    data={history.map((h) => h.healthScore)}
-                    dates={history.map((h) => h.createdAt)}
-                  />
+                  <MultiMetricChart history={history} />
                   {history.length >= 2 && (() => {
                     const first = history[0].healthScore;
                     const last  = history[history.length - 1].healthScore;
@@ -1496,6 +1580,16 @@ export function RepoScanner({
                     );
                   })()}
                 </div>
+
+                {/* CVE count trend */}
+                {history.some((h) => h.criticalCount > 0) && (
+                  <div className="p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-2">
+                    <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+                      <MaterialIcon name="bug_report" size={12} className="text-red-400" /> Critical Issues Over Time
+                    </p>
+                    <CveChart history={history} />
+                  </div>
+                )}
 
                 {/* Latest scan sub-score breakdown */}
                 {history.length > 0 && (() => {
@@ -1607,14 +1701,14 @@ export function RepoScanner({
               });
               const data = await res.json();
               if (!res.ok) { setOsvError(data.error ?? "Scan failed"); return; }
-              setOsvVulns(data.vulns ?? []);
-              setOsvScanned(data.scanned ?? 0);
+              setOsvVulns(data.findings ?? []);
+              setOsvScanned(data.scannedPackages ?? 0);
             } catch { setOsvError("Network error"); } finally { setOsvScanning(false); }
           };
 
           const critical = osvVulns?.filter((v) => v.severity === "critical").length ?? 0;
           const high      = osvVulns?.filter((v) => v.severity === "high").length ?? 0;
-          const prodOnly  = osvVulns?.filter((v) => !v.devDependency) ?? [];
+          const prodOnly  = osvVulns ?? [];
 
           return (
             <div className="space-y-4 animate-in fade-in duration-300">
@@ -1658,7 +1752,7 @@ export function RepoScanner({
                   {osvVulns && osvVulns.length > 0 && (
                     <>
                       {/* Stats strip */}
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                         {[
                           { label: "Total CVEs", count: osvVulns.length, color: "text-foreground" },
                           { label: "Critical / High", count: critical + high, color: critical + high > 0 ? "text-red-400" : "text-emerald-400" },
@@ -1675,7 +1769,7 @@ export function RepoScanner({
                       <div className="space-y-2">
                         {osvVulns.map((v, i) => {
                           const sc = SEV_COLORS[v.severity];
-                          const osvSavedKey = `${v.package}-${v.vulnId}`;
+                          const osvSavedKey = `${v.package}-${v.id}`;
                           const isSaved = osvSavedItems.has(osvSavedKey);
                           return (
                             <div key={i} className="rounded-xl border border-outline-variant/15 bg-surface-container/20 px-4 py-3 space-y-2">
@@ -1687,12 +1781,12 @@ export function RepoScanner({
                                       {v.severity}
                                     </span>
                                     <span className="text-[9px] font-mono font-bold text-foreground/70">{v.package}@{v.version}</span>
-                                    {v.devDependency && (
-                                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 border border-outline-variant/20 px-1.5 py-0.5 rounded">dev</span>
+                                    {v.ecosystem && (
+                                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 border border-outline-variant/20 px-1.5 py-0.5 rounded">{v.ecosystem}</span>
                                     )}
                                     <a href={v.url} target="_blank" rel="noopener noreferrer"
                                       className="text-[8px] font-mono text-indigo-400/60 hover:text-indigo-400 transition-colors ml-auto shrink-0">
-                                      {v.vulnId} →
+                                      {v.id} →
                                     </a>
                                   </div>
                                   <p className="text-[10px] text-muted-foreground/70 leading-snug line-clamp-2">{v.summary}</p>
@@ -1708,7 +1802,7 @@ export function RepoScanner({
                                       headers: { "Content-Type": "application/json" },
                                       body: JSON.stringify({
                                         repo: targetRepo,
-                                        title: `CVE: ${v.package}@${v.version} — ${v.vulnId}`,
+                                        title: `CVE: ${v.package}@${v.version} — ${v.id}`,
                                         description: v.summary,
                                         suggestion: `Upgrade ${v.package} to a patched version. See advisory: ${v.url}`,
                                         severity: v.severity,
@@ -1946,7 +2040,7 @@ export function RepoScanner({
 
       {/* Active schedule strip */}
       {schedule && (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-gradient-to-r from-indigo-500/8 to-violet-500/8 border border-indigo-500/20 animate-in fade-in duration-300">
+        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-linear-to-r from-indigo-500/8 to-violet-500/8 border border-indigo-500/20 animate-in fade-in duration-300">
           <div className="size-7 rounded-lg bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center shrink-0">
             <MaterialIcon name="alarm_on" size={14} className="text-indigo-400" />
           </div>

@@ -150,14 +150,20 @@ function mergeJSON(primary: string, secondary: string, primaryModel: string, sec
 
 /**
  * Call the best available AI provider for the given plan.
- * Free plan always returns null — caller uses internal static analysis.
+ * Free plan gets limited GitScope AI (haiku) when server keys are set.
  * Paid plans try providers in order; returns null if no keys configured.
  */
 export async function callAI(opts: AICallOptions): Promise<AICallResult | null> {
   const { plan } = opts;
 
-  // Free plan: internal static analysis only — no LLM
-  if (plan === "free") return null;
+  // Free plan: use server-side key if set (haiku model), else internal AI
+  if (plan === "free") {
+    const hasServerKey = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
+    if (!hasServerKey) return null;
+    // No BYOK for free — server key only, haiku model only
+    const freeOpts: AICallOptions = { ...opts, byokKeys: undefined };
+    return await callAnthropic(freeOpts) ?? await callOpenAI(freeOpts) ?? await callGemini(freeOpts);
+  }
 
   if (plan === "enterprise") {
     // Run both in parallel; if one fails, still use the other
@@ -197,10 +203,33 @@ export function hasByokKey(byokKeys?: UserBYOKKeys): boolean {
 /**
  * Display name of the model that will be used for a given plan.
  */
-export function getModelLabel(plan: AIPlan): string {
-  if (plan === "free") return "gitscope-internal-v2";
-  if (process.env.ANTHROPIC_API_KEY) return anthropicModel(plan);
-  if (process.env.OPENAI_API_KEY) return openaiModel(plan);
-  if (process.env.GEMINI_API_KEY) return `gemini/${geminiModel(plan)}`;
+export function getModelLabel(plan: AIPlan, byokKeys?: UserBYOKKeys): string {
+  const hasByok = hasByokKey(byokKeys);
+  const hasServer = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
+
+  if (plan === "free") {
+    return hasServer ? `GitScope AI (${anthropicModel("free")})` : "gitscope-internal-v2";
+  }
+
+  if (hasByok) {
+    if (byokKeys?.anthropic) return anthropicModel(plan);
+    if (byokKeys?.openai)    return openaiModel(plan);
+    if (byokKeys?.gemini)    return `gemini/${geminiModel(plan)}`;
+  }
+
+  if (hasServer) {
+    if (process.env.ANTHROPIC_API_KEY) return `GitScope AI (${anthropicModel(plan)})`;
+    if (process.env.OPENAI_API_KEY)    return `GitScope AI (${openaiModel(plan)})`;
+    if (process.env.GEMINI_API_KEY)    return `GitScope AI (gemini/${geminiModel(plan)})`;
+  }
+
   return "gitscope-internal-v2";
+}
+
+/**
+ * True when a server-side key is available (and the current call would use it, not BYOK).
+ */
+export function isUsingGitScopeAI(byokKeys?: UserBYOKKeys): boolean {
+  if (hasByokKey(byokKeys)) return false;
+  return !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
 }

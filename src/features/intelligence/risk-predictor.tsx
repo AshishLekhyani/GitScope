@@ -276,7 +276,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                 )}
 
                 {/* Stat row */}
-                <div className="grid grid-cols-3 gap-2 sm:gap-4 py-3 border-y border-outline-variant/10">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 py-3 border-y border-outline-variant/10">
                   <div className="text-center">
                     <div className="text-sm font-black text-emerald-500">+{pr.additions}</div>
                     <div className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Added</div>

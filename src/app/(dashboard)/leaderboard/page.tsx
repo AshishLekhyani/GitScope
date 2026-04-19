@@ -155,7 +155,7 @@ export default async function LeaderboardPage() {
           </div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
             <MaterialIcon name="emoji_events" size={32} className="text-yellow-500" />
-            <span className="bg-clip-text text-transparent bg-gradient-to-r from-yellow-500 to-orange-500">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-yellow-500 to-orange-500">
               Contributor Leaderboard
             </span>
           </h1>
@@ -219,7 +219,7 @@ export default async function LeaderboardPage() {
                   <div
                     key={c.login}
                     className={cn(
-                      "relative flex flex-col items-center gap-3 p-6 rounded-3xl border bg-gradient-to-br",
+                      "relative flex flex-col items-center gap-3 p-6 rounded-3xl border bg-linear-to-br",
                       podiumColors[i]
                     )}
                   >
@@ -295,7 +295,7 @@ export default async function LeaderboardPage() {
                       </div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all"
+                          className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all"
                           style={{ width: `${pct}%` }}
                         />
                       </div>

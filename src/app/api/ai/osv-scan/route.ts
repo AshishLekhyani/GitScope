@@ -76,7 +76,11 @@ async function handler(req: NextRequest) {
   });
 
   if (!pkgRes.ok) {
-    return NextResponse.json({ error: "Could not fetch package.json — repo may not be a Node.js project or is private." }, { status: 404 });
+    const hint =
+      pkgRes.status === 403 ? "Repo is private or requires GitHub authentication." :
+      pkgRes.status === 404 ? "No package.json found — repo may not be a Node.js project." :
+      "GitHub API error fetching package.json.";
+    return NextResponse.json({ error: hint }, { status: pkgRes.status === 404 ? 404 : 422 });
   }
 
   const pkgJson = await pkgRes.json();
@@ -99,7 +103,7 @@ async function handler(req: NextRequest) {
   }
 
   if (packages.length === 0) {
-    return NextResponse.json({ vulns: [], scanned: 0 });
+    return NextResponse.json({ repo, total: 0, findings: [], scannedPackages: 0, ecosystems: [] });
   }
 
   // OSV batch — cap at 500 packages to avoid huge payloads
@@ -127,13 +131,15 @@ async function handler(req: NextRequest) {
 
   // ── Merge results back to packages ────────────────────────────────────────
   const findings: {
+    id: string;
     package: string;
     version: string;
-    devDependency: boolean;
-    vulnId: string;
+    ecosystem: string;
     summary: string;
     severity: "critical" | "high" | "medium" | "low";
-    url: string;
+    cvss?: string;
+    fixedIn?: string[];
+    url?: string;
   }[] = [];
 
   for (let i = 0; i < limited.length; i++) {
@@ -142,13 +148,18 @@ async function handler(req: NextRequest) {
       const url = v.references?.find((r) => r.type === "ADVISORY")?.url
         ?? v.references?.[0]?.url
         ?? `https://osv.dev/vulnerability/${v.id}`;
+      const cvssEntry = v.severity?.find((s) => s.type === "CVSS_V3" || s.type === "CVSS_V2");
+      const ecosystem = v.affected?.[0]?.package.ecosystem ?? "npm";
+      const fixedIn = v.affected?.[0]?.versions?.filter((ver) => ver > limited[i].version).slice(0, 3);
       findings.push({
+        id: v.id,
         package: limited[i].name,
         version: limited[i].version,
-        devDependency: limited[i].devDependency,
-        vulnId: v.id,
+        ecosystem,
         summary: v.summary ?? v.details?.slice(0, 200) ?? "No description",
         severity: normalizeSeverity(v),
+        cvss: cvssEntry ? parseFloat(cvssEntry.score).toFixed(1) : undefined,
+        fixedIn: fixedIn?.length ? fixedIn : undefined,
         url,
       });
     }
@@ -158,7 +169,15 @@ async function handler(req: NextRequest) {
   const ORDER = { critical: 0, high: 1, medium: 2, low: 3 };
   findings.sort((a, b) => ORDER[a.severity] - ORDER[b.severity] || a.package.localeCompare(b.package));
 
-  return NextResponse.json({ vulns: findings, scanned: limited.length });
+  const ecosystems = [...new Set(findings.map((f) => f.ecosystem))];
+
+  return NextResponse.json({
+    repo,
+    total: findings.length,
+    findings,
+    scannedPackages: limited.length,
+    ecosystems,
+  });
 }
 
 export const POST = withRouteSecurity(handler, SecurityPresets.ai);
