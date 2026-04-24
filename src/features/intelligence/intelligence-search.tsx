@@ -60,12 +60,12 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
     <div className="w-full max-w-4xl mx-auto space-y-6">
       <div className="relative" ref={searchRef}>
         <div className={cn(
-          "relative flex items-center bg-surface-container border border-outline-variant/20 rounded-3xl p-2 transition-all duration-300 ring-offset-background shadow-sm",
-          isFocused && "bg-surface-container-highest border-indigo-500/50 ring-4 ring-indigo-500/10 shadow-2xl scale-[1.01]"
+          "relative flex items-center bg-surface-container border border-outline-variant/20 rounded-none p-2 transition-all duration-300 ring-offset-background shadow-sm",
+          isFocused && "bg-surface-container-highest border-amber-500/50 ring-4 ring-amber-500/10 shadow-2xl scale-[1.01]"
         )}>
            <div className="pl-4 pr-3 text-muted-foreground/40">
               {loading ? (
-                <div className="size-5 rounded-full border-2 border-indigo-500/20 border-t-indigo-500 animate-spin" />
+                <div className="size-5 rounded-full border-2 border-amber-500/20 border-t-amber-500 animate-spin" />
               ) : (
                 <MaterialIcon name="search" size={24} />
               )}
@@ -79,7 +79,7 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
              placeholder="Search a repository to run recursive intelligence..."
            />
            <div className="pr-2">
-              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 border border-outline-variant/10 px-2.5 py-1.5 rounded-xl">
+              <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/30 border border-outline-variant/10 px-2.5 py-1.5 rounded-none">
                  Scanned: {selectedRepos.length} / {maxRepos}
               </span>
            </div>
@@ -91,7 +91,7 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
               initial={{ opacity: 0, y: 10, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 10, scale: 0.98 }}
-              className="absolute top-full left-0 right-0 mt-4 bg-surface-container-highest border border-outline-variant/10 rounded-3xl shadow-2xl overflow-hidden z-[100] max-h-[400px] overflow-y-auto custom-scrollbar p-2"
+              className="absolute top-full left-0 right-0 mt-4 bg-surface-container-highest border border-outline-variant/10 rounded-none shadow-2xl overflow-hidden z-[100] max-h-[400px] overflow-y-auto custom-scrollbar p-2"
             >
               {results.length === 0 && !loading && (
                 <div className="py-12 text-center">
@@ -114,12 +114,12 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
                         setIsFocused(false);
                       }}
                       className={cn(
-                        "flex items-center justify-between p-4 rounded-2xl transition-all group text-left",
-                        isSelected ? "opacity-30 grayscale cursor-not-allowed" : "hover:bg-indigo-500/5 active:scale-[0.98]"
+                        "flex items-center justify-between p-4 rounded-none transition-all group text-left",
+                        isSelected ? "opacity-30 grayscale cursor-not-allowed" : "hover:bg-amber-500/5 active:scale-[0.98]"
                       )}
                     >
                       <div className="flex items-center gap-4">
-                        <Image src={repo.avatar} width={40} height={40} className="size-10 rounded-xl" alt="" />
+                        <Image src={repo.avatar} width={40} height={40} className="size-10 rounded-none" alt="" />
                         <div>
                           <div className="text-sm font-black tracking-tight">{repo.repo}</div>
                           <div className="text-[10px] font-bold text-muted-foreground uppercase">{repo.owner}</div>
@@ -130,7 +130,7 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
                             <div className="text-[10px] font-black">{repo.stars}</div>
                             <div className="text-[8px] font-black text-muted-foreground uppercase tracking-widest">Stars</div>
                          </div>
-                         <MaterialIcon name={isSelected ? "check_circle" : "add_circle_outline"} size={20} className={isSelected ? "text-indigo-500" : "text-muted-foreground/20 group-hover:text-indigo-500"} />
+                         <MaterialIcon name={isSelected ? "check_circle" : "add_circle_outline"} size={20} className={isSelected ? "text-amber-500" : "text-muted-foreground/20 group-hover:text-amber-500"} />
                       </div>
                     </button>
                   );
@@ -150,16 +150,16 @@ export function IntelligenceSearch({ onSelect, selectedRepos, onRemove, maxRepos
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.8 }}
-              className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 group hover:border-indigo-500/50 transition-colors"
+              className="flex items-center gap-3 pl-3 pr-2 py-2 rounded-none bg-amber-500/10 border border-amber-500/20 group hover:border-amber-500/50 transition-colors"
             >
-              <div className="text-xs font-black text-indigo-500 tracking-tight">
+              <div className="text-xs font-black text-amber-500 tracking-tight">
                 <span className="opacity-40">{repo.split("/")[0]}/</span>{repo.split("/")[1]}
               </div>
               <button
                 type="button"
                 onClick={() => onRemove(repo)}
                 title="Remove repo"
-                className="size-7 rounded-lg bg-indigo-500/30 text-indigo-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 border border-indigo-500/20 hover:border-red-500"
+                className="size-7 rounded-none bg-amber-500/30 text-amber-400 hover:bg-red-500 hover:text-white transition-all flex items-center justify-center shrink-0 border border-amber-500/20 hover:border-red-500"
               >
                 <MaterialIcon name="close" size={15} />
               </button>

@@ -64,7 +64,7 @@ interface WorkspaceListItem {
 
 const roleColors: Record<string, string> = {
   owner:  "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
-  admin:  "bg-indigo-500/15 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+  admin:  "bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30",
   member: "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
   viewer: "bg-muted text-muted-foreground border-border",
 };
@@ -197,14 +197,14 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
   const seatUsed = members.length;
 
   return (
-    <div className="rounded-2xl border border-border bg-card overflow-hidden">
+    <div className="rounded-none border border-border bg-card overflow-hidden">
       {/* Card header */}
       <button
         type="button"
         onClick={toggle}
         className="w-full flex items-center gap-4 p-5 text-left hover:bg-muted/30 transition-colors"
       >
-        <div className="size-10 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-black text-sm shrink-0">
+        <div className="size-10 rounded-none bg-linear-to-br from-amber-500 to-amber-600 flex items-center justify-center text-white font-black text-sm shrink-0">
           {ws.name.slice(0, 2).toUpperCase()}
         </div>
         <div className="flex-1 min-w-0">
@@ -257,7 +257,7 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                 <div className="space-y-2">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Members ({members.length})</h4>
                   {members.map((m) => (
-                    <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div key={m.id} className="flex items-center gap-3 p-2.5 rounded-none bg-muted/30 hover:bg-muted/50 transition-colors">
                       <div className="size-8 rounded-full bg-muted overflow-hidden flex items-center justify-center text-[10px] font-bold shrink-0">
                         {m.user.image
                           ? <img src={m.user.image} alt={m.user.name ?? ""} className="size-full object-cover" />
@@ -289,7 +289,7 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                             type="button"
                             title={m.userId === currentUserId ? "Leave workspace" : "Remove member"}
                             onClick={() => handleRemoveMember(m.id)}
-                            className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                            className="p-1 rounded-none text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                           >
                             {m.userId === currentUserId ? <X className="size-3.5" /> : <UserMinus className="size-3.5" />}
                           </button>
@@ -305,7 +305,7 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                 <div className="space-y-2">
                   <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Pending Invites ({invites.length})</h4>
                   {invites.map((inv) => (
-                    <div key={inv.id} className="flex items-center gap-3 p-2.5 rounded-xl border border-dashed border-border bg-muted/10">
+                    <div key={inv.id} className="flex items-center gap-3 p-2.5 rounded-none border border-dashed border-border bg-muted/10">
                       <Mail className="size-4 text-muted-foreground shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate">{inv.email}</p>
@@ -315,7 +315,7 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                         type="button"
                         title="Copy invite link"
                         onClick={() => copyInviteLink(inv.token)}
-                        className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+                        className="p-1 rounded-none text-muted-foreground hover:text-foreground transition-colors"
                       >
                         {copied === inv.token ? <Check className="size-3.5 text-emerald-500" /> : <Copy className="size-3.5" />}
                       </button>
@@ -324,7 +324,7 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                           type="button"
                           title="Cancel invite"
                           onClick={() => handleCancelInvite(inv.id)}
-                          className="p-1 rounded-lg text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          className="p-1 rounded-none text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
                         >
                           <Trash2 className="size-3.5" />
                         </button>
@@ -344,13 +344,13 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                       placeholder="colleague@company.com"
                       value={inviteEmail}
                       onChange={(e) => { setInviteEmail(e.target.value); setInviteErr(""); setInviteOk(false); }}
-                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="flex-1 rounded-none border border-border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                     <select
                       value={inviteRole}
                       onChange={(e) => setInviteRole(e.target.value as "admin" | "member" | "viewer")}
                       title="Invite role"
-                      className="rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                     >
                       <option value="admin">Admin</option>
                       <option value="member">Member</option>
@@ -360,7 +360,7 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                       type="button"
                       onClick={handleInvite}
                       disabled={inviting || !inviteEmail}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 hover:bg-amber-600 disabled:opacity-50 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
                     >
                       {inviting ? <Loader2 className="size-3.5 animate-spin" /> : <Mail className="size-3.5" />}
                       Invite
@@ -391,20 +391,20 @@ function WorkspaceCard({ ws, currentUserId, onRefresh }: {
                       value={domainInput}
                       onChange={(e) => setDomainInput(e.target.value.toLowerCase().replace(/^@/, ""))}
                       title="Allowed email domain"
-                      className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                      className="flex-1 rounded-none border border-border bg-background px-3 py-2 text-xs font-mono placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                     <button
                       type="button"
                       onClick={handleSaveDomain}
                       disabled={domainSaving}
-                      className="px-3 py-2 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                      className="px-3 py-2 rounded-none bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
                     >
                       {domainSaving ? "…" : "Save"}
                     </button>
                   </div>
                   {domainMsg && <p className="text-[10px] text-emerald-500">{domainMsg}</p>}
                   {(detail?.allowedDomain ?? null) && (
-                    <p className="text-[10px] text-indigo-400 flex items-center gap-1">
+                    <p className="text-[10px] text-amber-400 flex items-center gap-1">
                       <MaterialIcon name="check_circle" size={11} />
                       Active: <span className="font-mono">@{detail?.allowedDomain}</span>
                     </p>
@@ -470,7 +470,7 @@ export function WorkspacesPanel({ currentUserId, plan }: { currentUserId: string
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-border bg-card p-8 flex items-center justify-center gap-2 text-muted-foreground text-sm">
+      <div className="rounded-none border border-border bg-card p-8 flex items-center justify-center gap-2 text-muted-foreground text-sm">
         <Loader2 className="size-4 animate-spin" /> Loading workspaces...
       </div>
     );
@@ -485,7 +485,7 @@ export function WorkspacesPanel({ currentUserId, plan }: { currentUserId: string
       {/* Section header */}
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-2">
-          <div className="size-8 rounded-xl bg-linear-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+          <div className="size-8 rounded-none bg-linear-to-br from-amber-500 to-amber-600 flex items-center justify-center">
             <Users className="size-4 text-white" />
           </div>
           <div>
@@ -497,12 +497,12 @@ export function WorkspacesPanel({ currentUserId, plan }: { currentUserId: string
           <button
             type="button"
             onClick={() => { setShowCreate((v) => !v); setCreateErr(""); }}
-            className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+            className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 hover:bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
           >
             <Plus className="size-3.5" /> New Workspace
           </button>
         ) : (
-          <div className="inline-flex items-center gap-1.5 rounded-xl border border-indigo-500/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-indigo-500/70">
+          <div className="inline-flex items-center gap-1.5 rounded-none border border-amber-500/30 px-3 py-1.5 text-[10px] font-black uppercase tracking-wider text-amber-500/70">
             <MaterialIcon name="lock" size={12} /> Team plan required
           </div>
         )}
@@ -517,20 +517,20 @@ export function WorkspacesPanel({ currentUserId, plan }: { currentUserId: string
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-4 flex gap-2 flex-wrap sm:flex-nowrap items-start">
+            <div className="rounded-none border border-amber-500/20 bg-amber-500/5 p-4 flex gap-2 flex-wrap sm:flex-nowrap items-start">
               <input
                 type="text"
                 placeholder="Workspace name (e.g. Acme Engineering)"
                 value={newName}
                 onChange={(e) => { setNewName(e.target.value); setCreateErr(""); }}
                 onKeyDown={(e) => e.key === "Enter" && newName.trim() && handleCreate()}
-                className="flex-1 rounded-xl border border-border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-indigo-500"
+                className="flex-1 rounded-none border border-border bg-background px-3 py-2 text-xs placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-amber-500"
               />
               <button
                 type="button"
                 onClick={handleCreate}
                 disabled={creating || !newName.trim()}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-indigo-500 hover:bg-indigo-600 disabled:opacity-50 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 hover:bg-amber-600 disabled:opacity-50 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
               >
                 {creating ? <Loader2 className="size-3.5 animate-spin" /> : <Plus className="size-3.5" />}
                 Create
@@ -543,8 +543,8 @@ export function WorkspacesPanel({ currentUserId, plan }: { currentUserId: string
 
       {/* Workspace list */}
       {allWorkspaces.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
-          <div className="size-12 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto">
+        <div className="rounded-none border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
+          <div className="size-12 rounded-none bg-muted/50 flex items-center justify-center mx-auto">
             <Users className="size-6 text-muted-foreground/50" />
           </div>
           <p className="text-sm font-semibold text-muted-foreground">No workspaces yet</p>

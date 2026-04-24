@@ -28,8 +28,8 @@ const KIND_META: Record<ChangeKind, { label: string; dot: string; badge: string 
   },
   improvement: {
     label: "Improved",
-    dot: "bg-blue-500",
-    badge: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+    dot: "bg-amber-500",
+    badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   },
   fix: {
     label: "Fixed",
@@ -372,7 +372,7 @@ const RELEASES: Release[] = [
       { kind: "new", text: "Dark Mode Glassmorphism Design — Complete visual design system with glass-like translucent elements, subtle gradients, and modern aesthetics" },
       { kind: "new", text: "Component Library — Reusable UI components built with Tailwind CSS and shadcn/ui for consistency" },
       { kind: "new", text: "Responsive Layout Foundation — Mobile-first design approach ensuring optimal experience across all device sizes" },
-      { kind: "new", text: "Typography System — Custom font stack with Inter and JetBrains Mono for optimal readability" },
+      { kind: "new", text: "Typography System — Custom font stack with Space Grotesk and JetBrains Mono for optimal readability" },
     ],
   },
   {
@@ -430,14 +430,14 @@ export function ChangelogContent() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
       {/* Header */}
       <div className="mb-16 text-center">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-400">
           <GitBranch className="size-3" />
           Version History
         </div>
         <h1 className="font-heading text-4xl font-black tracking-tight text-white sm:text-5xl">
           Changelog
         </h1>
-        <p className="mx-auto mt-4 max-w-xl text-base text-slate-400">
+        <p className="mx-auto mt-4 max-w-xl text-base text-stone-400">
           Every release, every improvement. GitScope ships continuously — here is the full record
           from v0.1.0.0 to v1.0.0.0.
         </p>
@@ -446,7 +446,7 @@ export function ChangelogContent() {
       {/* Timeline */}
       <div className="relative">
         {/* Vertical line */}
-        <div className="absolute left-2.75 top-3 bottom-3 w-px bg-linear-to-b from-indigo-500/60 via-indigo-500/20 to-transparent sm:left-5.75" />
+        <div className="absolute left-2.75 top-3 bottom-3 w-px bg-linear-to-b from-amber-500/60 via-amber-500/20 to-transparent sm:left-5.75" />
 
         <div className="space-y-12">
           {RELEASES.map((release) => (
@@ -456,15 +456,15 @@ export function ChangelogContent() {
                 <div
                   className={`relative z-10 flex size-6 items-center justify-center rounded-full border sm:size-12 ${
                     release.label === "Latest"
-                      ? "border-indigo-500/50 bg-indigo-600/20"
-                      : "border-white/10 bg-slate-900"
+                      ? "border-amber-500/50 bg-amber-600/20"
+                      : "border-white/10 bg-stone-900"
                   }`}
                 >
                   <span
                     className={`size-2 rounded-full sm:size-3 ${
                       release.label === "Latest"
-                        ? "animate-pulse bg-indigo-400 shadow-[0_0_10px_rgba(99,102,241,0.8)]"
-                        : "bg-slate-600"
+                        ? "animate-pulse bg-amber-400 shadow-[0_0_10px_rgba(245,158,11,0.8)]"
+                        : "bg-stone-600"
                     }`}
                   />
                 </div>
@@ -472,10 +472,10 @@ export function ChangelogContent() {
 
               {/* Card */}
               <div className="flex-1 pb-2">
-                <div className="rounded-2xl border border-white/5 bg-[#171f33]/80 p-6 backdrop-blur-xl sm:p-8">
+                <div className="rounded-none border border-white/5 bg-[#171512]/90 p-6 backdrop-blur-xl sm:p-8">
                   {/* Version header */}
                   <div className="mb-5 flex flex-wrap items-center gap-3">
-                    <span className="rounded-md bg-indigo-500/10 px-2.5 py-1 font-mono text-xs font-black tracking-wider text-indigo-400">
+                    <span className="rounded-none bg-amber-500/10 px-2.5 py-1 font-mono text-xs font-black tracking-wider text-amber-400">
                       v{release.version}
                     </span>
                     {release.label && (
@@ -483,7 +483,7 @@ export function ChangelogContent() {
                         {release.label}
                       </span>
                     )}
-                    <span className="text-xs font-medium text-slate-500">{release.date}</span>
+                    <span className="text-xs font-medium text-stone-500">{release.date}</span>
                   </div>
 
                   <h2 className="mb-5 font-heading text-xl font-black tracking-tight text-white">
@@ -494,7 +494,7 @@ export function ChangelogContent() {
                     {release.changes.map((change, i) => (
                       <li key={i} className="flex items-start gap-3">
                         <KindBadge kind={change.kind} />
-                        <span className="text-sm leading-relaxed text-slate-300">{change.text}</span>
+                        <span className="text-sm leading-relaxed text-stone-300">{change.text}</span>
                       </li>
                     ))}
                   </ul>
@@ -506,11 +506,11 @@ export function ChangelogContent() {
       </div>
 
       {/* Footer CTA */}
-      <div className="mt-20 rounded-2xl border border-indigo-500/20 bg-indigo-600/5 p-10 text-center">
+      <div className="mt-20 rounded-none border border-amber-500/20 bg-amber-600/5 p-10 text-center">
         <h3 className="mb-2 font-heading text-xl font-black text-white">
           Always evolving
         </h3>
-        <p className="mb-6 text-sm text-slate-400">
+        <p className="mb-6 text-sm text-stone-400">
           GitScope ships weekly. Follow the GitHub repository or subscribe to release notifications
           to stay current.
         </p>
@@ -518,7 +518,7 @@ export function ChangelogContent() {
           href="https://github.com/AshishLekhyani/GitScope"
           target="_blank"
           rel="noopener noreferrer"
-          className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-indigo-500"
+          className="inline-flex items-center gap-2 rounded-none bg-amber-600 px-6 py-3 text-sm font-bold text-white transition hover:bg-amber-500"
         >
           Watch on GitHub
           <ArrowRight className="size-4" />

@@ -231,7 +231,7 @@ export function TopNav({
 
   return (
     <motion.header
-      className="bg-background border-border supports-backdrop-filter:bg-background/95 sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between gap-2 border-b px-3 backdrop-blur-md sm:px-6 dark:border-indigo-900/20"
+      className="bg-background border-border supports-backdrop-filter:bg-background/95 sticky top-0 z-50 flex h-16 w-full shrink-0 items-center justify-between gap-2 border-b px-3 backdrop-blur-md sm:px-6 dark:border-amber-900/20"
     >
       {/* Mobile search overlay */}
       <AnimatePresence>
@@ -244,9 +244,9 @@ export function TopNav({
           >
             <div ref={searchRef} className="relative flex min-w-0 flex-1 items-center">
               <div className={cn(
-                "flex min-w-0 flex-1 items-center rounded-xl border border-border bg-muted/60 px-3 py-1.5 ring-2 ring-indigo-500/20"
+                "flex min-w-0 flex-1 items-center border border-border bg-muted/60 px-3 py-1.5 ring-2 ring-amber-500/20"
               )}>
-                <MaterialIcon name="search" size={18} className="text-indigo-500 shrink-0" />
+                <MaterialIcon name="search" size={18} className="text-amber-500 shrink-0" />
                 <Input
                   autoFocus
                   value={q}
@@ -267,7 +267,7 @@ export function TopNav({
               type="button"
               aria-label="Close search"
               onClick={() => { setMobileSearchOpen(false); setQ(""); }}
-              className="shrink-0 rounded-lg p-2 text-muted-foreground hover:bg-accent"
+              className="shrink-0 border border-transparent p-2 text-muted-foreground hover:border-border hover:bg-accent"
             >
               <MaterialIcon name="close" size={20} />
             </button>
@@ -291,16 +291,24 @@ export function TopNav({
           href="/"
           className="flex items-center gap-1.5 sm:gap-2 shrink-0"
         >
-          <Image
+          <img
             src="/logo.png"
-            width={24}
-            height={24}
-            alt="GitScope Logo"
-            className="size-6 sm:size-7 rounded-lg shadow-lg shadow-primary/10 ring-1 ring-white/10"
+            alt="GitScope"
+            width={28}
+            height={28}
+            className="size-7 object-contain hidden dark:block"
+          />
+          <img
+            src="/logo-light.png"
+            alt="GitScope"
+            width={28}
+            height={28}
+            className="size-7 object-contain block dark:hidden"
+            onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
           />
           <div className="flex flex-col leading-none">
-            <span className="font-heading text-base sm:text-lg font-bold tracking-tight text-foreground sm:text-xl">
-              GitScope
+            <span className="font-heading text-[13px] font-bold tracking-[0.04em] text-foreground">
+              GIT<span className="text-primary">SCOPE</span>
             </span>
             <span className="hidden sm:block font-mono text-[8px] tracking-widest text-muted-foreground uppercase">
               v{PKG_VERSION}
@@ -311,18 +319,18 @@ export function TopNav({
         <div className="flex min-w-0 flex-1 items-center gap-2 sm:gap-4 md:gap-6">
           <div ref={searchRef} className="relative z-50 hidden min-w-0 max-w-md flex-1 items-center sm:flex">
             <div className={cn(
-              "focus-within:ring-indigo-500/40 flex min-w-0 flex-1 items-center rounded-xl border border-border bg-muted/60 px-2 py-1.5 focus-within:ring-2 sm:px-3 transition-all duration-200",
-              isFocused && "bg-background shadow-2xl ring-2 ring-indigo-500/20"
+              "focus-within:ring-amber-500/40 flex min-w-0 flex-1 items-center border border-border bg-muted/60 px-2 py-1.5 focus-within:ring-2 sm:px-3 transition-all duration-200",
+              isFocused && "bg-background shadow-2xl ring-2 ring-amber-500/20"
             )}>
               <div className="relative flex items-center justify-center">
-                <MaterialIcon name="search" size={18} className={cn("transition-colors", isFocused ? "text-indigo-500" : "text-muted-foreground")} />
+                <MaterialIcon name="search" size={18} className={cn("transition-colors", isFocused ? "text-amber-500" : "text-muted-foreground")} />
                 {isSearching && (
                   <motion.div
                     animate={{ rotate: 360 }}
                     transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
                     className="absolute inset-0 flex items-center justify-center"
                   >
-                    <div className="size-4 rounded-full border-2 border-indigo-500/20 border-t-indigo-500" />
+                    <div className="size-4 rounded-full border-2 border-amber-500/20 border-t-amber-500" />
                   </motion.div>
                 )}
               </div>
@@ -351,7 +359,7 @@ export function TopNav({
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 10, scale: 0.98 }}
                   transition={{ duration: 0.15, ease: "easeOut" }}
-                  className="absolute top-full left-0 mt-2 w-full min-w-[320px] rounded-2xl border border-border bg-card/95 backdrop-blur-xl shadow-2xl overflow-hidden p-2 z-100"
+                  className="absolute top-full left-0 z-[100] mt-2 w-full min-w-[320px] overflow-hidden border border-border bg-card/95 p-2 shadow-2xl backdrop-blur-xl"
                 >
                   {/* Discovery Recommendations (Only when query is empty and no relevant history) */}
                   {!q && recentHistory.length === 0 && !historyLoading && (
@@ -369,10 +377,10 @@ export function TopNav({
                               setIsFocused(false);
                               router.push(ROUTES.dashboard(item.owner, item.repo));
                             }}
-                            className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                            className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-accent group"
                           >
                             <div className="flex items-center gap-3">
-                              <div className="size-8 rounded-lg overflow-hidden border border-border">
+                              <div className="size-8 overflow-hidden border border-border">
                                 <Image src={item.avatar} width={32} height={32} alt={item.owner} className="size-full object-cover" />
                               </div>
                               <div>
@@ -410,9 +418,9 @@ export function TopNav({
                                 setIsFocused(false);
                                 router.push(item.type === "repo" ? ROUTES.dashboard(item.id.split('/')[0], item.id.split('/')[1]) : `/dashboard/${item.name}`);
                               }}
-                              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-xs font-semibold hover:bg-indigo-500/10 hover:text-indigo-500 transition-colors group"
+                              className="flex w-full items-center gap-3 px-3 py-2.5 text-left text-xs font-semibold transition-colors hover:bg-amber-500/10 hover:text-amber-500 group"
                             >
-                              <div className="size-6 rounded-md overflow-hidden border border-border bg-muted">
+                              <div className="size-6 overflow-hidden border border-border bg-muted">
                                 {item.avatar && <Image src={item.avatar} width={24} height={24} alt={item.name} className="size-full object-cover" />}
                               </div>
                               <div className="flex-1 truncate">
@@ -429,8 +437,8 @@ export function TopNav({
                   {q && liveResults.repos.length > 0 && (
                     <div className="p-2 border-b border-border last:border-0">
                       <div className="mb-2 px-2 flex items-center gap-2">
-                        <Box className="size-3 text-indigo-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Live Repositories</span>
+                        <Box className="size-3 text-amber-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Live Repositories</span>
                       </div>
                       {liveResults.repos.map((item) => (
                         <button
@@ -440,10 +448,10 @@ export function TopNav({
                             setIsFocused(false);
                             router.push(ROUTES.dashboard(item.owner, item.repo));
                           }}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                          className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-accent group"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="size-8 rounded-lg overflow-hidden border border-indigo-500/10">
+                            <div className="size-8 overflow-hidden border border-amber-500/10">
                               <Image src={item.avatar} width={32} height={32} alt={item.owner} className="size-full object-cover" />
                             </div>
                             <div>
@@ -466,8 +474,8 @@ export function TopNav({
                   {q && liveResults.users.length > 0 && (
                     <div className="p-2">
                       <div className="mb-2 px-2 flex items-center gap-2">
-                        <User className="size-3 text-purple-500" />
-                        <span className="text-[10px] font-black uppercase tracking-widest text-purple-500">Entities</span>
+                        <User className="size-3 text-amber-500" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Entities</span>
                       </div>
                       {liveResults.users.map((item) => (
                         <button
@@ -477,10 +485,10 @@ export function TopNav({
                             setIsFocused(false);
                             router.push(`/dashboard/${item.name}`);
                           }}
-                          className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors group"
+                          className="flex w-full items-center justify-between px-3 py-2 text-left transition-colors hover:bg-accent group"
                         >
                           <div className="flex items-center gap-3">
-                            <div className="size-8 rounded-full overflow-hidden bg-purple-500/10 border border-purple-500/10">
+                            <div className="size-8 overflow-hidden border border-amber-500/10 bg-amber-500/10">
                               <Image src={item.avatar} width={24} height={24} alt={item.name} className="size-full object-cover" />
                             </div>
                             <div>
@@ -535,9 +543,9 @@ export function TopNav({
                   key={item.href + item.label}
                   href={item.href}
                   className={cn(
-                    "relative hover:bg-accent/80 whitespace-nowrap rounded px-3 py-2 text-[11px] font-bold uppercase tracking-widest transition-colors",
+                    "font-mono relative whitespace-nowrap border-b-2 border-transparent px-3 py-2 text-[11px] font-semibold uppercase tracking-[0.08em] transition-colors hover:bg-accent/80 hover:border-primary",
                     active
-                      ? "text-primary dark:text-indigo-400"
+                      ? "text-primary dark:text-amber-400"
                       : "hover:text-foreground"
                   )}
                 >
@@ -545,7 +553,7 @@ export function TopNav({
                   {active && (
                     <motion.div
                       layoutId="navUnderline"
-                      className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary dark:bg-indigo-400 rounded-full"
+                      className="absolute bottom-0 left-2 right-2 h-0.5 bg-primary dark:bg-amber-400"
                       transition={{ type: "spring", stiffness: 380, damping: 30 }}
                     />
                   )}
@@ -562,7 +570,7 @@ export function TopNav({
         <button
           type="button"
           aria-label="Search"
-          className="text-muted-foreground hover:bg-accent flex items-center justify-center rounded-full size-9 sm:hidden"
+          className="text-muted-foreground hover:bg-accent flex size-9 items-center justify-center border border-transparent hover:border-border sm:hidden"
           onClick={() => setMobileSearchOpen(true)}
         >
           <MaterialIcon name="search" size={20} />
@@ -570,7 +578,7 @@ export function TopNav({
 
         <button
           type="button"
-          className="border-border text-muted-foreground hover:bg-accent hidden items-center gap-1.5 rounded border px-2 py-1.5 text-[10px] font-mono sm:flex"
+          className="border-border text-muted-foreground hover:bg-accent hidden items-center gap-1.5 border px-2 py-1.5 text-[10px] font-mono sm:flex"
           onClick={() => dispatch(setShortcutsOpen(true))}
         >
           <MaterialIcon name="keyboard_command_key" size={14} />
@@ -583,8 +591,8 @@ export function TopNav({
               type="button"
               disabled={isLoading}
               className={cn(
-                "text-muted-foreground hover:bg-accent inline-flex rounded-full relative size-9 items-center justify-center transition-colors outline-none",
-                isLoading && "animate-pulse bg-slate-200 dark:bg-slate-800/50"
+                "text-muted-foreground hover:bg-accent inline-flex relative size-9 items-center justify-center border border-transparent transition-colors outline-none hover:border-border",
+                isLoading && "animate-pulse bg-stone-200 dark:bg-stone-800/50"
               )}
               aria-label="Notifications"
             >
@@ -601,11 +609,11 @@ export function TopNav({
             </button>
           } />
           {!isLoading && (
-            <DropdownMenuContent align="end" className="w-80 border-outline-variant/20 bg-surface-container/95 backdrop-blur-md font-sans">
+            <DropdownMenuContent align="end" className="w-80 border-outline-variant/20 bg-surface-container/95 backdrop-blur-md font-mono">
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="font-heading font-black text-xs uppercase tracking-widest text-muted-foreground">Intelligence Feed</span>
                 {unreadCount > 0 && (
-                  <button onClick={() => notifications.forEach((n: NotificationItem) => !n.isRead && markAsRead(n.id))} className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
+                  <button onClick={() => notifications.forEach((n: NotificationItem) => !n.isRead && markAsRead(n.id))} className="text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors">
                     Mark all as read
                   </button>
                 )}
@@ -630,16 +638,16 @@ export function TopNav({
                           if (item.link) window.open(item.link, '_blank');
                         }}
                         className={cn(
-                          "flex items-start gap-4 rounded-xl p-3 transition-all cursor-pointer group relative overflow-hidden",
-                          item.isRead ? "opacity-60 grayscale-[0.5]" : "bg-indigo-500/5 hover:bg-indigo-500/10 border border-indigo-500/5"
+                          "group relative flex cursor-pointer items-start gap-4 overflow-hidden p-3 transition-all",
+                          item.isRead ? "opacity-60 grayscale-[0.5]" : "bg-amber-500/5 hover:bg-amber-500/10 border border-amber-500/5"
                         )}
                       >
                         <div className={cn(
-                          "mt-0.5 rounded-lg p-2 shrink-0 border",
+                          "mt-0.5 shrink-0 border p-2",
                           item.type === "success" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-500" :
                             item.type === "warning" ? "bg-amber-500/10 border-amber-500/20 text-amber-500" :
                               item.type === "error" ? "bg-red-500/10 border-red-500/20 text-red-500" :
-                                "bg-indigo-500/10 border-indigo-500/20 text-indigo-500"
+                                "bg-amber-500/10 border-amber-500/20 text-amber-500"
                         )}>
                           <MaterialIcon
                             name={
@@ -662,7 +670,7 @@ export function TopNav({
                           </div>
                         </div>
                         {!item.isRead && (
-                          <div className="absolute right-3 top-1/2 -translate-y-1/2 size-2 rounded-full bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]" />
+                          <div className="absolute right-3 top-1/2 -translate-y-1/2 size-2 rounded-full bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.5)]" />
                         )}
                       </div>
                     ))}
@@ -684,7 +692,7 @@ export function TopNav({
           type="button"
           variant="ghost"
           size="icon"
-          className="text-muted-foreground hover:bg-accent hidden rounded-full md:inline-flex"
+          className="text-muted-foreground hover:bg-accent hidden md:inline-flex"
           onClick={() => dispatch(setCommandPaletteOpen(true))}
           aria-label="Command palette"
         >
@@ -696,7 +704,7 @@ export function TopNav({
           <DropdownMenuTrigger render={
             <button
               type="button"
-              className="flex items-center gap-1.5 px-1 py-1 rounded-full hover:bg-accent transition-colors cursor-pointer group outline-none"
+              className="group flex cursor-pointer items-center gap-1.5 border border-transparent px-1 py-1 outline-none transition-colors hover:border-border hover:bg-accent"
             >
               <div className="relative flex items-center justify-center size-8">
                 <MaterialIcon name="help_outline" size={22} className="text-muted-foreground group-hover:text-foreground" />
@@ -715,13 +723,13 @@ export function TopNav({
               </div>
             </button>
           } />
-          <DropdownMenuContent align="end" className="w-56 border-outline-variant/20 bg-surface-container/95 backdrop-blur-md font-sans p-1.5">
+          <DropdownMenuContent align="end" className="w-56 border-outline-variant/20 bg-surface-container/95 backdrop-blur-md font-mono p-1.5">
             <DropdownMenuGroup>
               <DropdownMenuLabel className="font-heading text-xs font-black uppercase tracking-widest text-muted-foreground/60 px-2 py-1.5">
                 Support & Intelligence
               </DropdownMenuLabel>
-              <DropdownMenuItem render={<Link href={ROUTES.docs}><MaterialIcon name="menu_book" size={16} className="mr-3 text-indigo-400" />Documentation</Link>} />
-              <DropdownMenuItem render={<Link href={ROUTES.api}><MaterialIcon name="code" size={16} className="mr-3 text-purple-400" />API Reference</Link>} />
+              <DropdownMenuItem render={<Link href={ROUTES.docs}><MaterialIcon name="menu_book" size={16} className="mr-3 text-amber-400" />Documentation</Link>} />
+              <DropdownMenuItem render={<Link href={ROUTES.api}><MaterialIcon name="code" size={16} className="mr-3 text-amber-400" />API Reference</Link>} />
               <DropdownMenuItem render={<Link href={ROUTES.status}><MaterialIcon name="monitor_heart" size={16} className="mr-3 text-emerald-400" />System Status</Link>} />
               <DropdownMenuItem render={
                 <Link 
@@ -760,7 +768,7 @@ export function TopNav({
             type="button"
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:bg-accent rounded-full"
+            className="text-muted-foreground hover:bg-accent"
             onClick={() => setTheme(isDark ? "light" : "dark")}
             aria-label="Toggle theme"
           >
@@ -773,7 +781,7 @@ export function TopNav({
             type="button"
             variant="ghost"
             size="icon"
-            className="text-muted-foreground hover:bg-accent rounded-full sm:hidden"
+            className="text-muted-foreground hover:bg-accent sm:hidden"
             onClick={() => void performLogout()}
             aria-label="Sign out"
           >
@@ -787,7 +795,7 @@ export function TopNav({
               disabled={isLoading}
               className={cn(
                 "border-border hidden size-8 overflow-hidden rounded-full border sm:block transition-all outline-none",
-                isLoading ? "animate-pulse bg-slate-200 dark:bg-slate-800" : "hover:ring-2 hover:ring-primary/50"
+                isLoading ? "animate-pulse bg-stone-200 dark:bg-stone-800" : "hover:ring-2 hover:ring-primary/50"
               )}
             >
               {!isLoading && (
@@ -802,7 +810,7 @@ export function TopNav({
             </button>
           } />
           {!isLoading && (
-            <DropdownMenuContent align="end" className="w-56 border-outline-variant/20 bg-surface-container/95 backdrop-blur-md font-sans">
+            <DropdownMenuContent align="end" className="w-56 border-outline-variant/20 bg-surface-container/95 backdrop-blur-md font-mono">
               <DropdownMenuGroup>
                 <DropdownMenuLabel>
                   <div className="flex flex-col space-y-1">

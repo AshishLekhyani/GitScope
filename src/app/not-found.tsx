@@ -26,7 +26,7 @@ export default function NotFound() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/overview"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl btn-gitscope-primary text-sm font-bold transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none btn-gitscope-primary text-sm font-bold transition-all"
           >
             <Home className="size-4" />
             Go to Overview

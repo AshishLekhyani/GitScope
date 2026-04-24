@@ -109,25 +109,25 @@ type ViewMode = "grid" | "list";
 type FilterTab = "all" | "active" | "largest" | "recent";
 
 const languageColors: Record<string, string> = {
-  TypeScript: "#3178c6",
+  TypeScript: "#c77a12",
   JavaScript: "#f1e05a",
-  Python: "#3572A5",
+  Python: "#0e9966",
   Java: "#b07219",
   Go: "#00ADD8",
   Rust: "#dea584",
   "C++": "#f34b7d",
   C: "#555555",
   Ruby: "#701516",
-  PHP: "#4F5D95",
+  PHP: "#a16207",
   Swift: "#ffac45",
-  Kotlin: "#A97BFF",
+  Kotlin: "#f59e0b",
   "C#": "#178600",
   Shell: "#89e051",
   HTML: "#e34c26",
-  CSS: "#563d7c",
+  CSS: "#92400e",
   Vue: "#41b883",
   React: "#61dafb",
-  Dart: "#00B4AB",
+  Dart: "#10b981",
   Scala: "#c22d40",
   null: "#6b7280",
 };
@@ -314,14 +314,14 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
           className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
         >
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 mb-3">
-              <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-indigo-600 dark:text-indigo-400">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-3">
+              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 Connected Account
               </span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight flex items-center gap-3">
-              <Building2 className="size-8 text-indigo-500" />
+              <Building2 className="size-8 text-amber-500" />
               Organization Pulse
             </h1>
             <p className="text-muted-foreground mt-1.5 text-sm">
@@ -339,9 +339,9 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
               <Download size={16} />
               Export
             </Button>
-            <div className="flex items-center gap-4 px-5 py-3 rounded-xl bg-card border border-border shadow-sm">
-              <div className="p-2 rounded-lg bg-indigo-500/10">
-                <Building2 size={18} className="text-indigo-500" />
+            <div className="flex items-center gap-4 px-5 py-3 rounded-none bg-card border border-border shadow-sm">
+              <div className="p-2 rounded-none bg-amber-500/10">
+                <Building2 size={18} className="text-amber-500" />
               </div>
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -367,7 +367,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
             label="Total Organizations"
             value={stats.totalOrgs}
             icon={Building2}
-            color="indigo"
+            color="amber"
             trend={+12}
           />
           <StatCard
@@ -381,7 +381,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
             label="Total Members"
             value={stats.totalMembers.toLocaleString()}
             icon={Users}
-            color="blue"
+            color="amber"
             trend={+5}
           />
           <StatCard
@@ -400,7 +400,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
           transition={{ delay: 0.2 }}
           className="flex flex-col gap-4"
         >
-          <Card className="p-4 sm:p-6 bg-linear-to-br from-indigo-500/5 via-transparent to-purple-500/5">
+          <Card className="p-4 sm:p-6 bg-linear-to-br from-amber-500/5 via-transparent to-amber-500/5">
             <div className="flex flex-col gap-4">
               <div className="relative max-w-2xl">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-5 text-muted-foreground" />
@@ -475,12 +475,12 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                 Filters
               </Button>
 
-              <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+              <div className="flex items-center border rounded-none p-1 bg-muted/50">
                 <button
                   onClick={() => setViewMode("grid")}
                   className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === "grid" && "bg-white dark:bg-slate-800 shadow-sm"
+                    "p-2 rounded-none transition-all",
+                    viewMode === "grid" && "bg-white dark:bg-stone-800 shadow-sm"
                   )}
                 >
                   <Grid3X3 size={16} />
@@ -488,8 +488,8 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                 <button
                   onClick={() => setViewMode("list")}
                   className={cn(
-                    "p-2 rounded-md transition-all",
-                    viewMode === "list" && "bg-white dark:bg-slate-800 shadow-sm"
+                    "p-2 rounded-none transition-all",
+                    viewMode === "list" && "bg-white dark:bg-stone-800 shadow-sm"
                   )}
                 >
                   <LayoutList size={16} />
@@ -545,12 +545,12 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
 
         {/* ── Shared Workspace ─────────────────────────────────────────────── */}
         {orgs.length > 0 && (
-          <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
+          <div className="rounded-none border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
             <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/10">
               <div className="flex items-center gap-2">
-                <Users className="size-4 text-indigo-400" />
+                <Users className="size-4 text-amber-400" />
                 <span className="text-sm font-black">Shared Workspace</span>
-                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 uppercase tracking-widest">Team</span>
+                <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400 uppercase tracking-widest">Team</span>
               </div>
               <p className="text-[10px] text-muted-foreground/50">Select an org to view team scan history</p>
             </div>
@@ -561,10 +561,10 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                   type="button"
                   onClick={() => loadWorkspace(org.login)}
                   className={cn(
-                    "flex items-center gap-2 px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all",
+                    "flex items-center gap-2 px-3 py-1.5 rounded-none border text-[10px] font-black transition-all",
                     workspaceOrg === org.login
-                      ? "bg-indigo-500 text-white border-indigo-500 shadow-lg shadow-indigo-500/20"
-                      : "border-outline-variant/15 text-muted-foreground hover:border-indigo-500/30 hover:text-foreground"
+                      ? "bg-amber-500 text-white border-amber-500 shadow-lg shadow-amber-500/20"
+                      : "border-outline-variant/15 text-muted-foreground hover:border-amber-500/30 hover:text-foreground"
                   )}
                 >
                   <Avatar className="size-4 shrink-0">
@@ -591,7 +591,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                     { label: "Avg Health", value: workspaceData.avgHealth, color: workspaceData.avgHealth >= 70 ? "text-emerald-400" : workspaceData.avgHealth >= 50 ? "text-amber-400" : "text-red-400" },
                     { label: "Critical Issues", value: workspaceData.criticalRepos, color: workspaceData.criticalRepos > 0 ? "text-red-400" : "text-emerald-400" },
                   ].map((m) => (
-                    <div key={m.label} className="px-4 py-3 rounded-xl bg-surface-container/40 border border-outline-variant/10 space-y-0.5">
+                    <div key={m.label} className="px-4 py-3 rounded-none bg-surface-container/40 border border-outline-variant/10 space-y-0.5">
                       <p className={cn("text-xl font-black", m.color)}>{m.value}</p>
                       <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">{m.label}</p>
                     </div>
@@ -599,7 +599,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                 </div>
 
                 {workspaceData.repos.length === 0 ? (
-                  <div className="flex flex-col items-center gap-3 py-10 text-center rounded-2xl border-2 border-dashed border-outline-variant/10">
+                  <div className="flex flex-col items-center gap-3 py-10 text-center rounded-none border-2 border-dashed border-outline-variant/10">
                     <BarChart3 className="size-8 text-muted-foreground/20" />
                     <div>
                       <p className="text-sm font-black text-foreground/50">No scans yet for {workspaceOrg}</p>
@@ -613,7 +613,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                       const scoreColor = score >= 80 ? "text-emerald-400" : score >= 60 ? "text-amber-400" : "text-red-400";
                       const barColor = score >= 80 ? "bg-emerald-500" : score >= 60 ? "bg-amber-500" : "bg-red-500";
                       return (
-                        <div key={r.repo} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-container/30 border border-outline-variant/8 hover:border-indigo-500/20 transition-all group">
+                        <div key={r.repo} className="flex items-center gap-3 px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/8 hover:border-amber-500/20 transition-all group">
                           {r.user.image && (
                             <Avatar className="size-6 shrink-0">
                               <AvatarImage src={r.user.image} alt={r.user.name ?? ""} />
@@ -643,7 +643,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                             href={`/intelligence?repo=${encodeURIComponent(r.repo)}`}
                             className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <ArrowUpRight className="size-4 text-indigo-400" />
+                            <ArrowUpRight className="size-4 text-amber-400" />
                           </Link>
                         </div>
                       );
@@ -662,7 +662,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
             animate={{ opacity: 1, scale: 1 }}
             className="flex flex-col items-center justify-center py-16 text-center"
           >
-            <div className="size-16 rounded-2xl bg-muted/50 flex items-center justify-center mb-4">
+            <div className="size-16 rounded-none bg-muted/50 flex items-center justify-center mb-4">
               <Search className="size-8 text-muted-foreground" />
             </div>
             <h3 className="text-lg font-semibold mb-2">No organizations found</h3>
@@ -705,17 +705,17 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 mt-4">
-                  <div className="p-4 rounded-xl bg-muted/50 text-center">
-                    <GitFork className="w-5 h-5 mx-auto mb-2 text-indigo-500" />
+                  <div className="p-4 rounded-none bg-muted/50 text-center">
+                    <GitFork className="w-5 h-5 mx-auto mb-2 text-amber-500" />
                     <div className="text-xl font-bold">{selectedOrg.public_repos}</div>
                     <div className="text-xs text-muted-foreground">Repositories</div>
                   </div>
-                  <div className="p-4 rounded-xl bg-muted/50 text-center">
-                    <Users className="w-5 h-5 mx-auto mb-2 text-purple-500" />
+                  <div className="p-4 rounded-none bg-muted/50 text-center">
+                    <Users className="w-5 h-5 mx-auto mb-2 text-amber-500" />
                     <div className="text-xl font-bold">{selectedOrg.public_members}</div>
                     <div className="text-xs text-muted-foreground">Members</div>
                   </div>
-                  <div className="p-4 rounded-xl bg-muted/50 text-center">
+                  <div className="p-4 rounded-none bg-muted/50 text-center">
                     <Star className="w-5 h-5 mx-auto mb-2 text-amber-500" />
                     <div className="text-xl font-bold">
                       {orgRepos.reduce((sum, r) => sum + r.stargazers_count, 0).toLocaleString()}
@@ -730,7 +730,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                     href={`https://github.com/${selectedOrg.login}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
+                    className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
                   >
                     <Github className="w-4 h-4" />
                     View on GitHub
@@ -740,7 +740,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                       href={selectedOrg.blog.startsWith("http") ? selectedOrg.blog : `https://${selectedOrg.blog}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
+                      className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-8 px-3"
                     >
                       <Globe className="w-4 h-4" />
                       Website
@@ -775,7 +775,7 @@ export function OrganizationsClient({ orgs, username, userId = "", plan = "free"
                           >
                             <div className="flex items-start justify-between mb-2">
                               <div className="flex items-center gap-2">
-                                <h4 className="font-semibold group-hover:text-indigo-500 transition-colors">
+                                <h4 className="font-semibold group-hover:text-amber-500 transition-colors">
                                   {repo.name}
                                 </h4>
                                 {repo.private && (
@@ -857,14 +857,14 @@ function StatCard({
   label: string;
   value: string | number;
   icon: React.ComponentType<{ className?: string }>;
-  color: "indigo" | "emerald" | "blue" | "purple" | "amber" | "rose";
+  color: "amber" | "emerald" | "purple" | "rose";
   trend: number;
 }) {
   const colorClasses = {
-    indigo: "from-indigo-500 to-purple-500 bg-indigo-500/10 text-indigo-500",
+    indigo: "from-amber-500 to-amber-500 bg-amber-500/10 text-amber-500",
     emerald: "from-emerald-500 to-teal-500 bg-emerald-500/10 text-emerald-500",
-    blue: "from-blue-500 to-cyan-500 bg-blue-500/10 text-blue-500",
-    purple: "from-purple-500 to-pink-500 bg-purple-500/10 text-purple-500",
+    blue: "from-amber-500 to-teal-500 bg-amber-500/10 text-amber-500",
+    purple: "from-amber-500 to-amber-500 bg-amber-500/10 text-amber-500",
     amber: "from-amber-500 to-orange-500 bg-amber-500/10 text-amber-500",
     rose: "from-rose-500 to-red-500 bg-rose-500/10 text-rose-500",
   };
@@ -872,11 +872,11 @@ function StatCard({
   return (
     <motion.div
       whileHover={{ y: -4 }}
-      className="relative overflow-hidden rounded-xl bg-card border border-border p-5 shadow-sm hover:shadow-md transition-all"
+      className="relative overflow-hidden rounded-none bg-card border border-border p-5 shadow-sm hover:shadow-md transition-all"
     >
       <div className={`absolute top-0 left-0 right-0 h-1 bg-linear-to-r ${colorClasses[color].split(" ")[0]} ${colorClasses[color].split(" ")[1]}`} />
       <div className="flex items-start justify-between">
-        <div className={`p-2.5 rounded-lg ${colorClasses[color].split(" ")[2]}`}>
+        <div className={`p-2.5 rounded-none ${colorClasses[color].split(" ")[2]}`}>
           <Icon className={`w-5 h-5 ${colorClasses[color].split(" ")[3]}`} />
         </div>
         <div className={`flex items-center gap-1 text-xs font-medium ${trend >= 0 ? "text-emerald-500" : "text-rose-500"}`}>
@@ -916,21 +916,21 @@ function OrgCard({
       onClick={onClick}
       className="group cursor-pointer"
     >
-      <Card className="relative overflow-hidden h-full border-border hover:border-indigo-500/30 transition-all hover:shadow-lg hover:shadow-indigo-500/5">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-indigo-500 to-purple-500 opacity-60 group-hover:opacity-100 transition-opacity" />
+      <Card className="relative overflow-hidden h-full border-border hover:border-amber-500/30 transition-all hover:shadow-lg hover:shadow-amber-500/5">
+        <div className="absolute top-0 left-0 right-0 h-1.5 bg-linear-to-r from-amber-500 to-amber-500 opacity-60 group-hover:opacity-100 transition-opacity" />
         
         <div className="p-5">
           {/* Header */}
           <div className="flex items-start justify-between mb-4">
             <div className="flex items-center gap-3">
-              <Avatar className="size-12 rounded-xl border border-border">
+              <Avatar className="size-12 rounded-none border border-border">
                 <AvatarImage src={org.avatar_url} alt={org.login} />
-                <AvatarFallback className="rounded-xl">
+                <AvatarFallback className="rounded-none">
                   {org.login.slice(0, 2).toUpperCase()}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-bold text-lg group-hover:text-indigo-500 transition-colors">
+                <h3 className="font-bold text-lg group-hover:text-amber-500 transition-colors">
                   {org.login}
                 </h3>
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
@@ -974,7 +974,7 @@ function OrgCard({
                   e.stopPropagation();
                   onCopy();
                 }}
-                className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                className="p-1.5 rounded-none hover:bg-muted transition-colors"
               >
                 {copied ? (
                   <Check className="w-3.5 h-3.5 text-emerald-500" />
@@ -983,7 +983,7 @@ function OrgCard({
                 )}
               </button>
             </div>
-            <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 group-hover:text-indigo-500 transition-colors">
+            <span className="text-xs font-medium text-muted-foreground flex items-center gap-1 group-hover:text-amber-500 transition-colors">
               Explore
               <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
             </span>
@@ -1013,18 +1013,18 @@ function OrgListItem({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.03 }}
       onClick={onClick}
-      className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-sm transition-all cursor-pointer"
+      className="group flex items-center gap-4 p-4 rounded-none border border-border bg-card hover:border-amber-500/30 hover:shadow-sm transition-all cursor-pointer"
     >
-      <Avatar className="size-10 rounded-lg">
+      <Avatar className="size-10 rounded-none">
         <AvatarImage src={org.avatar_url} alt={org.login} />
-        <AvatarFallback className="rounded-lg text-xs">
+        <AvatarFallback className="rounded-none text-xs">
           {org.login.slice(0, 2).toUpperCase()}
         </AvatarFallback>
       </Avatar>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <h4 className="font-semibold group-hover:text-indigo-500 transition-colors">
+          <h4 className="font-semibold group-hover:text-amber-500 transition-colors">
             {org.login}
           </h4>
         </div>
@@ -1052,7 +1052,7 @@ function OrgListItem({
             e.stopPropagation();
             onCopy();
           }}
-          className="p-2 rounded-md hover:bg-muted transition-colors"
+          className="p-2 rounded-none hover:bg-muted transition-colors"
         >
           {copied ? (
             <Check className="w-4 h-4 text-emerald-500" />
@@ -1060,7 +1060,7 @@ function OrgListItem({
             <Copy className="w-4 h-4 text-muted-foreground" />
           )}
         </button>
-        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-indigo-500 group-hover:translate-x-0.5 transition-all" />
+        <ArrowRight className="w-4 h-4 text-muted-foreground group-hover:text-amber-500 group-hover:translate-x-0.5 transition-all" />
       </div>
     </motion.div>
   );
@@ -1084,10 +1084,10 @@ function EmptyState({ username, onExplore }: { username: string; onExplore?: (or
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed border-border/50 gap-6"
+        className="flex flex-col items-center justify-center py-16 text-center rounded-none border-2 border-dashed border-border/50 gap-6"
       >
-        <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/10">
-          <Building2 className="size-8 text-indigo-500/60" />
+        <div className="flex size-16 items-center justify-center rounded-none bg-amber-500/10">
+          <Building2 className="size-8 text-amber-500/60" />
         </div>
         <div className="space-y-2 max-w-md">
           <h3 className="text-xl font-semibold">No Organizations Found</h3>
@@ -1124,7 +1124,7 @@ function EmptyState({ username, onExplore }: { username: string; onExplore?: (or
             href="https://github.com/settings/connections/applications"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2"
           >
             <RefreshCw className="w-4 h-4" />
             Check OAuth Permissions
@@ -1133,7 +1133,7 @@ function EmptyState({ username, onExplore }: { username: string; onExplore?: (or
             href="https://github.com/account/organizations"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
+            className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-none text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2"
           >
             <Building2 className="w-4 h-4" />
             Create Organization
@@ -1161,13 +1161,13 @@ function EmptyState({ username, onExplore }: { username: string; onExplore?: (or
                 rel="noopener noreferrer"
                 className="block group"
               >
-                <Card className="p-4 hover:shadow-md transition-all border-border hover:border-indigo-500/30">
+                <Card className="p-4 hover:shadow-md transition-all border-border hover:border-amber-500/30">
                   <div className="flex items-start gap-3">
-                    <div className="size-10 rounded-lg bg-linear-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-bold text-sm">
+                    <div className="size-10 rounded-none bg-linear-to-br from-amber-500 to-amber-500 flex items-center justify-center text-white font-bold text-sm">
                       {org.name.slice(0, 2).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold group-hover:text-indigo-500 transition-colors">
+                      <h4 className="font-semibold group-hover:text-amber-500 transition-colors">
                         {org.name}
                       </h4>
                       <p className="text-xs text-muted-foreground line-clamp-2">

@@ -15,7 +15,7 @@ export function ThemeToggle() {
 
   if (!mounted) {
     return (
-      <div className="size-9 rounded-full border border-border bg-muted/40" />
+      <div className="size-9 border border-border bg-muted/40" />
     );
   }
 
@@ -24,7 +24,7 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(isDark ? "light" : "dark")}
-      className="relative flex size-9 items-center justify-center rounded-full border border-border bg-muted/40 shadow-sm transition-all hover:bg-accent"
+      className="relative flex size-9 items-center justify-center border border-border bg-background shadow-sm transition-all hover:bg-accent"
       aria-label="Toggle theme"
     >
       <AnimatePresence mode="wait">
@@ -46,7 +46,7 @@ export function ThemeToggle() {
             exit={{ opacity: 0, scale: 0.5, rotate: 45 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
           >
-            <MaterialIcon name="light_mode" size={18} className="text-yellow-500" />
+            <MaterialIcon name="light_mode" size={18} className="text-primary" />
           </motion.div>
         )}
       </AnimatePresence>

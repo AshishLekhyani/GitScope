@@ -223,10 +223,10 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
     return (
       <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-in fade-in duration-500">
         <div className="relative">
-          <div className="size-20 rounded-3xl bg-indigo-500/5 border border-indigo-500/15 flex items-center justify-center">
-            <MaterialIcon name="commit" size={36} className="text-indigo-500/60 animate-pulse" />
+          <div className="size-20 rounded-none bg-amber-500/5 border border-amber-500/15 flex items-center justify-center">
+            <MaterialIcon name="commit" size={36} className="text-amber-500/60 animate-pulse" />
           </div>
-          <div className="absolute inset-0 rounded-3xl border-2 border-indigo-500/20 animate-ping" />
+          <div className="absolute inset-0 rounded-none border-2 border-amber-500/20 animate-ping" />
         </div>
         {commit && (
           <div className="text-center space-y-1">
@@ -240,7 +240,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
           <p className="text-xs font-black text-foreground/70">{progress.step}</p>
           <div className="h-1.5 w-full rounded-full bg-surface-container-highest overflow-hidden">
             <div
-              className="h-full rounded-full bg-indigo-500 transition-all duration-500"
+              className="h-full rounded-full bg-amber-500 transition-all duration-500"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -261,8 +261,8 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
     return (
       <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
         {commit && (
-          <div className="flex items-center gap-3 p-4 rounded-2xl bg-surface-container/30 border border-outline-variant/10">
-            <MaterialIcon name="commit" size={18} className="text-indigo-400 shrink-0" />
+          <div className="flex items-center gap-3 p-4 rounded-none bg-surface-container/30 border border-outline-variant/10">
+            <MaterialIcon name="commit" size={18} className="text-amber-400 shrink-0" />
             <div className="flex-1 min-w-0">
               <p className="text-xs font-black truncate">{commit.commit.message.split("\n")[0]}</p>
               <p className="text-[9px] text-muted-foreground/50 font-mono mt-0.5">
@@ -272,7 +272,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
           </div>
         )}
 
-        <div className={cn("rounded-2xl border p-5 space-y-3", vcfg.bg)}>
+        <div className={cn("rounded-none border p-5 space-y-3", vcfg.bg)}>
           <div className="flex items-center gap-3">
             <MaterialIcon name={vcfg.icon} size={24} className={vcfg.text} />
             <h3 className={cn("text-xl font-black uppercase tracking-tight", vcfg.text)}>{vcfg.label}</h3>
@@ -280,7 +280,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
               {result.confidence}% confidence
             </span>
             {resultFromCache && (
-              <span title="Loaded from session cache — click the commit again to re-analyze" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 cursor-help">
+              <span title="Loaded from session cache — click the commit again to re-analyze" className="text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 cursor-help">
                 Cached
               </span>
             )}
@@ -294,10 +294,10 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
         </div>
 
         {/* Score mini-bars */}
-        <div className="grid grid-cols-2 gap-2 p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10">
+        <div className="grid grid-cols-2 gap-2 p-4 rounded-none bg-surface-container/20 border border-outline-variant/10">
           {([
             ["Security", result.scores.security, result.scores.security >= 70 ? "bg-emerald-400" : result.scores.security >= 40 ? "bg-amber-400" : "bg-red-400"],
-            ["Value", result.scores.value, "bg-indigo-400"],
+            ["Value", result.scores.value, "bg-amber-400"],
             ["Quality", result.scores.quality, result.scores.quality >= 70 ? "bg-emerald-400" : result.scores.quality >= 50 ? "bg-amber-400" : "bg-red-400"],
             ["Breaking Risk", result.scores.breakingRisk, result.scores.breakingRisk <= 30 ? "bg-emerald-400" : result.scores.breakingRisk <= 60 ? "bg-amber-400" : "bg-red-400"],
           ] as [string, number, string][]).map(([label, score, color]) => (
@@ -328,7 +328,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
               }[f.severity] ?? { wrap: "border-outline-variant/25 bg-surface-container/30", badge: "bg-surface-container text-foreground/60 border-outline-variant/25", dot: "bg-muted-foreground/40", fix: "bg-surface-container/50 border-outline-variant/20 text-foreground/60" };
               const fileName = f.file ? f.file.split("/").slice(-1)[0] : null;
               return (
-                <div key={i} className={cn("rounded-2xl border p-4 space-y-3", styles.wrap)}>
+                <div key={i} className={cn("rounded-none border p-4 space-y-3", styles.wrap)}>
                   {/* Header row */}
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className={cn("size-2 rounded-full shrink-0", styles.dot)} />
@@ -347,7 +347,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
                   {/* Description */}
                   <p className="text-xs font-semibold text-foreground/85 leading-relaxed">{f.description}</p>
                   {/* Suggestion */}
-                  <div className={cn("flex items-start gap-2 p-2.5 rounded-xl border", styles.fix)}>
+                  <div className={cn("flex items-start gap-2 p-2.5 rounded-none border", styles.fix)}>
                     <MaterialIcon name="lightbulb" size={12} className="shrink-0 mt-0.5" />
                     <p className="text-[10px] leading-relaxed text-foreground/75">{f.suggestion}</p>
                   </div>
@@ -358,8 +358,8 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
         )}
 
         {/* Recommendation */}
-        <div className="p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10 space-y-1.5">
-          <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400 flex items-center gap-1.5">
+        <div className="p-4 rounded-none bg-amber-500/5 border border-amber-500/10 space-y-1.5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
             <MaterialIcon name="recommend" size={12} /> Recommendation
           </p>
           <p className="text-xs text-foreground/75 font-medium leading-relaxed">{result.recommendation}</p>
@@ -368,7 +368,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
         <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
           <span className="text-[9px] font-mono text-muted-foreground/30">{result.isDemo ? "preview mode" : `${result.confidence}% confidence`}</span>
           <button type="button" onClick={reset}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all">
+            className="flex items-center gap-2 px-4 py-2 rounded-none bg-amber-500/10 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all">
             <MaterialIcon name="manage_search" size={13} /> Inspect Another
           </button>
         </div>
@@ -384,13 +384,13 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
           value={repo}
           onChange={(e) => setRepo(e.target.value)}
           placeholder="Repository (owner/repo)"
-          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-5 py-3.5 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none px-5 py-3.5 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 transition-all"
         />
       ) : (
-        <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-indigo-500/8 border border-indigo-500/20">
-          <MaterialIcon name="folder" size={18} className="text-indigo-400 shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 rounded-none bg-amber-500/8 border border-amber-500/20">
+          <MaterialIcon name="folder" size={18} className="text-amber-400 shrink-0" />
           <div className="flex-1 min-w-0">
-            <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400/60 mb-0.5">Repository</p>
+            <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/60 mb-0.5">Repository</p>
             <p className="text-sm font-black text-foreground/90 truncate">{selectedRepo}</p>
           </div>
         </div>
@@ -398,13 +398,13 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
 
       {/* Scan mode */}
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+        <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10">
           {(["quick", "deep"] as const).map((mode) => (
             <button key={mode} type="button" onClick={() => setScanMode(mode)}
               disabled={mode === "deep" && !canDeepScan}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
-                scanMode === mode ? "bg-indigo-500 text-white" : "text-muted-foreground hover:text-foreground",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
+                scanMode === mode ? "bg-amber-500 text-white" : "text-muted-foreground hover:text-foreground",
                 mode === "deep" && !canDeepScan && "opacity-40 cursor-not-allowed"
               )}>
               <MaterialIcon name={mode === "quick" ? "bolt" : "manage_search"} size={11} />
@@ -422,14 +422,14 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
           onChange={(e) => setShaInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && handleManualSha()}
           placeholder="Paste a commit SHA to inspect it directly…"
-          className="flex-1 bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-4 py-3 text-sm font-mono placeholder:font-sans placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+          className="flex-1 bg-surface-container/40 border border-outline-variant/15 rounded-none px-4 py-3 text-sm font-mono placeholder:font-mono placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 transition-all"
         />
         <button type="button" onClick={handleManualSha}
           disabled={!shaInput.trim() || !targetRepo}
           className={cn(
-            "px-5 rounded-2xl text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
+            "px-5 rounded-none text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-1.5",
             shaInput.trim() && targetRepo
-              ? "bg-indigo-500 text-white hover:bg-indigo-600"
+              ? "bg-amber-500 text-white hover:bg-amber-600"
               : "bg-surface-container-highest text-muted-foreground/40 cursor-not-allowed"
           )}>
           <MaterialIcon name="search" size={14} /> Inspect
@@ -437,7 +437,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
       </div>
 
       {error && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/15">
+        <div className="flex items-start gap-3 p-4 rounded-none bg-red-500/5 border border-red-500/15">
           <MaterialIcon name="error" size={16} className="shrink-0 mt-0.5 text-red-400" />
           <p className="text-xs text-red-400 font-medium">{error}</p>
         </div>
@@ -463,10 +463,10 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
                 key={commit.sha}
                 type="button"
                 onClick={() => runAnalysis(commit.sha, targetRepo)}
-                className="w-full flex items-center gap-3 p-3.5 rounded-2xl bg-surface-container/25 border border-outline-variant/8 hover:bg-surface-container/50 hover:border-indigo-500/20 transition-all group text-left"
+                className="w-full flex items-center gap-3 p-3.5 rounded-none bg-surface-container/25 border border-outline-variant/8 hover:bg-surface-container/50 hover:border-amber-500/20 transition-all group text-left"
               >
-                <div className="size-8 rounded-xl bg-surface-container-highest flex items-center justify-center shrink-0 group-hover:bg-indigo-500/10 transition-colors">
-                  <MaterialIcon name="commit" size={16} className="text-muted-foreground/40 group-hover:text-indigo-400 transition-colors" />
+                <div className="size-8 rounded-none bg-surface-container-highest flex items-center justify-center shrink-0 group-hover:bg-amber-500/10 transition-colors">
+                  <MaterialIcon name="commit" size={16} className="text-muted-foreground/40 group-hover:text-amber-400 transition-colors" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-bold text-foreground/80 truncate leading-tight">
@@ -479,7 +479,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
                 <MaterialIcon
                   name="auto_awesome"
                   size={14}
-                  className="shrink-0 text-muted-foreground/20 group-hover:text-indigo-400 transition-colors"
+                  className="shrink-0 text-muted-foreground/20 group-hover:text-amber-400 transition-colors"
                 />
               </button>
             ))}
@@ -490,7 +490,7 @@ export function CommitInspector({ selectedRepo, canDeepScan }: CommitInspectorPr
               type="button"
               onClick={handleLoadMore}
               disabled={loadingMore}
-              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-2xl border border-outline-variant/15 bg-surface-container/20 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-indigo-400 hover:border-indigo-500/20 hover:bg-indigo-500/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              className="w-full mt-2 flex items-center justify-center gap-2 py-2.5 rounded-none border border-outline-variant/15 bg-surface-container/20 text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 hover:text-amber-400 hover:border-amber-500/20 hover:bg-amber-500/5 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
             >
               {loadingMore
                 ? <><span className="size-3 rounded-full border-2 border-current border-t-transparent animate-spin" /> Loading…</>

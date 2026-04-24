@@ -52,17 +52,17 @@ const FLAG_COLOR: Record<string, string> = {
   "security-fix": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
   "breaking-change": "bg-orange-500/10 text-orange-400 border-orange-500/20",
   performance: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20",
-  deps: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  deps: "bg-amber-500/10 text-amber-400 border-amber-500/20",
   auth: "bg-red-500/10 text-red-400 border-red-500/20",
-  database: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  "api-contract": "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+  database: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  "api-contract": "bg-amber-500/10 text-amber-400 border-amber-500/20",
   "large-diff": "bg-amber-500/10 text-amber-400 border-amber-500/20",
   "test-coverage": "bg-teal-500/10 text-teal-400 border-teal-500/20",
   tests: "bg-teal-500/10 text-teal-400 border-teal-500/20",
-  middleware: "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  dependencies: "bg-purple-500/10 text-purple-400 border-purple-500/20",
-  config: "bg-slate-500/10 text-slate-400 border-slate-500/20",
-  "logic-error": "bg-pink-500/10 text-pink-400 border-pink-500/20",
+  middleware: "bg-stone-500/10 text-stone-400 border-stone-500/20",
+  dependencies: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  config: "bg-stone-500/10 text-stone-400 border-stone-500/20",
+  "logic-error": "bg-amber-500/10 text-amber-400 border-pink-500/20",
   style: "bg-gray-500/10 text-gray-400 border-gray-500/20",
 };
 
@@ -96,7 +96,7 @@ function FindingCard({ finding, defaultOpen = false }: { finding: CodeReviewFind
   const sty = SEVERITY_STYLE[finding.severity];
 
   return (
-    <div className={cn("rounded-2xl border transition-all", sty.bg)}>
+    <div className={cn("rounded-none border transition-all", sty.bg)}>
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -133,12 +133,12 @@ function FindingCard({ finding, defaultOpen = false }: { finding: CodeReviewFind
       {open && (
         <div className="px-4 pb-4 space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
           {finding.codeSnippet && (
-            <pre className="text-[10px] font-mono bg-background/60 rounded-xl p-3 overflow-x-auto text-muted-foreground border border-outline-variant/10">
+            <pre className="text-[10px] font-mono bg-background/60 rounded-none p-3 overflow-x-auto text-muted-foreground border border-outline-variant/10">
               {finding.codeSnippet}
             </pre>
           )}
-          <div className="flex items-start gap-2 p-3 rounded-xl bg-indigo-500/5 border border-indigo-500/10">
-            <MaterialIcon name="lightbulb" size={14} className="shrink-0 mt-0.5 text-indigo-400" />
+          <div className="flex items-start gap-2 p-3 rounded-none bg-amber-500/5 border border-amber-500/10">
+            <MaterialIcon name="lightbulb" size={14} className="shrink-0 mt-0.5 text-amber-400" />
             <p className="text-[11px] text-foreground/75 leading-relaxed font-medium">{finding.suggestion}</p>
           </div>
         </div>
@@ -285,7 +285,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
               onChange={(e) => setPrInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && runReview()}
               placeholder="PR URL, owner/repo#123, or just a PR number…"
-              className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-5 py-4 pr-14 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+              className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none px-5 py-4 pr-14 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 transition-all"
             />
             {prInput && (
               <button
@@ -303,13 +303,13 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
               value={repoInput}
               onChange={(e) => setRepoInput(e.target.value)}
               placeholder="Repository (owner/repo) — optional if PR URL is pasted"
-              className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-5 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+              className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none px-5 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 transition-all"
             />
           )}
         </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+          <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10">
             {(["quick", "deep"] as const).map((mode) => (
               <button
                 key={mode}
@@ -317,9 +317,9 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
                 onClick={() => setScanMode(mode)}
                 disabled={mode === "deep" && !canDeepScan}
                 className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
+                  "flex items-center gap-1.5 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
                   scanMode === mode
-                    ? "bg-indigo-500 text-white shadow-md"
+                    ? "bg-amber-500 text-white shadow-md"
                     : "text-muted-foreground hover:text-foreground",
                   mode === "deep" && !canDeepScan && "opacity-40 cursor-not-allowed"
                 )}
@@ -335,9 +335,9 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
             onClick={runReview}
             disabled={!prInput.trim()}
             className={cn(
-              "flex items-center gap-2 px-6 py-3 rounded-2xl text-[11px] font-black uppercase tracking-wider transition-all",
+              "flex items-center gap-2 px-6 py-3 rounded-none text-[11px] font-black uppercase tracking-wider transition-all",
               prInput.trim()
-                ? "bg-indigo-500 text-white hover:bg-indigo-600 shadow-xl shadow-indigo-500/20"
+                ? "bg-amber-500 text-white hover:bg-amber-600 shadow-xl shadow-amber-500/20"
                 : "bg-surface-container-highest text-muted-foreground/40 cursor-not-allowed"
             )}
           >
@@ -347,17 +347,17 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
         </div>
 
         {error && (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-500/5 border border-red-500/15">
+          <div className="flex items-start gap-3 p-4 rounded-none bg-red-500/5 border border-red-500/15">
             <MaterialIcon name="error" size={16} className="shrink-0 mt-0.5 text-red-400" />
             <p className="text-xs text-red-400 font-medium">{error}</p>
           </div>
         )}
 
         {!allowsPrivateRepo && (
-          <div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
-            <MaterialIcon name="lock" size={15} className="shrink-0 mt-0.5 text-indigo-400" />
+          <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/5 border border-amber-500/10">
+            <MaterialIcon name="lock" size={15} className="shrink-0 mt-0.5 text-amber-400" />
             <div>
-              <p className="text-xs font-black text-indigo-400 mb-0.5">Private Repos</p>
+              <p className="text-xs font-black text-amber-400 mb-0.5">Private Repos</p>
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
                 Private repositories are available on Professional plan and above. Connect your GitHub account in Settings to enable access.
               </p>
@@ -372,8 +372,8 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
             { icon: "warning_amber", label: "Breaking Changes", desc: "API, DB, and contract analysis" },
             { icon: "checklist", label: "Review Checklist", desc: "Personalized review guide" },
           ].map((f) => (
-            <div key={f.label} className="p-3 rounded-2xl bg-surface-container/20 border border-outline-variant/8 space-y-1.5">
-              <MaterialIcon name={f.icon} size={18} className="text-indigo-500/60" />
+            <div key={f.label} className="p-3 rounded-none bg-surface-container/20 border border-outline-variant/8 space-y-1.5">
+              <MaterialIcon name={f.icon} size={18} className="text-amber-500/60" />
               <p className="text-[10px] font-black text-foreground/80">{f.label}</p>
               <p className="text-[9px] text-muted-foreground/50 leading-relaxed">{f.desc}</p>
             </div>
@@ -388,17 +388,17 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-8 animate-in fade-in duration-500">
         <div className="relative">
-          <div className="size-24 rounded-3xl bg-indigo-500/5 border border-indigo-500/15 flex items-center justify-center">
-            <MaterialIcon name="auto_awesome" size={40} className="text-indigo-500/60 animate-pulse" />
+          <div className="size-24 rounded-none bg-amber-500/5 border border-amber-500/15 flex items-center justify-center">
+            <MaterialIcon name="auto_awesome" size={40} className="text-amber-500/60 animate-pulse" />
           </div>
-          <div className="absolute inset-0 rounded-3xl border-2 border-indigo-500/20 animate-ping" />
+          <div className="absolute inset-0 rounded-none border-2 border-amber-500/20 animate-ping" />
         </div>
 
         <div className="w-full max-w-sm space-y-3 text-center">
           <p className="text-sm font-black text-foreground/80">{progress.step}</p>
           <div className="h-1.5 w-full rounded-full bg-surface-container-highest overflow-hidden">
             <div
-              className="h-full rounded-full bg-indigo-500 transition-all duration-500 ease-out"
+              className="h-full rounded-full bg-amber-500 transition-all duration-500 ease-out"
               style={{ width: `${progress.percent}%` }}
             />
           </div>
@@ -430,11 +430,11 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
 
         {/* ── Verdict banner ── */}
         <div className={cn(
-          "relative overflow-hidden rounded-3xl border p-6 shadow-2xl",
+          "relative overflow-hidden rounded-none border p-6 shadow-2xl",
           vcfg.bg, vcfg.glow
         )}>
           <div className="flex flex-col sm:flex-row sm:items-center gap-5">
-            <div className={cn("size-16 rounded-2xl flex items-center justify-center border shrink-0", vcfg.bg)}>
+            <div className={cn("size-16 rounded-none flex items-center justify-center border shrink-0", vcfg.bg)}>
               <MaterialIcon name={vcfg.icon} size={32} className={vcfg.text} />
             </div>
             <div className="flex-1 min-w-0">
@@ -483,13 +483,13 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
         </div>
 
         {/* ── Score gauges ── */}
-        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-5">
+        <div className="rounded-none border border-outline-variant/10 bg-surface-container/20 p-5">
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mb-5 flex items-center gap-1.5">
             <MaterialIcon name="bar_chart" size={12} /> Analysis Dimensions
           </p>
           <div className="flex flex-wrap justify-around gap-4">
             <ScoreGauge label="Security" score={result.scores.security} colorClass={result.scores.security >= 70 ? "stroke-emerald-400 text-emerald-400" : result.scores.security >= 40 ? "stroke-amber-400 text-amber-400" : "stroke-red-400 text-red-400"} />
-            <ScoreGauge label="Value" score={result.scores.value} colorClass="stroke-indigo-400 text-indigo-400" />
+            <ScoreGauge label="Value" score={result.scores.value} colorClass="stroke-amber-400 text-amber-400" />
             <ScoreGauge label="Quality" score={result.scores.quality} colorClass={result.scores.quality >= 70 ? "stroke-emerald-400 text-emerald-400" : result.scores.quality >= 50 ? "stroke-amber-400 text-amber-400" : "stroke-red-400 text-red-400"} />
             <ScoreGauge label="Test Coverage" score={result.scores.testCoverage} colorClass={result.scores.testCoverage >= 70 ? "stroke-teal-400 text-teal-400" : result.scores.testCoverage >= 40 ? "stroke-amber-400 text-amber-400" : "stroke-orange-400 text-orange-400"} />
             <ScoreGauge label="Breaking Risk" score={result.scores.breakingRisk} colorClass={result.scores.breakingRisk <= 30 ? "stroke-emerald-400 text-emerald-400" : result.scores.breakingRisk <= 60 ? "stroke-amber-400 text-amber-400" : "stroke-red-400 text-red-400"} />
@@ -499,12 +499,12 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
         {/* ── Stats row ── */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[
-            { label: "Files Changed", value: result.diffStats.fileCount, icon: "folder", color: "text-indigo-400" },
+            { label: "Files Changed", value: result.diffStats.fileCount, icon: "folder", color: "text-amber-400" },
             { label: "Lines Added", value: `+${result.diffStats.additions}`, icon: "add", color: "text-emerald-400" },
             { label: "Lines Removed", value: `-${result.diffStats.deletions}`, icon: "remove", color: "text-red-400" },
             { label: "Est. Review", value: result.estimatedReviewTime, icon: "schedule", color: "text-amber-400" },
           ].map((s) => (
-            <div key={s.label} className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-4 text-center">
+            <div key={s.label} className="rounded-none border border-outline-variant/10 bg-surface-container/20 p-4 text-center">
               <MaterialIcon name={s.icon} size={16} className={cn("mx-auto mb-2", s.color)} />
               <div className={cn("text-lg font-black", s.color)}>{s.value}</div>
               <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">{s.label}</div>
@@ -517,7 +517,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
         {result.findings.length > 0 && (() => {
           const SEVERITIES = ["all", "critical", "high", "medium", "low"] as const;
           const SEV_STYLE: Record<string, string> = {
-            all:      "bg-indigo-500/20 text-indigo-400 border-indigo-500/30",
+            all:      "bg-amber-500/20 text-amber-400 border-amber-500/30",
             critical: "bg-red-500/20 text-red-400 border-red-500/30",
             high:     "bg-orange-500/20 text-orange-400 border-orange-500/30",
             medium:   "bg-amber-500/20 text-amber-400 border-amber-500/30",
@@ -555,7 +555,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
                       aria-label={`Filter by ${sev}`}
                       onClick={() => { setSeverityFilter(sev); setFindingsPage(0); }}
                       className={cn(
-                        "flex items-center gap-1 px-3 py-1 rounded-xl text-[9px] font-black uppercase tracking-wider border transition-all",
+                        "flex items-center gap-1 px-3 py-1 rounded-none text-[9px] font-black uppercase tracking-wider border transition-all",
                         severityFilter === sev
                           ? SEV_STYLE[sev]
                           : "bg-surface-container/40 text-muted-foreground/50 border-outline-variant/10 hover:border-outline-variant/25"
@@ -593,7 +593,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
                       aria-label="Previous page"
                       onClick={() => setFindingsPage((p) => Math.max(0, p - 1))}
                       disabled={page === 0}
-                      className="p-1.5 rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30"
+                      className="p-1.5 rounded-none hover:bg-surface-container transition-colors disabled:opacity-30"
                     >
                       <MaterialIcon name="chevron_left" size={14} className="text-muted-foreground" />
                     </button>
@@ -604,8 +604,8 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
                         aria-label={`Page ${i + 1}`}
                         onClick={() => setFindingsPage(i)}
                         className={cn(
-                          "size-6 rounded-lg text-[9px] font-black transition-all",
-                          page === i ? "bg-indigo-500 text-white" : "text-muted-foreground hover:bg-surface-container"
+                          "size-6 rounded-none text-[9px] font-black transition-all",
+                          page === i ? "bg-amber-500 text-white" : "text-muted-foreground hover:bg-surface-container"
                         )}
                       >
                         {i + 1}
@@ -616,7 +616,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
                       aria-label="Next page"
                       onClick={() => setFindingsPage((p) => Math.min(pageCount - 1, p + 1))}
                       disabled={page === pageCount - 1}
-                      className="p-1.5 rounded-lg hover:bg-surface-container transition-colors disabled:opacity-30"
+                      className="p-1.5 rounded-none hover:bg-surface-container transition-colors disabled:opacity-30"
                     >
                       <MaterialIcon name="chevron_right" size={14} className="text-muted-foreground" />
                     </button>
@@ -694,8 +694,8 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
         )}
 
         {/* Recommendation */}
-        <div className="p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/15 space-y-2">
-          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-indigo-400">
+        <div className="p-5 rounded-none bg-amber-500/5 border border-amber-500/15 space-y-2">
+          <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-widest text-amber-400">
             <MaterialIcon name="recommend" size={13} />
             AI Recommendation
           </div>
@@ -709,14 +709,14 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
             title="Review Checklist"
             subtitle={`${result.reviewChecklist.length} items`}
             icon="checklist"
-            badgeColor="text-indigo-400 bg-indigo-500/10 border-indigo-500/15"
+            badgeColor="text-amber-400 bg-amber-500/10 border-amber-500/15"
             expanded={expandedSection === "checklist"}
             onToggle={() => setExpandedSection((s) => s === "checklist" ? null : "checklist")}
           >
             <ul className="space-y-2">
               {result.reviewChecklist.map((item, i) => (
                 <li key={i} className="flex items-start gap-3 text-xs text-foreground/70 leading-relaxed">
-                  <span className="size-5 shrink-0 mt-0.5 rounded-lg border border-outline-variant/20 flex items-center justify-center text-[8px] font-black text-muted-foreground/40">
+                  <span className="size-5 shrink-0 mt-0.5 rounded-none border border-outline-variant/20 flex items-center justify-center text-[8px] font-black text-muted-foreground/40">
                     {i + 1}
                   </span>
                   {item}
@@ -729,13 +729,13 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
         {/* Hot files + impact */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {result.diffStats.hotFiles.length > 0 && (
-            <div className="p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-3">
+            <div className="p-4 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
                 <MaterialIcon name="local_fire_department" size={12} className="text-orange-400" /> Hot Files
               </p>
               <div className="space-y-1.5">
                 {result.diffStats.hotFiles.map((f) => (
-                  <div key={f} className="text-[10px] font-mono text-muted-foreground/70 bg-surface-container-highest px-3 py-1.5 rounded-xl border border-outline-variant/10 truncate">
+                  <div key={f} className="text-[10px] font-mono text-muted-foreground/70 bg-surface-container-highest px-3 py-1.5 rounded-none border border-outline-variant/10 truncate">
                     {f}
                   </div>
                 ))}
@@ -743,13 +743,13 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
             </div>
           )}
           {result.affectedSystems.length > 0 && (
-            <div className="p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-3">
+            <div className="p-4 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-                <MaterialIcon name="hub" size={12} className="text-indigo-400" /> Affected Systems
+                <MaterialIcon name="hub" size={12} className="text-amber-400" /> Affected Systems
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {result.affectedSystems.map((s) => (
-                  <span key={s} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-indigo-500/8 border border-indigo-500/15 text-indigo-400">
+                  <span key={s} className="text-[10px] font-bold px-2.5 py-1 rounded-full bg-amber-500/8 border border-amber-500/15 text-amber-400">
                     {s}
                   </span>
                 ))}
@@ -766,7 +766,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
           <button
             type="button"
             onClick={reset}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all"
+            className="flex items-center gap-2 px-4 py-2 rounded-none bg-amber-500/10 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all"
           >
             <MaterialIcon name="rate_review" size={13} />
             New Review
@@ -795,7 +795,7 @@ function Section({
 }) {
   void id;
   return (
-    <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/15 overflow-hidden">
+    <div className="rounded-none border border-outline-variant/10 bg-surface-container/15 overflow-hidden">
       <button
         type="button"
         onClick={onToggle}

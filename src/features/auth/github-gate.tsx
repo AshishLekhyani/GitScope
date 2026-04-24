@@ -99,15 +99,15 @@ export function GitHubGate({ feature, children, inline = false, className }: Git
 
   if (inline) {
     return (
-      <div className={cn("relative rounded-2xl overflow-hidden", className)}>
+      <div className={cn("relative rounded-none overflow-hidden", className)}>
         {/* Blurred preview */}
         <div className="pointer-events-none select-none blur-sm opacity-40 saturate-0">
           {children}
         </div>
         {/* Overlay */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-surface-container/80 backdrop-blur-sm rounded-2xl border border-outline-variant/20 p-6 text-center">
-          <div className="size-12 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-            <MaterialIcon name={required === "github" ? "hub" : "lock"} size={24} className="text-indigo-400" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-surface-container/80 backdrop-blur-sm rounded-none border border-outline-variant/20 p-6 text-center">
+          <div className="size-12 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <MaterialIcon name={required === "github" ? "hub" : "lock"} size={24} className="text-amber-400" />
           </div>
           <div>
             <h3 className="font-bold text-sm text-foreground">{msg.title}</h3>
@@ -117,7 +117,7 @@ export function GitHubGate({ feature, children, inline = false, className }: Git
             <button
               type="button"
               onClick={() => signIn(msg.provider!)}
-              className="rounded-xl bg-indigo-500 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-600 transition-colors"
+              className="rounded-none bg-amber-500 px-4 py-2 text-xs font-bold text-white hover:bg-amber-600 transition-colors"
             >
               {msg.cta}
             </button>
@@ -158,7 +158,7 @@ function GateModal({ msg, featureLabel, required, onClose }: {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-300 bg-black/60 backdrop-blur-sm"
+        className="fixed inset-0 z-[300] bg-black/60 backdrop-blur-sm"
         onClick={onClose}
       />
       <motion.div
@@ -166,20 +166,20 @@ function GateModal({ msg, featureLabel, required, onClose }: {
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
         transition={{ type: "spring", stiffness: 300, damping: 25 }}
-        className="fixed left-1/2 top-1/2 z-301 w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
+        className="fixed left-1/2 top-1/2 z-[301] w-full max-w-sm -translate-x-1/2 -translate-y-1/2 px-4"
       >
-        <div className="rounded-3xl border border-outline-variant/20 bg-surface-container/95 shadow-2xl backdrop-blur-xl overflow-hidden">
+        <div className="rounded-none border border-outline-variant/20 bg-surface-container/95 shadow-2xl backdrop-blur-xl overflow-hidden">
           {/* Header */}
-          <div className="relative bg-linear-to-br from-indigo-500/10 to-purple-500/5 px-6 pt-8 pb-6 text-center border-b border-outline-variant/10">
+          <div className="relative bg-linear-to-br from-amber-500/10 to-amber-500/5 px-6 pt-8 pb-6 text-center border-b border-outline-variant/10">
             <button
               type="button"
               onClick={onClose}
-              className="absolute right-4 top-4 rounded-lg p-1.5 text-muted-foreground hover:bg-accent transition-colors"
+              className="absolute right-4 top-4 rounded-none p-1.5 text-muted-foreground hover:bg-accent transition-colors"
             >
               <MaterialIcon name="close" size={18} />
             </button>
-            <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-indigo-500/15 border border-indigo-500/20">
-              <MaterialIcon name={required === "github" ? "hub" : required === "google" ? "person" : "lock"} size={28} className="text-indigo-400" />
+            <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-none bg-amber-500/15 border border-amber-500/20">
+              <MaterialIcon name={required === "github" ? "hub" : required === "google" ? "person" : "lock"} size={28} className="text-amber-400" />
             </div>
             <h2 className="text-lg font-bold tracking-tight">{msg.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground/60 uppercase tracking-widest font-mono">
@@ -192,7 +192,7 @@ function GateModal({ msg, featureLabel, required, onClose }: {
             <p className="text-sm text-muted-foreground leading-relaxed">{msg.body}</p>
 
             {/* Tier comparison */}
-            <div className="rounded-xl border border-outline-variant/10 overflow-hidden">
+            <div className="rounded-none border border-outline-variant/10 overflow-hidden">
               {[
                 { tier: "credentials" as AuthTier, label: "Email / Password", features: ["Search repos", "Compare repos", "Trending", "Bookmarks"] },
                 { tier: "google" as AuthTier, label: "Google Account", features: ["Everything above", "Organization Pulse", "API Token settings"] },
@@ -202,22 +202,22 @@ function GateModal({ msg, featureLabel, required, onClose }: {
                   key={row.tier}
                   className={cn(
                     "flex items-start gap-3 px-4 py-3 border-b border-outline-variant/10 last:border-0",
-                    row.tier === required && "bg-indigo-500/5"
+                    row.tier === required && "bg-amber-500/5"
                   )}
                 >
                   <div className={cn(
                     "mt-0.5 size-5 rounded-full border flex items-center justify-center shrink-0",
-                    hasAccess(required, row.tier) ? "border-indigo-500/30 bg-indigo-500/10" : "border-outline-variant/20 bg-surface-container"
+                    hasAccess(required, row.tier) ? "border-amber-500/30 bg-amber-500/10" : "border-outline-variant/20 bg-surface-container"
                   )}>
                     {hasAccess(required, row.tier) && (
-                      <MaterialIcon name="check" size={12} className="text-indigo-400" />
+                      <MaterialIcon name="check" size={12} className="text-amber-400" />
                     )}
                   </div>
                   <div>
                     <div className="text-xs font-bold text-foreground flex items-center gap-2">
                       {row.label}
                       {row.tier === required && (
-                        <span className="text-[9px] font-black text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
+                        <span className="text-[9px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded uppercase tracking-wider">Required</span>
                       )}
                     </div>
                     <div className="text-[10px] text-muted-foreground mt-0.5">{row.features.slice(0, 3).join(" · ")}</div>
@@ -230,7 +230,7 @@ function GateModal({ msg, featureLabel, required, onClose }: {
               <button
                 type="button"
                 onClick={() => { signIn(msg.provider!); onClose(); }}
-                className="w-full rounded-xl bg-indigo-500 px-4 py-3 text-sm font-bold text-white hover:bg-indigo-600 transition-colors flex items-center justify-center gap-2"
+                className="w-full rounded-none bg-amber-500 px-4 py-3 text-sm font-bold text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
               >
                 <MaterialIcon name={msg.provider === "github" ? "hub" : "person"} size={18} />
                 {msg.cta}
@@ -240,7 +240,7 @@ function GateModal({ msg, featureLabel, required, onClose }: {
             <button
               type="button"
               onClick={onClose}
-              className="w-full rounded-xl border border-outline-variant/20 px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
+              className="w-full rounded-none border border-outline-variant/20 px-4 py-2.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               Maybe later
             </button>

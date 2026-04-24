@@ -258,9 +258,9 @@ export function TopicsPageClient({
   if (!hasHistory) {
     return (
       <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-2xl border-2 border-dashed border-border/50 gap-6">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-violet-500/10">
-            <MaterialIcon name="travel_explore" size={32} className="text-violet-500/60" />
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-none border-2 border-dashed border-border/50 gap-6">
+          <div className="flex size-16 items-center justify-center rounded-none bg-amber-500/10">
+            <MaterialIcon name="travel_explore" size={32} className="text-amber-500/60" />
           </div>
           <div className="space-y-2 max-w-sm">
             <h3 className="text-xl font-semibold">No Repository History Yet</h3>
@@ -282,7 +282,7 @@ export function TopicsPageClient({
   if (!hasTopics) {
     return (
       <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
-        <div className="flex flex-col items-center justify-center py-16 text-center rounded-2xl border-2 border-dashed border-border/50 gap-4">
+        <div className="flex flex-col items-center justify-center py-16 text-center rounded-none border-2 border-dashed border-border/50 gap-4">
           <MaterialIcon name="label_off" size={40} className="text-muted-foreground/30" />
           <div>
             <h3 className="text-lg font-semibold mb-1">No Topics Found</h3>
@@ -304,14 +304,14 @@ export function TopicsPageClient({
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-violet-500/10 border border-violet-500/20 mb-3">
-              <span className="size-2 rounded-full bg-violet-500 animate-pulse" />
-              <span className="text-[11px] font-semibold uppercase tracking-wider text-violet-600 dark:text-violet-400">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 mb-3">
+              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[11px] font-semibold uppercase tracking-wider text-amber-600 dark:text-amber-400">
                 Discovery
               </span>
             </div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground flex items-center gap-3">
-              <MaterialIcon name="travel_explore" size={32} className="text-violet-500" />
+              <MaterialIcon name="travel_explore" size={32} className="text-amber-500" />
               Topic Explorer
             </h1>
             <p className="text-muted-foreground mt-1.5 text-sm">
@@ -329,9 +329,9 @@ export function TopicsPageClient({
               <Download size={16} />
               Export
             </Button>
-            <div className="flex items-center gap-4 px-5 py-3 rounded-xl bg-card border border-border shadow-sm">
-              <div className="p-2 rounded-lg bg-violet-500/10">
-                <Tag size={18} className="text-violet-500" />
+            <div className="flex items-center gap-4 px-5 py-3 rounded-none bg-card border border-border shadow-sm">
+              <div className="p-2 rounded-none bg-amber-500/10">
+                <Tag size={18} className="text-amber-500" />
               </div>
               <div>
                 <div className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
@@ -367,14 +367,14 @@ export function TopicsPageClient({
 
           <div className="flex items-center gap-2">
             {/* View Toggle */}
-            <div className="flex items-center border rounded-lg p-1 bg-muted/50">
+            <div className="flex items-center border rounded-none p-1 bg-muted/50">
               <button
                 type="button"
                 aria-label="Cloud view"
                 onClick={() => setViewMode("cloud")}
                 className={cn(
-                  "p-2 rounded-md transition-all",
-                  viewMode === "cloud" && "bg-white dark:bg-slate-800 shadow-sm"
+                  "p-2 rounded-none transition-all",
+                  viewMode === "cloud" && "bg-white dark:bg-stone-800 shadow-sm"
                 )}
               >
                 <Cloud size={16} />
@@ -384,8 +384,8 @@ export function TopicsPageClient({
                 aria-label="Grid view"
                 onClick={() => setViewMode("grid")}
                 className={cn(
-                  "p-2 rounded-md transition-all",
-                  viewMode === "grid" && "bg-white dark:bg-slate-800 shadow-sm"
+                  "p-2 rounded-none transition-all",
+                  viewMode === "grid" && "bg-white dark:bg-stone-800 shadow-sm"
                 )}
               >
                 <Grid3X3 size={16} />
@@ -395,8 +395,8 @@ export function TopicsPageClient({
                 aria-label="List view"
                 onClick={() => setViewMode("list")}
                 className={cn(
-                  "p-2 rounded-md transition-all",
-                  viewMode === "list" && "bg-white dark:bg-slate-800 shadow-sm"
+                  "p-2 rounded-none transition-all",
+                  viewMode === "list" && "bg-white dark:bg-stone-800 shadow-sm"
                 )}
               >
                 <List size={16} />
@@ -406,8 +406,8 @@ export function TopicsPageClient({
                 aria-label="Discover view"
                 onClick={() => setViewMode("discover")}
                 className={cn(
-                  "p-2 rounded-md transition-all",
-                  viewMode === "discover" && "bg-white dark:bg-slate-800 shadow-sm"
+                  "p-2 rounded-none transition-all",
+                  viewMode === "discover" && "bg-white dark:bg-stone-800 shadow-sm"
                 )}
               >
                 <Sparkles size={16} />
@@ -417,7 +417,7 @@ export function TopicsPageClient({
             {/* Sort Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger>
-                <button type="button" className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-border bg-background hover:bg-muted text-sm font-medium transition-colors">
+                <button type="button" className="inline-flex items-center gap-2 px-3 py-2 rounded-none border border-border bg-background hover:bg-muted text-sm font-medium transition-colors">
                   <ArrowUpDown size={14} />
                   Sort
                   <ChevronDown size={12} />
@@ -464,7 +464,7 @@ export function TopicsPageClient({
               exit={{ height: 0, opacity: 0 }}
               className="overflow-hidden"
             >
-              <div className="p-4 rounded-xl bg-muted/50 border border-border">
+              <div className="p-4 rounded-none bg-muted/50 border border-border">
                 <div className="flex items-center gap-4">
                   <span className="text-sm font-medium">Min repos:</span>
                   <div className="flex items-center gap-2">
@@ -474,10 +474,10 @@ export function TopicsPageClient({
                         key={n}
                         onClick={() => setMinCount(n)}
                         className={cn(
-                          "px-3 py-1 rounded-md text-sm transition-colors",
+                          "px-3 py-1 rounded-none text-sm transition-colors",
                           minCount === n 
-                            ? "bg-violet-500 text-white" 
-                            : "bg-white dark:bg-slate-800 hover:bg-muted"
+                            ? "bg-amber-500 text-white" 
+                            : "bg-white dark:bg-stone-800 hover:bg-muted"
                         )}
                       >
                         {n}+
@@ -511,24 +511,24 @@ export function TopicsPageClient({
               label: "Total Topics", 
               value: rankedTopics.length,
               icon: Tag,
-              color: "text-violet-500",
-              bg: "bg-violet-500/10"
+              color: "text-amber-500",
+              bg: "bg-amber-500/10"
             },
             { 
               label: "Coverage", 
               value: `${Math.round((repoTopics.length / repoQueries.length) * 100)}%`,
               icon: Sparkles,
-              color: "text-blue-500",
-              bg: "bg-blue-500/10"
+              color: "text-amber-500",
+              bg: "bg-amber-500/10"
             },
           ].map(({ label, value, icon: Icon, color, bg }) => (
             <motion.div 
               key={label}
               whileHover={{ y: -2 }}
-              className="p-4 rounded-xl bg-card border border-border shadow-sm hover:shadow-md transition-shadow"
+              className="p-4 rounded-none bg-card border border-border shadow-sm hover:shadow-md transition-shadow"
             >
               <div className="flex items-center gap-3 mb-2">
-                <div className={`p-1.5 rounded-lg ${bg}`}>
+                <div className={`p-1.5 rounded-none ${bg}`}>
                   <Icon size={16} className={color} />
                 </div>
                 <span className="text-xs font-medium text-muted-foreground">{label}</span>
@@ -546,11 +546,11 @@ export function TopicsPageClient({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="rounded-2xl border border-border bg-card p-6 shadow-sm"
+              className="rounded-none border border-border bg-card p-6 shadow-sm"
             >
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-base font-semibold flex items-center gap-2">
-                  <Cloud size={18} className="text-violet-500" />
+                  <Cloud size={18} className="text-amber-500" />
                   Topic Cloud
                 </h2>
                 <span className="text-xs text-muted-foreground">
@@ -567,16 +567,16 @@ export function TopicsPageClient({
                         onClick={() => setSelectedTopic(name)}
                         className={cn(
                           "inline-flex items-center gap-1.5 rounded-full",
-                          "bg-violet-500/10 border border-violet-500/20 text-violet-700 dark:text-violet-300",
-                          "hover:bg-violet-500/20 hover:border-violet-500/40",
+                          "bg-amber-500/10 border border-amber-500/20 text-amber-700 dark:text-amber-300",
+                          "hover:bg-amber-500/20 hover:border-amber-500/40",
                           "transition-all duration-150 cursor-pointer",
                           tagSizeClass(count)
                         )}
                       >
-                        <span className="text-violet-500/60 text-[10px]">#</span>
+                        <span className="text-amber-500/60 text-[10px]">#</span>
                         {name}
                         {count > 1 && (
-                          <span className="text-[10px] font-medium bg-violet-500/20 rounded-full px-1.5 py-0.5 ml-0.5">
+                          <span className="text-[10px] font-medium bg-amber-500/20 rounded-full px-1.5 py-0.5 ml-0.5">
                             {count}
                           </span>
                         )}
@@ -606,13 +606,13 @@ export function TopicsPageClient({
                   <motion.div
                     key={name}
                     whileHover={{ y: -4 }}
-                    className="p-5 rounded-2xl border border-border bg-card shadow-sm hover:shadow-md transition-all cursor-pointer"
+                    className="p-5 rounded-none border border-border bg-card shadow-sm hover:shadow-md transition-all cursor-pointer"
                     onClick={() => setSelectedTopic(name)}
                   >
                     <div className="flex items-start justify-between mb-3">
                       <Badge 
                         variant="secondary" 
-                        className="bg-violet-500/10 text-violet-700 dark:text-violet-300 hover:bg-violet-500/20"
+                        className="bg-amber-500/10 text-amber-700 dark:text-amber-300 hover:bg-amber-500/20"
                       >
                         #{name}
                       </Badge>
@@ -627,7 +627,7 @@ export function TopicsPageClient({
                         </p>
                       ))}
                       {repos.length > 3 && (
-                        <p className="text-xs text-violet-500">
+                        <p className="text-xs text-amber-500">
                           +{repos.length - 3} more
                         </p>
                       )}
@@ -644,11 +644,11 @@ export function TopicsPageClient({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
-              className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden"
+              className="rounded-none border border-border bg-card shadow-sm overflow-hidden"
             >
               <div className="px-6 py-4 border-b border-border flex items-center justify-between bg-muted/30">
                 <div className="flex items-center gap-2">
-                  <List size={18} className="text-violet-500" />
+                  <List size={18} className="text-amber-500" />
                   <h2 className="font-semibold text-sm">
                     Topics {filteredTopics.length > 0 && `(${filteredTopics.length})`}
                   </h2>
@@ -687,7 +687,7 @@ export function TopicsPageClient({
                             )}
                           </div>
                           <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-violet-600 dark:text-violet-400 shrink-0">
+                            <span className="text-xs font-medium text-amber-600 dark:text-amber-400 shrink-0">
                               {count > 0 ? `${count} repo${count !== 1 ? "s" : ""}` : "—"}
                             </span>
                             <button
@@ -710,7 +710,7 @@ export function TopicsPageClient({
                         <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                           {/* dynamic width requires inline style — cannot express runtime % in Tailwind */}
                           <div
-                            className="h-full rounded-full bg-linear-to-r from-violet-500 to-fuchsia-500 transition-all"
+                            className="h-full rounded-full bg-linear-to-r from-amber-500 to-fuchsia-500 transition-all"
                             style={{ width: `${pct}%` }}
                           />
                         </div>
@@ -727,7 +727,7 @@ export function TopicsPageClient({
                     type="button"
                     onClick={() => setCurrentPage((p: number) => Math.max(1, p - 1))}
                     disabled={currentPage === 1}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-none text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
                   >
                     ← Previous
                   </button>
@@ -752,9 +752,9 @@ export function TopicsPageClient({
                           key={pageNum}
                           onClick={() => setCurrentPage(pageNum)}
                           className={cn(
-                            "w-8 h-8 rounded-md text-sm font-medium transition-colors",
+                            "w-8 h-8 rounded-none text-sm font-medium transition-colors",
                             currentPage === pageNum
-                              ? "bg-violet-500 text-white"
+                              ? "bg-amber-500 text-white"
                               : "hover:bg-muted text-muted-foreground"
                           )}
                         >
@@ -768,7 +768,7 @@ export function TopicsPageClient({
                     type="button"
                     onClick={() => setCurrentPage((p: number) => Math.min(totalPages, p + 1))}
                     disabled={currentPage === totalPages}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-none text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
                   >
                     Next →
                   </button>
@@ -789,7 +789,7 @@ export function TopicsPageClient({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-linear-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/20"
+                  className="p-4 rounded-none bg-linear-to-br from-rose-500/10 to-orange-500/10 border border-rose-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp size={18} className="text-rose-500" />
@@ -801,13 +801,13 @@ export function TopicsPageClient({
                 
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-linear-to-br from-violet-500/10 to-purple-500/10 border border-violet-500/20"
+                  className="p-4 rounded-none bg-linear-to-br from-amber-500/10 to-amber-500/10 border border-amber-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
-                    <Tag size={18} className="text-violet-500" />
-                    <span className="text-xs font-medium text-violet-600">Your Topics</span>
+                    <Tag size={18} className="text-amber-500" />
+                    <span className="text-xs font-medium text-amber-600">Your Topics</span>
                   </div>
-                  <div className="text-3xl font-bold text-violet-600">
+                  <div className="text-3xl font-bold text-amber-600">
                     {rankedTopics.filter(t => t.source === 'user').length}
                   </div>
                   <div className="text-xs text-muted-foreground mt-1">From your repos</div>
@@ -815,7 +815,7 @@ export function TopicsPageClient({
                 
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-linear-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20"
+                  className="p-4 rounded-none bg-linear-to-br from-amber-500/10 to-yellow-500/10 border border-amber-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles size={18} className="text-amber-500" />
@@ -827,7 +827,7 @@ export function TopicsPageClient({
                 
                 <motion.div 
                   whileHover={{ y: -4 }}
-                  className="p-4 rounded-2xl bg-linear-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20"
+                  className="p-4 rounded-none bg-linear-to-br from-emerald-500/10 to-teal-500/10 border border-emerald-500/20"
                 >
                   <div className="flex items-center gap-2 mb-2">
                     <Folder size={18} className="text-emerald-500" />
@@ -840,7 +840,7 @@ export function TopicsPageClient({
 
               {/* Trending Topics Chart */}
               {trendingTopics.length > 0 && (
-                <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <section className="rounded-none border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-2">
                       <TrendingUp size={20} className="text-rose-500" />
@@ -918,9 +918,9 @@ export function TopicsPageClient({
 
               {/* Featured Repos Section */}
               {trendingTopics.length > 0 && (
-                <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+                <section className="rounded-none border border-border bg-card p-6 shadow-sm">
                   <div className="flex items-center gap-2 mb-4">
-                    <Folder size={20} className="text-blue-500" />
+                    <Folder size={20} className="text-amber-500" />
                     <h2 className="text-lg font-semibold">Featured Trending Repos</h2>
                   </div>
                   <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -931,12 +931,12 @@ export function TopicsPageClient({
                           <motion.div
                             key={`${topic.name}-${repo}`}
                             whileHover={{ y: -2 }}
-                            className="p-3 rounded-xl border border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
+                            className="p-3 rounded-none border border-border bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer"
                             onClick={() => setSelectedTopic(topic.name)}
                           >
                             <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-lg bg-blue-500/10">
-                                <Folder size={16} className="text-blue-500" />
+                              <div className="p-2 rounded-none bg-amber-500/10">
+                                <Folder size={16} className="text-amber-500" />
                               </div>
                               <div className="flex-1 min-w-0">
                                 <p className="text-sm font-medium truncate">{owner}/{repoName}</p>
@@ -957,7 +957,7 @@ export function TopicsPageClient({
               )}
 
               {/* Popular Topics Grid */}
-              <section className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+              <section className="rounded-none border border-border bg-card p-6 shadow-sm">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-2">
                     <Sparkles size={20} className="text-amber-500" />
@@ -965,7 +965,7 @@ export function TopicsPageClient({
                   </div>
                   <div className="flex items-center gap-2 text-xs text-muted-foreground">
                     <span className="inline-flex items-center gap-1">
-                      <span className="w-2 h-2 rounded-full bg-violet-500" />
+                      <span className="w-2 h-2 rounded-full bg-amber-500" />
                       In your repos
                     </span>
                   </div>
@@ -982,24 +982,24 @@ export function TopicsPageClient({
                         whileTap={{ scale: 0.98 }}
                         onClick={() => setSelectedTopic(topic)}
                         className={cn(
-                          "p-3 rounded-xl border text-left transition-all",
+                          "p-3 rounded-none border text-left transition-all",
                           isUserTopic
-                            ? "bg-violet-500/5 border-violet-500/20 hover:bg-violet-500/10 hover:border-violet-500/30"
+                            ? "bg-amber-500/5 border-amber-500/20 hover:bg-amber-500/10 hover:border-amber-500/30"
                             : "bg-muted/30 border-border hover:bg-muted/50 hover:border-amber-500/20"
                         )}
                       >
                         <div className="flex items-center gap-1.5 mb-1">
                           <span className={cn(
                             "text-xs",
-                            isUserTopic ? "text-violet-500/70" : "text-muted-foreground/50"
+                            isUserTopic ? "text-amber-500/70" : "text-muted-foreground/50"
                           )}>#</span>
                           <span className="text-sm font-medium truncate">{topic}</span>
                           {isUserTopic && (
-                            <span className="w-1.5 h-1.5 rounded-full bg-violet-500 shrink-0" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
                           )}
                         </div>
                         {topicData && topicData.count > 0 ? (
-                          <p className="text-xs text-violet-600">{topicData.count} repos</p>
+                          <p className="text-xs text-amber-600">{topicData.count} repos</p>
                         ) : (
                           <p className="text-xs text-muted-foreground">Explore</p>
                         )}
@@ -1053,7 +1053,7 @@ export function TopicsPageClient({
               <DialogTitle className="flex items-center gap-3">
                 <Badge 
                   variant="secondary" 
-                  className="bg-violet-500/10 text-violet-700 dark:text-violet-300 text-lg px-3 py-1"
+                  className="bg-amber-500/10 text-amber-700 dark:text-amber-300 text-lg px-3 py-1"
                 >
                   #{selectedTopicData?.name}
                 </Badge>
@@ -1099,7 +1099,7 @@ export function TopicsPageClient({
               {/* Repos with this topic */}
               <div>
                 <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                  <Folder size={16} className="text-violet-500" />
+                  <Folder size={16} className="text-amber-500" />
                   Repositories ({selectedTopicData?.repos.length})
                 </h3>
                 <div className="grid gap-2">
@@ -1109,12 +1109,12 @@ export function TopicsPageClient({
                       <Link
                         key={repo}
                         href={`/dashboard/${owner}/${repoName}`}
-                        className="flex items-center gap-2 p-2 rounded-lg hover:bg-muted transition-colors group"
+                        className="flex items-center gap-2 p-2 rounded-none hover:bg-muted transition-colors group"
                       >
                         <MaterialIcon 
                           name="code" 
                           size={14} 
-                          className="text-muted-foreground group-hover:text-violet-500" 
+                          className="text-muted-foreground group-hover:text-amber-500" 
                         />
                         <span className="text-sm font-mono">
                           <span className="text-muted-foreground">{owner}/</span>
@@ -1139,7 +1139,7 @@ export function TopicsPageClient({
                         type="button"
                         key={topic}
                         onClick={() => setSelectedTopic(topic)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted hover:bg-violet-500/10 border border-border hover:border-violet-500/30 transition-all text-sm"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-muted hover:bg-amber-500/10 border border-border hover:border-amber-500/30 transition-all text-sm"
                       >
                         #{topic}
                         <span className="text-xs text-muted-foreground">({count})</span>

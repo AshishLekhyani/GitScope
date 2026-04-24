@@ -103,10 +103,10 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
     return chartData;
   };
 
-  const colors = ["#818cf8", "#f472b6", "#fbbf24"];
+  const colors = ["#fbbf24", "#fbbf24", "#fbbf24"];
   const gradients = [
-    { from: "#818cf8", to: "#6366f1" },
-    { from: "#f472b6", to: "#ec4899" },
+    { from: "#fbbf24", to: "#f59e0b" },
+    { from: "#fbbf24", to: "#f59e0b" },
     { from: "#fbbf24", to: "#f59e0b" },
   ];
 
@@ -114,8 +114,8 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-4">
-          <div className="size-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center animate-pulse">
-            <MaterialIcon name="speed" size={24} className="text-indigo-500" />
+          <div className="size-12 rounded-none bg-amber-500/10 flex items-center justify-center animate-pulse">
+            <MaterialIcon name="speed" size={24} className="text-amber-500" />
           </div>
           <p className="text-sm text-muted-foreground">Analyzing commit velocity...</p>
         </div>
@@ -140,14 +140,14 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
       {/* Header with Time Range Selector */}
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <MaterialIcon name="speed" size={24} className="text-indigo-500" />
+          <MaterialIcon name="speed" size={24} className="text-amber-500" />
           <div>
             <h3 className="text-lg font-bold">Commit Velocity Analysis</h3>
             <p className="text-xs text-muted-foreground">Weekly development activity trends</p>
           </div>
         </div>
         
-        <div className="flex items-center gap-2 bg-surface-container/50 p-1 rounded-xl">
+        <div className="flex items-center gap-2 bg-surface-container/50 p-1 rounded-none">
           {[
             { value: 4, label: "1M" },
             { value: 12, label: "3M" },
@@ -156,9 +156,9 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
             <button
               key={range.value}
               onClick={() => setTimeRange(range.value as 4 | 12 | 26)}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${
+              className={`px-4 py-1.5 rounded-none text-xs font-bold transition-all ${
                 timeRange === range.value
-                  ? "bg-indigo-500 text-white shadow-lg"
+                  ? "bg-amber-500 text-white shadow-lg"
                   : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -179,7 +179,7 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
           >
             <Card className="p-5">
               <div className="flex items-center gap-3 mb-4">
-                <Image src={repo.avatar} width={40} height={40} className="size-10 rounded-xl" alt="" />
+                <Image src={repo.avatar} width={40} height={40} className="size-10 rounded-none" alt="" />
                 <div>
                   <div className="font-bold text-sm">{repo.repo}</div>
                   <div className="text-[10px] text-muted-foreground">{repo.owner}</div>
@@ -192,7 +192,7 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
                   <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-black text-indigo-500">{repo.avgWeekly}</div>
+                  <div className="text-2xl font-black text-amber-500">{repo.avgWeekly}</div>
                   <div className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground">Avg/Week</div>
                 </div>
                 <div className="text-center">
@@ -290,7 +290,7 @@ export function CommitVelocity({ repositories }: CommitVelocityProps) {
             >
               <Card className="p-4">
                 <div className="flex items-center gap-2 mb-4">
-                  <Image src={repo.avatar} width={24} height={24} className="size-6 rounded-lg" alt="" />
+                  <Image src={repo.avatar} width={24} height={24} className="size-6 rounded-none" alt="" />
                   <span className="font-bold text-sm">{repo.repo}</span>
                 </div>
                 

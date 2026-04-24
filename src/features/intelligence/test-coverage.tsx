@@ -55,7 +55,7 @@ function PrCoverageChecker({ repo }: { repo: string }) {
     : "trending_flat";
 
   return (
-    <div className="p-5 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-4">
+    <div className="p-5 rounded-none border border-outline-variant/10 bg-surface-container/20 space-y-4">
       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
         <MaterialIcon name="difference" size={12} /> PR Coverage Diff
       </p>
@@ -68,14 +68,14 @@ function PrCoverageChecker({ repo }: { repo: string }) {
           value={prInput}
           onChange={(e) => setPrInput(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && check()}
-          className="flex-1 text-sm bg-surface-container-highest border border-outline-variant/20 rounded-xl px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+          className="flex-1 text-sm bg-surface-container-highest border border-outline-variant/20 rounded-none px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
           title="PR number"
         />
         <button
           type="button"
           onClick={check}
           disabled={loading || !prInput}
-          className="px-4 py-2 rounded-xl bg-primary/90 hover:bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
+          className="px-4 py-2 rounded-none bg-primary/90 hover:bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
         >
           {loading ? "…" : "Check"}
         </button>
@@ -90,7 +90,7 @@ function PrCoverageChecker({ repo }: { repo: string }) {
       {result && (
         <div className="space-y-3">
           {/* Delta summary */}
-          <div className="flex items-center gap-3 p-3 rounded-xl border border-outline-variant/10 bg-surface-container-highest/30">
+          <div className="flex items-center gap-3 p-3 rounded-none border border-outline-variant/10 bg-surface-container-highest/30">
             <MaterialIcon name={statusIcon} size={20} className={statusColor} />
             <div className="flex-1">
               <p className={cn("text-sm font-black", statusColor)}>
@@ -106,7 +106,7 @@ function PrCoverageChecker({ repo }: { repo: string }) {
                 {result.source === "codecov" && " · via Codecov"}
               </p>
             </div>
-            <span className={cn("text-[9px] font-black px-2 py-1 rounded-lg border",
+            <span className={cn("text-[9px] font-black px-2 py-1 rounded-none border",
               result.status === "improved" ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
               result.status === "degraded" ? "bg-red-500/10 border-red-500/20 text-red-400" :
               "bg-muted border-outline-variant/20 text-muted-foreground"
@@ -117,17 +117,17 @@ function PrCoverageChecker({ repo }: { repo: string }) {
 
           {/* File stats */}
           <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-            <div className="p-2 rounded-xl bg-surface-container-highest/20 border border-outline-variant/10">
+            <div className="p-2 rounded-none bg-surface-container-highest/20 border border-outline-variant/10">
               <p className="font-black text-foreground/80">{result.totalFilesChanged}</p>
               <p className="text-muted-foreground/50 uppercase tracking-widest">Files Changed</p>
             </div>
-            <div className="p-2 rounded-xl bg-surface-container-highest/20 border border-outline-variant/10">
+            <div className="p-2 rounded-none bg-surface-container-highest/20 border border-outline-variant/10">
               <p className={cn("font-black", result.testFilesCount > 0 ? "text-emerald-400" : "text-red-400")}>
                 {result.testFilesCount}
               </p>
               <p className="text-muted-foreground/50 uppercase tracking-widest">Test Files</p>
             </div>
-            <div className="p-2 rounded-xl bg-surface-container-highest/20 border border-outline-variant/10">
+            <div className="p-2 rounded-none bg-surface-container-highest/20 border border-outline-variant/10">
               <p className="font-black text-foreground/80">
                 {result.totalFilesChanged > 0
                   ? `${Math.round((result.testFilesCount / result.totalFilesChanged) * 100)}%`
@@ -141,7 +141,7 @@ function PrCoverageChecker({ repo }: { repo: string }) {
           {result.filesChanged.length > 0 && (
             <div className="space-y-1 max-h-48 overflow-y-auto">
               {result.filesChanged.slice(0, 12).map((f) => (
-                <div key={f.filename} className="flex items-center gap-2 py-1 px-2 rounded-lg hover:bg-surface-container-highest/20 transition-colors">
+                <div key={f.filename} className="flex items-center gap-2 py-1 px-2 rounded-none hover:bg-surface-container-highest/20 transition-colors">
                   <MaterialIcon
                     name={f.isTestFile ? "science" : "code"}
                     size={11}
@@ -209,7 +209,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
         return (
           <div key={repo} className="space-y-5">
             <div className="flex items-center gap-3">
-              <div className="size-8 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
+              <div className="size-8 rounded-none bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
                 <MaterialIcon name="science" size={16} className="text-teal-400" />
               </div>
               <div>
@@ -219,14 +219,14 @@ export function TestCoverage({ repos }: TestCoverageProps) {
             </div>
 
             {state === "loading" && (
-              <div className="flex items-center justify-center gap-3 py-16 rounded-3xl border border-outline-variant/10 bg-surface-container/20">
+              <div className="flex items-center justify-center gap-3 py-16 rounded-none border border-outline-variant/10 bg-surface-container/20">
                 <MaterialIcon name="sync" size={18} className="animate-spin text-teal-400" />
                 <span className="text-sm text-muted-foreground/60">Fetching coverage data…</span>
               </div>
             )}
 
             {state === "error" && (
-              <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+              <div className="flex items-center gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
                 <MaterialIcon name="error" size={16} className="shrink-0" />
                 Failed to load coverage data.
               </div>
@@ -244,7 +244,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
               return (
                 <div className="space-y-5">
                   {/* Main coverage card */}
-                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-2xl border border-outline-variant/10 bg-surface-container/20">
+                  <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-6 p-4 sm:p-6 rounded-none border border-outline-variant/10 bg-surface-container/20">
                     {/* Ring gauge */}
                     <div className="shrink-0 relative">
                       <svg width="120" height="120" viewBox="0 0 120 120" aria-label={`Coverage: ${d.coverage ?? "unknown"}%`}>
@@ -271,7 +271,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
                         <div className={cn("text-3xl font-black", col.text)}>
                           {d.coverage !== null ? `${d.coverage}%` : "Unknown"}
                         </div>
-                        <span className={cn("text-[10px] font-black px-2 py-1 rounded-lg border", col.text,
+                        <span className={cn("text-[10px] font-black px-2 py-1 rounded-none border", col.text,
                           d.coverage !== null && d.coverage >= 80 ? "bg-emerald-500/10 border-emerald-500/20" :
                           d.coverage !== null && d.coverage >= 60 ? "bg-amber-500/10 border-amber-500/20" :
                           d.coverage !== null ? "bg-red-500/10 border-red-500/20" :
@@ -280,7 +280,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
                           Grade: {grade}
                         </span>
                         {d.source === "codecov" && (
-                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+                          <span className="text-[9px] font-black px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">
                             via Codecov
                           </span>
                         )}
@@ -308,7 +308,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
 
                   {/* Coverage trend */}
                   {d.trend && d.trend.length > 1 && (
-                    <div className="p-5 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-3">
+                    <div className="p-5 rounded-none border border-outline-variant/10 bg-surface-container/20 space-y-3">
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
                         <MaterialIcon name="trending_up" size={12} /> Coverage trend (last {d.trend.length} commits)
                       </p>
@@ -343,13 +343,13 @@ export function TestCoverage({ repos }: TestCoverageProps) {
 
                   {/* Config files detected */}
                   {d.configFiles.length > 0 && (
-                    <div className="p-4 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-2">
+                    <div className="p-4 rounded-none border border-outline-variant/10 bg-surface-container/20 space-y-2">
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
                         <MaterialIcon name="description" size={12} /> Config files detected
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {d.configFiles.map((f) => (
-                          <span key={f} className="font-mono text-[10px] px-2.5 py-1 rounded-lg bg-surface-container-highest border border-outline-variant/15 text-foreground/60">
+                          <span key={f} className="font-mono text-[10px] px-2.5 py-1 rounded-none bg-surface-container-highest border border-outline-variant/15 text-foreground/60">
                             {f}
                           </span>
                         ))}
@@ -359,7 +359,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
 
                   {/* Coverage not found state */}
                   {d.coverage === null && d.frameworks.length === 0 && (
-                    <div className="flex flex-col items-center gap-3 py-10 rounded-3xl border-2 border-dashed border-outline-variant/15 bg-surface-container/10 text-center">
+                    <div className="flex flex-col items-center gap-3 py-10 rounded-none border-2 border-dashed border-outline-variant/15 bg-surface-container/10 text-center">
                       <MaterialIcon name="science" size={32} className="text-muted-foreground/20" />
                       <div>
                         <p className="text-sm font-black text-foreground/50">No test coverage found</p>
@@ -373,7 +373,7 @@ export function TestCoverage({ repos }: TestCoverageProps) {
 
                   {/* Coverage quality callout */}
                   {d.coverage !== null && (
-                    <div className={cn("flex items-start gap-3 p-4 rounded-2xl border",
+                    <div className={cn("flex items-start gap-3 p-4 rounded-none border",
                       d.coverage >= 80 ? "bg-emerald-500/5 border-emerald-500/15" :
                       d.coverage >= 60 ? "bg-amber-500/5 border-amber-500/15" :
                       "bg-red-500/5 border-red-500/15"

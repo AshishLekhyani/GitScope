@@ -10,12 +10,14 @@ import { ROUTES } from "@/constants/routes";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 
 import { useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 function AuthForm() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [mode, setMode] = useState<"login" | "signup">("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -30,7 +32,6 @@ function AuthForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [isMounted, setIsMounted] = useState(false);
 
@@ -44,6 +45,13 @@ function AuthForm() {
     !fromParam.startsWith("/signup")
       ? fromParam
       : ROUTES.overview;
+
+  // Redirect already-authenticated users away from login page
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      router.replace(redirectAfterLogin);
+    }
+  }, [status, session, router, redirectAfterLogin]);
 
   useEffect(() => {
     setIsMounted(true);
@@ -194,8 +202,8 @@ function AuthForm() {
   };
 
   return (
-    <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center py-12">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(67,97,238,0.05),transparent_60%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(192,193,255,0.08),transparent_50%)]" />
+    <div className="relative mx-auto flex w-full flex-col items-center justify-center py-4">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(199,122,18,0.04),transparent_60%)] dark:bg-[radial-gradient(circle_at_50%_0%,rgba(251,191,36,0.05),transparent_50%)]" />
       
       <motion.div
         animate={{ opacity: 1, y: 0 }}
@@ -205,7 +213,7 @@ function AuthForm() {
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
-            className="mb-5 flex items-center gap-3 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3"
+            className="mb-5 flex items-center gap-3 border border-emerald-500/30 bg-emerald-500/10 px-4 py-3"
           >
             <span className="size-5 shrink-0 text-emerald-500">
               <svg viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" /></svg>
@@ -216,16 +224,19 @@ function AuthForm() {
           </motion.div>
         )}
 
-        <div className="mb-8 text-center">
-          <h2 className="font-heading text-2xl font-bold tracking-tight text-foreground">
-            {mode === "login" ? "Welcome Back" : "Initialize Account"}
+        <div className="mb-7">
+          <p className="font-mono text-[10px] tracking-widest text-primary/70 uppercase mb-3">
+            {mode === "login" ? "Engineering Intelligence" : "Create Account"}
+          </p>
+          <h2 className="font-bold leading-tight text-foreground" style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "clamp(26px,4vw,36px)", letterSpacing: "-0.03em" }}>
+            {mode === "login" ? "Welcome Back." : "Get Started."}
           </h2>
-          <p className="mt-3 text-sm text-muted-foreground font-medium tracking-wide">
-            {mode === "login" ? "Access your engineering dashboard." : "Join the global engineering community."}
+          <p className="mt-2 text-sm text-muted-foreground font-mono">
+            {mode === "login" ? "Access your engineering intelligence dashboard." : "Join the global engineering community."}
           </p>
         </div>
 
-        <div className="glass-panel rounded-2xl p-8 shadow-2xl relative overflow-hidden min-h-[400px]">
+        <div className="border border-border bg-card p-8 shadow-sm relative overflow-hidden" style={{ minHeight: "400px" }}>
           <AnimatePresence>
             {authStatus !== "success" ? (
               <motion.div
@@ -235,17 +246,17 @@ function AuthForm() {
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.2 }}
               >
-                <div className="mb-8 flex gap-1 rounded-lg bg-muted/50 p-1 ring-1 ring-border/50">
+                <div className="mb-8 grid grid-cols-2 border border-border">
                   {(["login", "signup"] as const).map((m) => (
                     <button
                       key={m}
                       type="button"
                       onClick={() => { setMode(m); setError(null); setShowPassword(false); setShowConfirmPassword(false); }}
                       className={cn(
-                        "flex-1 rounded-md py-2 text-xs font-bold uppercase tracking-widest transition-all",
-                        mode === m 
-                          ? "bg-primary text-white shadow-lg" 
-                          : "text-muted-foreground hover:text-foreground"
+                        "py-2.5 font-mono text-[10px] font-bold uppercase tracking-widest transition-all",
+                        mode === m
+                          ? "bg-foreground text-background"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                       )}
                     >
                       {m === "login" ? "Log In" : "Sign Up"}
@@ -343,7 +354,7 @@ function AuthForm() {
                             {getPasswordStrength(password).label}
                           </span>
                         </div>
-                        <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+                        <div className="h-1 w-full overflow-hidden bg-muted">
                           <div
                             className={cn(
                               "h-full transition-all duration-500",
@@ -416,7 +427,7 @@ function AuthForm() {
                   <Button
                     type="submit"
                     disabled={loading}
-                    className="w-full btn-gitscope-primary rounded-xl font-bold uppercase tracking-widest py-6 mt-2 disabled:opacity-70"
+                    className="w-full btn-gitscope-primary py-6 mt-2 disabled:opacity-70"
                   >
                     {loading ? (
                       <>
@@ -446,7 +457,7 @@ function AuthForm() {
                     variant="outline" 
                     type="button" 
                     onClick={() => handleOAuth("github")}
-                    className="rounded-xl border-border bg-secondary/50 hover:bg-secondary text-xs font-bold font-mono tracking-wider transition-colors"
+                    className="border-border bg-secondary/50 hover:bg-secondary"
                   >
                     <GithubIcon className="mr-2 size-4" />
                     GitHub
@@ -455,7 +466,7 @@ function AuthForm() {
                     variant="outline" 
                     type="button" 
                     onClick={() => handleOAuth("google")}
-                    className="rounded-xl border-border bg-secondary/50 hover:bg-secondary text-xs font-bold font-mono tracking-wider transition-colors"
+                    className="border-border bg-secondary/50 hover:bg-secondary"
                   >
                     <Mail className="mr-2 size-4" />
                     Google
@@ -469,7 +480,7 @@ function AuthForm() {
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0, scale: 0.95 }}
                 transition={{ duration: 0.3 }}
-                className="absolute inset-0 flex flex-col items-center justify-center bg-card/50 backdrop-blur-sm z-50 rounded-2xl p-8 text-center"
+                className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-card/50 p-8 text-center backdrop-blur-sm"
               >
                 <motion.div
                   initial={{ scale: 0.8, opacity: 0 }}

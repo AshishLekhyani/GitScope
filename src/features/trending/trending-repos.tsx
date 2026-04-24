@@ -55,24 +55,24 @@ type SortMode = "stars" | "forks" | "recent" | "name";
 
 const LANG_COLORS: Record<string, string> = {
   JavaScript: "#f1e05a",
-  TypeScript: "#3178c6",
-  Python: "#3572A5",
+  TypeScript: "#c77a12",
+  Python: "#0e9966",
   Rust: "#dea584",
-  Go: "#00add8",
+  Go: "#d97706",
   Java: "#b07219",
   "C++": "#f34b7d",
   C: "#555555",
   Ruby: "#701516",
   Swift: "#F05138",
-  Kotlin: "#A97BFF",
-  Dart: "#00B4AB",
-  PHP: "#4F5D95",
+  Kotlin: "#f59e0b",
+  Dart: "#10b981",
+  PHP: "#a16207",
   Shell: "#89e051",
   HTML: "#e34c26",
-  CSS: "#563d7c",
+  CSS: "#92400e",
 };
 
-const PIE_COLORS = ["#f43f5e", "#8b5cf6", "#3b82f6", "#10b981", "#f59e0b", "#6366f1", "#ec4899", "#14b8a6"];
+const PIE_COLORS = ["#f43f5e", "#f59e0b", "#fb923c", "#10b981", "#f59e0b", "#a16207", "#f59e0b", "#14b8a6"];
 
 function getLangColor(lang: string | null) {
   return lang ? LANG_COLORS[lang] ?? "#94a3b8" : "#94a3b8";
@@ -247,10 +247,10 @@ export function TrendingReposPanel() {
   if (q.isLoading) {
     return (
       <div className="space-y-6">
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-none" />
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: 4 }).map((_, i) => (
-            <Skeleton key={i} className="h-40 rounded-xl" />
+            <Skeleton key={i} className="h-40 rounded-none" />
           ))}
         </div>
       </div>
@@ -263,8 +263,8 @@ export function TrendingReposPanel() {
     const isRate = err.status === 403 || err.message?.toLowerCase().includes("rate limit");
 
     return (
-      <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl border-2 border-dashed border-border/50 gap-5 px-6">
-        <div className="size-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+      <div className="flex flex-col items-center justify-center py-24 text-center rounded-none border-2 border-dashed border-border/50 gap-5 px-6">
+        <div className="size-14 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
           <MaterialIcon name={is401 ? "link_off" : isRate ? "speed" : "error_outline"} size={28} className="text-amber-500" />
         </div>
         <div className="space-y-1.5">
@@ -286,7 +286,7 @@ export function TrendingReposPanel() {
           <button
             type="button"
             onClick={() => q.refetch()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border text-sm font-bold hover:bg-accent transition-colors"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none border border-border text-sm font-bold hover:bg-accent transition-colors"
           >
             <MaterialIcon name="refresh" size={18} />
             Try Again
@@ -305,7 +305,7 @@ export function TrendingReposPanel() {
       {/* Hero Stats Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: "Total Repos", value: items.length, icon: Flame, color: "text-violet-500", bg: "bg-violet-500/10", border: "border-violet-500/20" },
+          { label: "Total Repos", value: items.length, icon: Flame, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
           { label: "Languages", value: languages.length, icon: Code2, color: "text-emerald-500", bg: "bg-emerald-500/10", border: "border-emerald-500/20" },
           { label: "Total Stars", value: formatNumber(items.reduce((acc, r) => acc + r.stargazers_count, 0)), icon: Star, color: "text-amber-500", bg: "bg-amber-500/10", border: "border-amber-500/20" },
           { label: "Bookmarked", value: bookmarkedKeys.size, icon: Bookmark, color: "text-rose-500", bg: "bg-rose-500/10", border: "border-rose-500/20" },
@@ -313,7 +313,7 @@ export function TrendingReposPanel() {
           <motion.div
             key={label}
             whileHover={{ y: -4 }}
-            className={`p-4 rounded-2xl ${bg} border ${border}`}
+            className={`p-4 rounded-none ${bg} border ${border}`}
           >
             <div className="flex items-center gap-2 mb-2">
               <Icon size={18} className={color} />
@@ -359,14 +359,14 @@ export function TrendingReposPanel() {
             )}
           </div>
 
-          <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+          <div className="flex rounded-none border border-border bg-muted/50 p-0.5">
             {(["today", "week", "month"] as const).map((t) => (
               <button
                 key={t}
                 type="button"
                 onClick={() => setTimeRange(t)}
                 className={cn(
-                  "px-3 py-1.5 rounded-md text-xs font-medium transition-all capitalize",
+                  "px-3 py-1.5 rounded-none text-xs font-medium transition-all capitalize",
                   timeRange === t
                     ? "bg-background shadow-sm text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -382,7 +382,7 @@ export function TrendingReposPanel() {
               aria-label="Sort repositories by"
               value={sortMode}
               onChange={(e) => setSortMode(e.target.value as SortMode)}
-              className="appearance-none px-3 py-1.5 pr-8 rounded-lg border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted transition-colors"
+              className="appearance-none px-3 py-1.5 pr-8 rounded-none border border-border bg-background text-xs font-medium cursor-pointer hover:bg-muted transition-colors"
             >
               <option value="stars">Most Stars</option>
               <option value="forks">Most Forks</option>
@@ -392,13 +392,13 @@ export function TrendingReposPanel() {
             <ChevronDown className="absolute right-2 top-1/2 -translate-y-1/2 size-3 text-muted-foreground pointer-events-none" />
           </div>
 
-          <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+          <div className="flex rounded-none border border-border bg-muted/50 p-0.5">
             <button
               type="button"
               aria-label="Grid view"
               onClick={() => setViewMode("grid")}
               className={cn(
-                "p-1.5 rounded-md transition-all",
+                "p-1.5 rounded-none transition-all",
                 viewMode === "grid" && "bg-background shadow-sm"
               )}
             >
@@ -409,7 +409,7 @@ export function TrendingReposPanel() {
               aria-label="List view"
               onClick={() => setViewMode("list")}
               className={cn(
-                "p-1.5 rounded-md transition-all",
+                "p-1.5 rounded-none transition-all",
                 viewMode === "list" && "bg-background shadow-sm"
               )}
             >
@@ -438,7 +438,7 @@ export function TrendingReposPanel() {
             exit={{ height: 0, opacity: 0 }}
             className="overflow-hidden"
           >
-            <div className="p-4 rounded-xl bg-muted/50 border border-border space-y-4">
+            <div className="p-4 rounded-none bg-muted/50 border border-border space-y-4">
               <div>
                 <span className="text-sm font-medium mb-2 block">Filter by Language</span>
                 <div className="flex flex-wrap gap-2">
@@ -448,7 +448,7 @@ export function TrendingReposPanel() {
                     className={cn(
                       "px-3 py-1 rounded-full text-xs font-medium transition-all",
                       selectedLang === null
-                        ? "bg-violet-500 text-white"
+                        ? "bg-amber-500 text-white"
                         : "bg-background border border-border hover:bg-muted"
                     )}
                   >
@@ -462,7 +462,7 @@ export function TrendingReposPanel() {
                       className={cn(
                         "px-3 py-1 rounded-full text-xs font-medium transition-all flex items-center gap-1.5",
                         selectedLang === lang
-                          ? "bg-violet-500 text-white"
+                          ? "bg-amber-500 text-white"
                           : "bg-background border border-border hover:bg-muted"
                       )}
                     >
@@ -486,7 +486,7 @@ export function TrendingReposPanel() {
         <div className="flex-1 min-w-0 space-y-6">
           {/* Top 3 Podium - Old Style */}
           {!searchQuery && !selectedLang && filteredRepos.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-none border border-border bg-card p-4">
               <div className="mb-4 flex items-center justify-between">
                 <h2 className="font-semibold flex items-center gap-2">
                   <Flame size={18} className="text-rose-500" />
@@ -510,13 +510,13 @@ export function TrendingReposPanel() {
                         r.full_name.split("/")[0],
                         r.full_name.split("/")[1]
                       )}
-                      className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/50 transition-colors"
+                      className="flex items-center gap-4 p-3 rounded-none hover:bg-muted/50 transition-colors"
                     >
                       {/* Rank Badge */}
                       <div className={cn(
-                        "flex size-8 items-center justify-center rounded-lg font-bold text-xs shrink-0",
+                        "flex size-8 items-center justify-center rounded-none font-bold text-xs shrink-0",
                         idx === 0 ? "bg-amber-500/10 text-amber-600 border border-amber-500/20" :
-                        idx === 1 ? "bg-slate-400/10 text-slate-500 border border-slate-400/20" :
+                        idx === 1 ? "bg-stone-400/10 text-stone-500 border border-stone-400/20" :
                         "bg-orange-600/10 text-orange-600 border border-orange-600/20"
                       )}>
                         #{idx + 1}
@@ -525,7 +525,7 @@ export function TrendingReposPanel() {
                       {/* Repo Info */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
-                          <h3 className="font-semibold text-foreground group-hover:text-violet-600 transition-colors truncate">
+                          <h3 className="font-semibold text-foreground group-hover:text-amber-600 transition-colors truncate">
                             {r.full_name}
                           </h3>
                           {r.language && (
@@ -562,7 +562,7 @@ export function TrendingReposPanel() {
                             void toggleBookmarkRepo(r);
                           }}
                           className={cn(
-                            "p-2 rounded-lg transition-colors shrink-0",
+                            "p-2 rounded-none transition-colors shrink-0",
                             bookmarkedKeys.has(r.full_name) ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:bg-muted"
                           )}
                         >
@@ -578,7 +578,7 @@ export function TrendingReposPanel() {
                           className={cn(
                             "h-full rounded-full lang-bar",
                             idx === 0 ? "bg-amber-500" :
-                            idx === 1 ? "bg-slate-400" :
+                            idx === 1 ? "bg-stone-400" :
                             "bg-orange-600"
                           )}
                           // eslint-disable-next-line react/forbid-component-props
@@ -656,9 +656,9 @@ export function TrendingReposPanel() {
         {/* Right Sidebar */}
         <aside className="space-y-4 w-full xl:w-[240px] shrink-0">
           {/* Language Distribution Chart */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-none border border-border bg-card p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Code2 size={18} className="text-violet-500" />
+              <Code2 size={18} className="text-amber-500" />
               Language Distribution
             </h3>
             {pieData.length > 0 ? (
@@ -713,7 +713,7 @@ export function TrendingReposPanel() {
           </div>
 
           {/* Stars Chart */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-none border border-border bg-card p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <TrendingUp size={18} className="text-rose-500" />
               Top 10 by Stars
@@ -747,7 +747,7 @@ export function TrendingReposPanel() {
 
           {/* Popular Topics */}
           {allTopics.length > 0 && (
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-none border border-border bg-card p-4">
               <h3 className="font-semibold mb-4 flex items-center gap-2">
                 <Sparkles size={18} className="text-amber-500" />
                 Popular Topics
@@ -758,7 +758,7 @@ export function TrendingReposPanel() {
                     key={topic}
                     type="button"
                     onClick={() => setSearchQuery(topic)}
-                    className="px-2.5 py-1 rounded-full bg-muted hover:bg-violet-500/10 hover:text-violet-600 text-xs font-medium transition-colors"
+                    className="px-2.5 py-1 rounded-full bg-muted hover:bg-amber-500/10 hover:text-amber-600 text-xs font-medium transition-colors"
                   >
                     #{topic}
                     <span className="ml-1 text-muted-foreground">({count})</span>
@@ -769,9 +769,9 @@ export function TrendingReposPanel() {
           )}
 
           {/* Top Contributors */}
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-none border border-border bg-card p-4">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Users size={18} className="text-blue-500" />
+              <Users size={18} className="text-amber-500" />
               Top Organizations
             </h3>
             <div className="space-y-3">
@@ -786,7 +786,7 @@ export function TrendingReposPanel() {
                     href={`https://github.com/${owner.login}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-2 rounded-xl hover:bg-muted transition-colors group"
+                    className="flex items-center gap-3 p-2 rounded-none hover:bg-muted transition-colors group"
                   >
                     <Image
                       src={owner.avatar_url}
@@ -795,7 +795,7 @@ export function TrendingReposPanel() {
                       height={36}
                       className="rounded-full"
                     />
-                    <span className="text-sm font-medium group-hover:text-violet-600 transition-colors">
+                    <span className="text-sm font-medium group-hover:text-amber-600 transition-colors">
                       @{owner.login}
                     </span>
                     <ArrowUpRight size={14} className="ml-auto text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -822,7 +822,7 @@ function RepoCard({
   const [owner, name] = repo.full_name.split("/");
 
   return (
-    <div className="group rounded-xl border border-border bg-card p-4 hover:shadow-md hover:border-violet-500/20 transition-all">
+    <div className="group rounded-none border border-border bg-card p-4 hover:shadow-md hover:border-amber-500/20 transition-all">
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2 min-w-0">
           <div
@@ -839,7 +839,7 @@ function RepoCard({
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark this repo"}
           onClick={onBookmark}
           className={cn(
-            "p-1 rounded-md transition-colors",
+            "p-1 rounded-none transition-colors",
             bookmarked ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:bg-muted"
           )}
         >
@@ -848,7 +848,7 @@ function RepoCard({
       </div>
 
       <Link href={ROUTES.dashboard(owner, name)}>
-        <h3 className="font-semibold text-sm text-foreground group-hover:text-violet-600 transition-colors mb-1 line-clamp-1">
+        <h3 className="font-semibold text-sm text-foreground group-hover:text-amber-600 transition-colors mb-1 line-clamp-1">
           {repo.full_name}
         </h3>
       </Link>
@@ -906,7 +906,7 @@ function RepoListItem({
   const [owner, name] = repo.full_name.split("/");
 
   return (
-    <div className="group flex items-center gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/50 transition-colors">
+    <div className="group flex items-center gap-4 p-4 rounded-none border border-border bg-card hover:bg-muted/50 transition-colors">
       <div
         className="size-3 rounded-full shrink-0 lang-dot"
         // eslint-disable-next-line react/forbid-component-props
@@ -916,7 +916,7 @@ function RepoListItem({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
           <Link href={ROUTES.dashboard(owner, name)}>
-            <h3 className="font-medium text-foreground group-hover:text-violet-600 transition-colors">
+            <h3 className="font-medium text-foreground group-hover:text-amber-600 transition-colors">
               {repo.full_name}
             </h3>
           </Link>
@@ -948,7 +948,7 @@ function RepoListItem({
           aria-label={bookmarked ? "Remove bookmark" : "Bookmark this repo"}
           onClick={onBookmark}
           className={cn(
-            "p-2 rounded-lg transition-colors",
+            "p-2 rounded-none transition-colors",
             bookmarked ? "text-rose-500 bg-rose-500/10" : "text-muted-foreground hover:bg-muted"
           )}
         >

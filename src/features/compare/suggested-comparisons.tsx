@@ -12,7 +12,7 @@ const SUGGESTED_PAIRS = [
   {
     title: "Frontend Frameworks",
     icon: "web",
-    color: "from-blue-500 to-cyan-500",
+    color: "from-amber-500 to-teal-500",
     repos: [
       { owner: "facebook", repo: "react", avatar: "https://github.com/facebook.png", stars: 0, desc: "A declarative, efficient, and flexible JavaScript library" },
       { owner: "vuejs", repo: "core", avatar: "https://github.com/vuejs.png", stars: 0, desc: "The progressive JavaScript framework" },
@@ -22,7 +22,7 @@ const SUGGESTED_PAIRS = [
   {
     title: "Meta Frameworks",
     icon: "rocket_launch",
-    color: "from-purple-500 to-pink-500",
+    color: "from-amber-500 to-amber-500",
     repos: [
       { owner: "vercel", repo: "next.js", avatar: "https://github.com/vercel.png", stars: 0, desc: "The React Framework for the Web" },
       { owner: "nuxt", repo: "nuxt", avatar: "https://github.com/nuxt.png", stars: 0, desc: "The Intuitive Vue Framework" },
@@ -62,7 +62,7 @@ const SUGGESTED_PAIRS = [
   {
     title: "DevOps Tools",
     icon: "construction",
-    color: "from-indigo-500 to-violet-500",
+    color: "from-amber-500 to-amber-500",
     repos: [
       { owner: "docker", repo: "moby", avatar: "https://github.com/docker.png", stars: 0, desc: "The open-source application container engine" },
       { owner: "kubernetes", repo: "kubernetes", avatar: "https://github.com/kubernetes.png", stars: 0, desc: "Production-Grade Container Orchestration" },
@@ -86,10 +86,10 @@ export function SuggestedComparisons({ onSelect }: SuggestedComparisonsProps) {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.1 }}
-            className="group rounded-2xl border border-outline-variant/10 bg-surface-container/30 p-5 hover:bg-surface-container/60 transition-all duration-300"
+            className="group rounded-none border border-outline-variant/10 bg-surface-container/30 p-5 hover:bg-surface-container/60 transition-all duration-300"
           >
             <div className="flex items-center gap-3 mb-4">
-              <div className={`size-10 rounded-xl bg-linear-to-br ${category.color} flex items-center justify-center`}>
+              <div className={`size-10 rounded-none bg-linear-to-br ${category.color} flex items-center justify-center`}>
                 <MaterialIcon name={category.icon} size={20} className="text-white" />
               </div>
               <h4 className="font-bold text-sm">{category.title}</h4>
@@ -100,12 +100,12 @@ export function SuggestedComparisons({ onSelect }: SuggestedComparisonsProps) {
                 <button
                   key={`${repo.owner}/${repo.repo}`}
                   onClick={() => onSelect(repo as SearchRepoResult)}
-                  className="w-full flex items-center gap-3 p-2 rounded-xl hover:bg-surface-container-highest/50 transition-all text-left group/item"
+                  className="w-full flex items-center gap-3 p-2 rounded-none hover:bg-surface-container-highest/50 transition-all text-left group/item"
                 >
                   <img 
                     src={repo.avatar} 
                     alt="" 
-                    className="size-8 rounded-lg group-hover/item:scale-110 transition-transform"
+                    className="size-8 rounded-none group-hover/item:scale-110 transition-transform"
                   />
                   <div className="flex-1 min-w-0">
                     <div className="text-xs font-bold truncate">
@@ -116,7 +116,7 @@ export function SuggestedComparisons({ onSelect }: SuggestedComparisonsProps) {
                   <MaterialIcon 
                     name="add_circle" 
                     size={16} 
-                    className="text-muted-foreground/30 group-hover/item:text-indigo-500 transition-colors" 
+                    className="text-muted-foreground/30 group-hover/item:text-amber-500 transition-colors" 
                   />
                 </button>
               ))}
@@ -127,7 +127,7 @@ export function SuggestedComparisons({ onSelect }: SuggestedComparisonsProps) {
                 onClick={() => {
                   category.repos.forEach((repo) => onSelect(repo as SearchRepoResult));
                 }}
-                className="w-full py-2 text-[10px] font-bold uppercase tracking-wider text-indigo-500 hover:text-indigo-600 transition-colors"
+                className="w-full py-2 text-[10px] font-bold uppercase tracking-wider text-amber-500 hover:text-amber-600 transition-colors"
               >
                 Compare All Three →
               </button>

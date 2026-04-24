@@ -27,8 +27,8 @@ const SEV_STYLES: Record<Severity, { badge: string; dot: string }> = {
   critical: { badge: "bg-red-500/15 border-red-500/30 text-red-400",     dot: "bg-red-500" },
   high:     { badge: "bg-orange-500/15 border-orange-500/30 text-orange-400", dot: "bg-orange-500" },
   medium:   { badge: "bg-amber-500/15 border-amber-500/30 text-amber-400",  dot: "bg-amber-500" },
-  low:      { badge: "bg-blue-500/15 border-blue-500/30 text-blue-400",    dot: "bg-blue-500" },
-  info:     { badge: "bg-slate-500/15 border-slate-500/30 text-muted-foreground", dot: "bg-slate-400" },
+  low:      { badge: "bg-amber-500/15 border-amber-500/30 text-amber-400",    dot: "bg-amber-500" },
+  info:     { badge: "bg-stone-500/15 border-stone-500/30 text-muted-foreground", dot: "bg-stone-400" },
 };
 
 const STATUS_OPTS: { value: Status; label: string; icon: string; color: string }[] = [
@@ -68,7 +68,7 @@ function ActionCard({ item, onStatusChange, onDelete }: {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.97 }}
       className={cn(
-        "group relative rounded-2xl border bg-card p-5 space-y-3 transition-all hover:shadow-md",
+        "group relative rounded-none border bg-card p-5 space-y-3 transition-all hover:shadow-md",
         item.status === "done" ? "opacity-60" : "opacity-100",
         item.status === "dismissed" ? "opacity-40" : "",
       )}
@@ -77,7 +77,7 @@ function ActionCard({ item, onStatusChange, onDelete }: {
       <div className="flex items-start gap-3">
         <span className={cn("size-2 rounded-full shrink-0 mt-2", s.dot)} />
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-bold text-foreground/90 leading-snug line-clamp-2">{item.title}</p>
+          <p className="font-heading text-xs font-bold text-foreground/90 leading-snug line-clamp-2">{item.title}</p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span className={cn("text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full border", s.badge)}>
               {item.severity}
@@ -94,16 +94,16 @@ function ActionCard({ item, onStatusChange, onDelete }: {
             type="button"
             onClick={() => setShowMenu((v) => !v)}
             aria-label="Item actions"
-            className="size-7 rounded-lg flex items-center justify-center border border-border hover:bg-muted/60 transition-colors"
+            className="size-7 rounded-none flex items-center justify-center border border-border hover:bg-muted/60 transition-colors"
           >
             <MaterialIcon name="more_horiz" size={14} className="text-muted-foreground" />
           </button>
           {showMenu && (
-            <div className="absolute right-0 top-8 z-20 w-40 rounded-xl border border-border bg-card shadow-xl overflow-hidden">
+            <div className="absolute right-0 top-8 z-20 w-40 rounded-none border border-border bg-card shadow-xl overflow-hidden">
               {STATUS_OPTS.map((opt) => (
                 <button key={opt.value} type="button"
                   onClick={() => { onStatusChange(item.id, opt.value); setShowMenu(false); }}
-                  className={cn("w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold hover:bg-muted/60 transition-colors",
+                  className={cn("font-heading w-full flex items-center gap-2 px-3 py-2 text-[11px] font-bold hover:bg-muted/60 transition-colors",
                     item.status === opt.value ? "text-primary" : "text-foreground/70"
                   )}
                 >
@@ -124,7 +124,7 @@ function ActionCard({ item, onStatusChange, onDelete }: {
       </div>
 
       {/* Suggestion */}
-      <p className="text-[11px] text-muted-foreground/70 leading-relaxed line-clamp-2">{item.suggestion}</p>
+      <p className="font-mono text-[11px] text-muted-foreground/70 leading-relaxed line-clamp-2">{item.suggestion}</p>
 
       {/* Footer */}
       <div className="flex items-center justify-between pt-1 border-t border-border/50">
@@ -139,7 +139,7 @@ function ActionCard({ item, onStatusChange, onDelete }: {
             {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
           </span>
           <Link href={`/intelligence?repo=${item.repo}`}
-            className="text-[9px] font-black text-indigo-400/60 hover:text-indigo-400 transition-colors"
+            className="text-[9px] font-black text-amber-400/60 hover:text-amber-400 transition-colors"
           >
             View repo →
           </Link>
@@ -209,11 +209,11 @@ export default function ActionItemsPage() {
       {/* Header */}
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight">
-            <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-indigo-500/10">
-              <MaterialIcon name="checklist" size={22} className="text-indigo-500" />
+          <h1 className="font-heading flex items-center gap-3 text-3xl font-black tracking-tight">
+            <span className="inline-flex size-10 items-center justify-center rounded-none bg-amber-500/10">
+              <MaterialIcon name="checklist" size={22} className="text-amber-500" />
             </span>
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-amber-500">
               Action Items
             </span>
             {!loading && items.length > 0 && (
@@ -222,11 +222,11 @@ export default function ActionItemsPage() {
               </span>
             )}
           </h1>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="font-mono mt-1 text-sm text-muted-foreground">
             Scan findings you&apos;ve saved to fix. Save any finding from a repo scan using the &ldquo;Save as Action Item&rdquo; button.
           </p>
         </div>
-        <Link href="/intelligence" className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-indigo-500 text-white text-xs font-black hover:bg-indigo-600 transition-colors">
+        <Link href="/intelligence" className="font-heading inline-flex items-center gap-2 px-4 py-2.5 rounded-none bg-amber-500 text-white text-xs font-black hover:bg-amber-600 transition-colors">
           <MaterialIcon name="manage_search" size={14} className="text-white" /> Run New Scan
         </Link>
       </div>
@@ -240,9 +240,9 @@ export default function ActionItemsPage() {
             { label: "Done",        count: counts.done,        color: "text-emerald-400", bg: "bg-emerald-500/8 border-emerald-500/15" },
             { label: "Dismissed",   count: counts.dismissed,   color: "text-muted-foreground/50", bg: "bg-muted/20 border-border" },
           ].map((s) => (
-            <div key={s.label} className={cn("rounded-2xl border p-4 text-center", s.bg)}>
-              <p className={cn("text-2xl font-black", s.color)}>{s.count}</p>
-              <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">{s.label}</p>
+            <div key={s.label} className={cn("rounded-none border p-4 text-center", s.bg)}>
+              <p className={cn("font-heading text-2xl font-black", s.color)}>{s.count}</p>
+              <p className="font-heading text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">{s.label}</p>
             </div>
           ))}
         </div>
@@ -251,22 +251,22 @@ export default function ActionItemsPage() {
       {/* Loading */}
       {loading && (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {[1,2,3].map((i) => <div key={i} className="h-44 animate-pulse rounded-2xl bg-muted/40" />)}
+          {[1,2,3].map((i) => <div key={i} className="h-44 animate-pulse rounded-none bg-muted/40" />)}
         </div>
       )}
 
       {/* Load error */}
       {!loading && loadError && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border border-destructive/20 bg-destructive/5 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-none border border-destructive/20 bg-destructive/5 py-16 text-center">
           <MaterialIcon name="error_outline" size={32} className="text-destructive/60" />
           <div>
-            <p className="font-bold text-sm text-foreground">Failed to load action items</p>
-            <p className="text-xs text-muted-foreground mt-1">Check your connection and try refreshing.</p>
+            <p className="font-heading font-bold text-sm text-foreground">Failed to load action items</p>
+            <p className="font-mono text-xs text-muted-foreground mt-1">Check your connection and try refreshing.</p>
           </div>
           <button
             type="button"
             onClick={() => { setLoadError(false); setLoading(true); fetch("/api/user/action-items").then(r => r.ok ? r.json() : Promise.reject()).then(d => { if (d.items) setItems(d.items); }).catch(() => setLoadError(true)).finally(() => setLoading(false)); }}
-            className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border bg-card hover:bg-muted text-xs font-bold transition-all"
+            className="font-heading inline-flex items-center gap-2 px-4 py-2 rounded-none border border-border bg-card hover:bg-muted text-xs font-bold transition-all"
           >
             <MaterialIcon name="refresh" size={14} /> Retry
           </button>
@@ -275,18 +275,18 @@ export default function ActionItemsPage() {
 
       {/* Empty state */}
       {!loading && !loadError && items.length === 0 && (
-        <div className="flex flex-col items-center justify-center gap-6 rounded-3xl border-2 border-dashed border-border/50 py-24 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/10">
-            <MaterialIcon name="add_task" size={32} className="text-indigo-400" />
+        <div className="flex flex-col items-center justify-center gap-6 rounded-none border-2 border-dashed border-border/50 py-24 text-center">
+          <div className="flex size-16 items-center justify-center rounded-none bg-amber-500/10">
+            <MaterialIcon name="add_task" size={32} className="text-amber-400" />
           </div>
           <div className="max-w-sm space-y-2">
-            <h3 className="text-xl font-black">No action items yet</h3>
-            <p className="text-sm text-muted-foreground">
+            <h3 className="font-heading text-xl font-black">No action items yet</h3>
+            <p className="font-mono text-sm text-muted-foreground">
               Run a repo scan in the Intelligence Hub, then click &ldquo;Save as Action Item&rdquo; on any finding to track it here.
             </p>
           </div>
           <Link href="/intelligence"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
+            className="font-heading inline-flex items-center gap-2 rounded-none bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-500"
           >
             <MaterialIcon name="manage_search" size={16} className="text-white" /> Open Intelligence Hub
           </Link>
@@ -298,11 +298,11 @@ export default function ActionItemsPage() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             {/* Status filter */}
-            <div className="flex items-center gap-1 p-1 rounded-xl border border-border bg-card">
+            <div className="flex items-center gap-1 p-1 rounded-none border border-border bg-card">
               {FILTER_STATUSES.map((f) => (
                 <button key={f.value} type="button" onClick={() => setFilter(f.value)}
-                  className={cn("px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all",
-                    filter === f.value ? "bg-indigo-500 text-white shadow" : "text-muted-foreground hover:text-foreground"
+                  className={cn("font-heading px-3 py-1.5 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
+                    filter === f.value ? "bg-amber-500 text-white shadow" : "text-muted-foreground hover:text-foreground"
                   )}
                 >
                   {f.label}
@@ -315,7 +315,7 @@ export default function ActionItemsPage() {
               <input
                 value={search} onChange={(e) => setSearch(e.target.value)}
                 placeholder="Search findings…"
-                className="w-full pl-8 pr-4 py-2 rounded-xl border border-border bg-card text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500/40"
+                className="font-mono w-full pl-8 pr-4 py-2 rounded-none border border-border bg-card text-xs placeholder:text-muted-foreground/40 focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500/40"
               />
             </div>
           </div>
@@ -323,7 +323,7 @@ export default function ActionItemsPage() {
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-muted-foreground/50">
               <MaterialIcon name="search_off" size={28} className="mx-auto mb-2" />
-              <p className="text-sm">No items match your filter.</p>
+              <p className="font-mono text-sm">No items match your filter.</p>
             </div>
           ) : (
             <motion.div layout className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -335,7 +335,7 @@ export default function ActionItemsPage() {
             </motion.div>
           )}
 
-          <p className="text-center text-xs text-muted-foreground/40">
+          <p className="font-mono text-center text-xs text-muted-foreground/40">
             {filtered.length} of {items.length} item{items.length !== 1 ? "s" : ""}
           </p>
         </div>

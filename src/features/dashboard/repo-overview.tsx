@@ -105,15 +105,15 @@ function CommitVelocityChart({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+      <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
         <Skeleton className="mb-4 h-5 w-48" />
-        <Skeleton className="h-[240px] w-full rounded-lg" />
+        <Skeleton className="h-[240px] w-full rounded-none" />
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
+    <div className="rounded-none border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div>
           <h3 className="font-heading text-lg font-bold text-foreground">
@@ -123,14 +123,14 @@ function CommitVelocityChart({
             Daily commits over the selected period
           </p>
         </div>
-        <div className="flex rounded-lg border border-border bg-muted/40 p-0.5">
+        <div className="flex rounded-none border border-border bg-muted/40 p-0.5">
           {(["1y", "6m", "90d", "30d", "7d"] as const).map((t) => (
             <button
               key={t}
               type="button"
               onClick={() => setRange(t)}
               className={cn(
-                "rounded-md px-3 py-1 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
+                "rounded-none px-3 py-1 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
                 range === t
                   ? "bg-background text-foreground shadow-sm"
                   : "text-muted-foreground hover:text-foreground hover:bg-background/60"
@@ -199,15 +199,15 @@ function TopContributorsChart({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+      <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
         <Skeleton className="mb-4 h-5 w-36" />
-        <Skeleton className="h-[160px] w-full rounded-lg" />
+        <Skeleton className="h-[160px] w-full rounded-none" />
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
+    <div className="rounded-none border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <h3 className="mb-3 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
         Top Contributors
       </h3>
@@ -277,7 +277,7 @@ function LanguageBars({
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+      <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
         <Skeleton className="mb-4 h-5 w-44" />
         {Array.from({ length: 3 }).map((_, i) => (
           <Skeleton key={i} className="mt-3 h-6 w-full" />
@@ -287,7 +287,7 @@ function LanguageBars({
   }
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
+    <div className="rounded-none border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <h3 className="mb-4 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
         Language Distribution
       </h3>
@@ -379,9 +379,9 @@ function IntelligentInsights({
   ];
 
   return (
-    <div className="rounded-2xl border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
+    <div className="rounded-none border border-border bg-card/60 p-6 backdrop-blur-xl shadow-sm transition-all duration-300 hover:border-border/80 hover:shadow-md">
       <div className="mb-1 flex items-center gap-2">
-        <div className="p-1.5 rounded-lg bg-amber-500/10">
+        <div className="p-1.5 rounded-none bg-amber-500/10">
           <MaterialIcon name="bolt" size={18} className="text-amber-500" />
         </div>
         <h3 className="font-heading text-base font-bold text-foreground">
@@ -396,7 +396,7 @@ function IntelligentInsights({
           <div key={ins.title} className="flex items-start gap-3">
             <div
               className={cn(
-                "flex size-8 shrink-0 items-center justify-center rounded-lg",
+                "flex size-8 shrink-0 items-center justify-center rounded-none",
                 ins.bg
               )}
             >
@@ -495,7 +495,7 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
 
   if (err) {
     return (
-      <div className="border-destructive/40 bg-destructive/5 rounded-xl border p-6">
+      <div className="border-destructive/40 bg-destructive/5 rounded-none border p-6">
         <h2 className="text-lg font-semibold">Could not load repository</h2>
         <p className="text-muted-foreground mt-2 text-sm">{err.message}</p>
         <p className="text-muted-foreground mt-3 text-sm">
@@ -550,7 +550,7 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
             variant="outline"
             size="sm"
             onClick={toggleBookmark}
-            className={cn(isBookmarked && "border-indigo-500/50 text-indigo-500 bg-indigo-500/5"
+            className={cn(isBookmarked && "border-amber-500/50 text-amber-500 bg-amber-500/5"
             )}
             title={isBookmarked ? "Remove bookmark" : "Bookmark this repo"}
           >
@@ -568,7 +568,7 @@ export function RepoOverview({ owner, repo }: { owner: string; repo: string }) {
               rel="noreferrer"
               className={cn(
                 buttonVariants({ size: "sm" }),
-                "btn-gitscope-primary inline-flex items-center rounded-md font-bold"
+                "btn-gitscope-primary inline-flex items-center rounded-none font-bold"
               )}
             >
               <Star className="mr-2 size-4 fill-current" />

@@ -88,20 +88,20 @@ export function SourceExplorerClient({
       {isLoading && (
         <div className="space-y-2">
           {Array.from({ length: 15 }).map((_, i) => (
-            <Skeleton key={i} className="h-10 w-full rounded-md" />
+            <Skeleton key={i} className="h-10 w-full rounded-none" />
           ))}
         </div>
       )}
 
       {error && (
-        <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6 text-center text-sm text-destructive">
+        <div className="rounded-none border border-destructive/20 bg-destructive/5 p-6 text-center text-sm text-destructive">
           Error loading contents. Make sure the repository path is accessible.
         </div>
       )}
 
       {/* Directory Listing */}
       {!isLoading && !error && !isFile && items.length > 0 && (
-        <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container shadow-md">
+        <div className="overflow-hidden rounded-none border border-outline-variant/15 bg-surface-container shadow-md">
           <div className="grid grid-cols-[1fr_100px] gap-4 border-b border-outline-variant/10 bg-surface-container-high px-4 py-3 text-xs font-semibold tracking-wider text-muted-foreground uppercase sm:grid-cols-[1fr_150px_100px]">
             <div>Name</div>
             <div className="hidden sm:block">Date</div>
@@ -133,7 +133,7 @@ export function SourceExplorerClient({
                   <MaterialIcon 
                     name={item.type === "dir" ? "folder" : "insert_drive_file"} 
                     size={20} 
-                    className={item.type === "dir" ? "text-indigo-400" : "text-muted-foreground"} 
+                    className={item.type === "dir" ? "text-amber-400" : "text-muted-foreground"} 
                   />
                   <span className="truncate font-mono text-sm text-foreground group-hover:underline">
                     {item.name}
@@ -153,7 +153,7 @@ export function SourceExplorerClient({
 
       {/* File Viewer */}
       {!isLoading && !error && isFile && fileData && (
-        <div className="overflow-hidden rounded-xl border border-outline-variant/15 bg-surface-container shadow-md">
+        <div className="overflow-hidden rounded-none border border-outline-variant/15 bg-surface-container shadow-md">
           <div className="flex items-center justify-between border-b border-outline-variant/10 bg-surface-container-high px-4 py-3">
             <div className="flex items-center gap-2">
               <MaterialIcon name="description" size={18} className="text-muted-foreground" />

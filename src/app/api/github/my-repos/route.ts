@@ -139,7 +139,7 @@ export async function GET(req: NextRequest) {
     const firstFetch = await fetchAllPages<MyRepo>(repoListUrl, token);
 
     let rawRepos = firstFetch.data;
-    let scopeLimited = !hasRepoScope;
+    const scopeLimited = !hasRepoScope;
 
     if (rawRepos.length === 0 && firstFetch.status !== 200) {
       // Non-200 (expired/revoked token, 422, etc.) — log status and return empty gracefully

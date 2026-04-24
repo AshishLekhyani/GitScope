@@ -63,7 +63,7 @@ function RankBadge({ rank }: { rank: number }) {
   }
   if (rank === 2) {
     return (
-      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-slate-400/20 border border-slate-400/40 text-slate-400 font-black text-sm">
+      <div className="flex size-9 shrink-0 items-center justify-center rounded-full bg-stone-400/20 border border-stone-400/40 text-stone-400 font-black text-sm">
         2
       </div>
     );
@@ -163,7 +163,7 @@ export default async function LeaderboardPage() {
             Across your analyzed repositories
           </p>
         </div>
-        <div className="hidden sm:flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-border">
+        <div className="hidden sm:flex items-center gap-3 px-4 py-3 rounded-none bg-card border border-border">
           <MaterialIcon name="group" size={20} className="text-muted-foreground" />
           <div>
             <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Contributors</div>
@@ -174,8 +174,8 @@ export default async function LeaderboardPage() {
 
       {/* No history empty state */}
       {!hasHistory ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center rounded-3xl border-2 border-dashed border-border/50 gap-5">
-          <div className="flex size-20 items-center justify-center rounded-3xl bg-yellow-500/10">
+        <div className="flex flex-col items-center justify-center py-24 text-center rounded-none border-2 border-dashed border-border/50 gap-5">
+          <div className="flex size-20 items-center justify-center rounded-none bg-yellow-500/10">
             <MaterialIcon name="emoji_events" size={40} className="text-yellow-500/60" />
           </div>
           <div className="space-y-2 max-w-sm">
@@ -186,14 +186,14 @@ export default async function LeaderboardPage() {
           </div>
           <Link
             href={ROUTES.search}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors"
           >
             <MaterialIcon name="search" size={18} className="text-white" />
             Analyze a Repository
           </Link>
         </div>
       ) : top20.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-3xl border-2 border-dashed border-border/50 gap-4">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-none border-2 border-dashed border-border/50 gap-4">
           <MaterialIcon name="people_outline" size={40} className="text-muted-foreground/30" />
           <div>
             <h3 className="text-lg font-black mb-1">No Contributors Found</h3>
@@ -211,15 +211,15 @@ export default async function LeaderboardPage() {
                 const rank = i + 1;
                 const podiumColors = [
                   "from-yellow-500/10 to-yellow-500/5 border-yellow-500/30",
-                  "from-slate-400/10 to-slate-400/5 border-slate-400/30",
+                  "from-stone-400/10 to-stone-400/5 border-stone-400/30",
                   "from-orange-400/10 to-orange-400/5 border-orange-400/30",
                 ] as const;
-                const textColors = ["text-yellow-500", "text-slate-400", "text-orange-400"] as const;
+                const textColors = ["text-yellow-500", "text-stone-400", "text-orange-400"] as const;
                 return (
                   <div
                     key={c.login}
                     className={cn(
-                      "relative flex flex-col items-center gap-3 p-6 rounded-3xl border bg-linear-to-br",
+                      "relative flex flex-col items-center gap-3 p-6 rounded-none border bg-linear-to-br",
                       podiumColors[i]
                     )}
                   >
@@ -231,7 +231,7 @@ export default async function LeaderboardPage() {
                       alt={c.login}
                       width={72}
                       height={72}
-                      className="rounded-2xl border-2 border-white/10 shadow-lg"
+                      className="rounded-none border-2 border-white/10 shadow-lg"
                     />
                     <div className="text-center">
                       <a
@@ -257,9 +257,9 @@ export default async function LeaderboardPage() {
           </div>
 
           {/* Full ranked list */}
-          <Card className="lg:col-span-2 rounded-3xl border border-border overflow-hidden shadow-sm">
+          <Card className="lg:col-span-2 rounded-none border border-border overflow-hidden shadow-sm">
             <div className="px-6 py-4 border-b border-border/50 flex items-center gap-2">
-              <MaterialIcon name="leaderboard" size={18} className="text-indigo-500" />
+              <MaterialIcon name="leaderboard" size={18} className="text-amber-500" />
               <h2 className="font-black text-sm uppercase tracking-widest">Full Rankings</h2>
             </div>
             <div className="divide-y divide-border/40">
@@ -277,7 +277,7 @@ export default async function LeaderboardPage() {
                       alt={c.login}
                       width={36}
                       height={36}
-                      className="size-9 rounded-xl border border-border/50 shrink-0"
+                      className="size-9 rounded-none border border-border/50 shrink-0"
                     />
                     <div className="flex-1 min-w-0 space-y-1">
                       <div className="flex items-center justify-between gap-2">
@@ -285,17 +285,17 @@ export default async function LeaderboardPage() {
                           href={`https://github.com/${c.login}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-sm font-bold hover:text-indigo-500 transition-colors truncate"
+                          className="text-sm font-bold hover:text-amber-500 transition-colors truncate"
                         >
                           {c.login}
                         </a>
-                        <span className="text-sm font-black text-indigo-500 shrink-0">
+                        <span className="text-sm font-black text-amber-500 shrink-0">
                           {c.totalContributions.toLocaleString()}
                         </span>
                       </div>
                       <div className="h-1.5 rounded-full bg-muted overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-linear-to-r from-indigo-500 to-purple-500 transition-all"
+                          className="h-full rounded-full bg-linear-to-r from-amber-500 to-amber-500 transition-all"
                           style={{ width: `${pct}%` }}
                         />
                       </div>
@@ -311,7 +311,7 @@ export default async function LeaderboardPage() {
 
           {/* Sidebar: stats + repo list */}
           <div className="space-y-5">
-            <Card className="rounded-3xl border border-border p-6 space-y-4 shadow-sm">
+            <Card className="rounded-none border border-border p-6 space-y-4 shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Summary</h3>
               {[
                 { label: "Repos Analyzed", value: repoQueries.length },
@@ -331,7 +331,7 @@ export default async function LeaderboardPage() {
               ))}
             </Card>
 
-            <Card className="rounded-3xl border border-border p-6 space-y-3 shadow-sm">
+            <Card className="rounded-none border border-border p-6 space-y-3 shadow-sm">
               <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Analyzed Repos</h3>
               {repoQueries.map((q) => {
                 const [owner, repo] = q.split("/");
@@ -339,10 +339,10 @@ export default async function LeaderboardPage() {
                   <Link
                     key={q}
                     href={owner && repo ? ROUTES.dashboard(owner, repo) : ROUTES.search}
-                    className="flex items-center gap-2 text-xs hover:text-indigo-500 transition-colors group"
+                    className="flex items-center gap-2 text-xs hover:text-amber-500 transition-colors group"
                   >
-                    <MaterialIcon name="code" size={14} className="text-muted-foreground group-hover:text-indigo-500" />
-                    <span className="font-mono truncate text-muted-foreground group-hover:text-indigo-500">
+                    <MaterialIcon name="code" size={14} className="text-muted-foreground group-hover:text-amber-500" />
+                    <span className="font-mono truncate text-muted-foreground group-hover:text-amber-500">
                       {q}
                     </span>
                   </Link>

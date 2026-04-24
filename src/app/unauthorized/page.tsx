@@ -22,7 +22,7 @@ export default async function UnauthorizedPage() {
         {/* Icon */}
         <div className="relative">
           <div className="absolute inset-0 bg-primary/10 rounded-full blur-3xl scale-150" />
-          <div className="relative size-24 mx-auto rounded-3xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+          <div className="relative size-24 mx-auto rounded-none bg-primary/10 border border-primary/20 flex items-center justify-center">
             <Lock className="size-10 text-primary/60" />
           </div>
         </div>
@@ -44,8 +44,8 @@ export default async function UnauthorizedPage() {
         {/* Features unlocked */}
         <div className="grid grid-cols-1 gap-3 text-left">
           {GITHUB_FEATURES.map(({ icon: Icon, label, desc }) => (
-            <div key={label} className="flex items-start gap-4 p-4 rounded-xl bg-card border border-border/50">
-              <div className="size-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+            <div key={label} className="flex items-start gap-4 p-4 rounded-none bg-card border border-border/50">
+              <div className="size-9 rounded-none bg-primary/10 flex items-center justify-center shrink-0">
                 <Icon className="size-4 text-primary" />
               </div>
               <div>
@@ -71,7 +71,7 @@ export default async function UnauthorizedPage() {
         ) : (
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-xl btn-gitscope-primary text-sm font-bold"
+            className="inline-flex items-center gap-2 px-7 py-3.5 rounded-none btn-gitscope-primary text-sm font-bold"
           >
             <Github className="size-4" />
             Sign in with GitHub

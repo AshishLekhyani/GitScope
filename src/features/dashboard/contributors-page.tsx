@@ -21,7 +21,7 @@ function VelocityHeatmap({ weeks }: { weeks: CommitActivityWeek[] }) {
   const max = Math.max(...allDays, 1);
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name="check_circle" size={18} className="text-tertiary" />
@@ -34,7 +34,7 @@ function VelocityHeatmap({ weeks }: { weeks: CommitActivityWeek[] }) {
           {[0.1, 0.3, 0.5, 0.7, 1].map((o, i) => (
             <span
               key={i}
-              className="size-3 rounded-sm"
+              className="size-3 rounded-none"
               style={{ backgroundColor: `rgba(78, 222, 163, ${o})` }}
             />
           ))}
@@ -47,7 +47,7 @@ function VelocityHeatmap({ weeks }: { weeks: CommitActivityWeek[] }) {
           return (
             <div
               key={i}
-              className="size-4 rounded-sm"
+              className="size-4 rounded-none"
               style={{
                 backgroundColor:
                   intensity === 0
@@ -69,7 +69,7 @@ function TopContributors({ contributors }: { contributors: GitHubContributor[] }
   const maxContribs = top[0]?.contributions ?? 1;
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name="analytics" size={18} className="text-primary" />
@@ -77,7 +77,7 @@ function TopContributors({ contributors }: { contributors: GitHubContributor[] }
             Top Engineering Impact
           </h3>
         </div>
-        <span className="rounded-md border border-outline-variant/20 px-2 py-0.5 font-mono text-[9px] text-muted-foreground">
+        <span className="rounded-none border border-outline-variant/20 px-2 py-0.5 font-mono text-[9px] text-muted-foreground">
           Score Normalized: 0-100
         </span>
       </div>
@@ -90,7 +90,7 @@ function TopContributors({ contributors }: { contributors: GitHubContributor[] }
               initial={{ opacity: 0, x: -4 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: idx * 0.05 }}
-              className="flex items-center gap-4 rounded-lg p-3 transition-colors hover:bg-surface-container-high"
+              className="flex items-center gap-4 rounded-none p-3 transition-colors hover:bg-surface-container-high"
             >
               <Image
                 src={c.avatar_url}
@@ -143,7 +143,7 @@ function PeakPerformance({ weeks }: { weeks: CommitActivityWeek[] }) {
   const peakIdx = dayTotals.indexOf(Math.max(...dayTotals));
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center gap-2">
         <MaterialIcon name="schedule" size={18} className="text-primary" />
         <h3 className="font-heading text-base font-bold text-foreground">
@@ -155,7 +155,7 @@ function PeakPerformance({ weeks }: { weeks: CommitActivityWeek[] }) {
           <div key={i} className="flex-1 text-center">
             <div
               className={cn(
-                "mx-auto w-full rounded-sm",
+                "mx-auto w-full rounded-none",
                 i === peakIdx ? "bg-primary" : "bg-primary/30"
               )}
               style={{ height: `${Math.max(4, (val / max) * 80)}px` }}
@@ -166,7 +166,7 @@ function PeakPerformance({ weeks }: { weeks: CommitActivityWeek[] }) {
           </div>
         ))}
       </div>
-      <div className="mt-4 rounded-lg bg-surface-container-lowest p-3">
+      <div className="mt-4 rounded-none bg-surface-container-lowest p-3">
         <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
           Most Active Day
         </p>
@@ -179,7 +179,7 @@ function PeakPerformance({ weeks }: { weeks: CommitActivityWeek[] }) {
       </div>
 
       {/* Cycle Time */}
-      <div className="mt-4 rounded-lg bg-linear-to-r from-tertiary/20 to-tertiary/5 p-4">
+      <div className="mt-4 rounded-none bg-linear-to-r from-tertiary/20 to-tertiary/5 p-4">
         <p className="font-mono text-[9px] tracking-widest text-tertiary uppercase">
           Avg Weekly Commits
         </p>
@@ -198,7 +198,7 @@ function AllContributorsList({ contributors }: { contributors: GitHubContributor
   const shown = rest.slice(0, visible);
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <h3 className="font-heading text-base font-bold text-foreground">
           All Contributors
@@ -214,7 +214,7 @@ function AllContributorsList({ contributors }: { contributors: GitHubContributor
             href={c.html_url}
             target="_blank"
             rel="noreferrer"
-            className="flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-surface-container-high"
+            className="flex items-center gap-3 rounded-none p-2 transition-colors hover:bg-surface-container-high"
           >
             <Image
               src={c.avatar_url}
@@ -236,7 +236,7 @@ function AllContributorsList({ contributors }: { contributors: GitHubContributor
         <button
           type="button"
           onClick={() => setVisible((v) => Math.min(v + 15, rest.length))}
-          className="mt-4 w-full py-2.5 rounded-lg border border-outline-variant/20 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-surface-container-high transition-all"
+          className="mt-4 w-full py-2.5 rounded-none border border-outline-variant/20 text-xs font-bold text-muted-foreground hover:text-foreground hover:bg-surface-container-high transition-all"
         >
           Load {Math.min(15, rest.length - visible)} more contributors
         </button>
@@ -271,8 +271,8 @@ export function ContributorsPageClient({
     return (
       <div className="space-y-6">
         <Skeleton className="h-10 w-64" />
-        <Skeleton className="h-32 w-full rounded-xl" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-32 w-full rounded-none" />
+        <Skeleton className="h-64 w-full rounded-none" />
       </div>
     );
   }

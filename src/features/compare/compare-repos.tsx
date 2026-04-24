@@ -146,7 +146,7 @@ export function CompareReposPanel() {
     >
       {/* ── Search inputs ── */}
       <div className="mb-8 grid gap-4 md:grid-cols-2">
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-4">
+        <div className="rounded-none border border-outline-variant/15 bg-surface-container p-4">
           <p className="mb-2 font-mono text-[9px] font-bold tracking-[0.3em] text-tertiary uppercase">
             Primary Benchmark: Leader
           </p>
@@ -158,12 +158,12 @@ export function CompareReposPanel() {
               placeholder="owner/repo"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
             />
-            <button className="flex size-8 items-center justify-center rounded-md bg-tertiary/20 text-tertiary">
+            <button className="flex size-8 items-center justify-center rounded-none bg-tertiary/20 text-tertiary">
               <MaterialIcon name="swap_horiz" size={18} />
             </button>
           </div>
         </div>
-        <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-4">
+        <div className="rounded-none border border-outline-variant/15 bg-surface-container p-4">
           <p className="mb-2 font-mono text-[9px] font-bold tracking-[0.3em] text-primary uppercase">
             Target Benchmark: Challenger
           </p>
@@ -175,7 +175,7 @@ export function CompareReposPanel() {
               placeholder="owner/repo"
               className="flex-1 bg-transparent text-sm text-foreground placeholder:text-muted-foreground/60 focus:outline-none"
             />
-            <button className="flex size-8 items-center justify-center rounded-md bg-primary/20 text-primary">
+            <button className="flex size-8 items-center justify-center rounded-none bg-primary/20 text-primary">
               <MaterialIcon name="swap_horiz" size={18} />
             </button>
           </div>
@@ -211,7 +211,7 @@ export function CompareReposPanel() {
       {leaderData && challengerData && (
         <>
           {/* ── Growth Velocity chart ── */}
-          <div className="mb-6 rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="mb-6 rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <h2 className="font-heading text-xl font-bold text-foreground">
@@ -256,7 +256,7 @@ export function CompareReposPanel() {
           {/* ── Health Matrix + Predictive Index ── */}
           <div className="mb-6 grid gap-6 lg:grid-cols-[1fr_280px] xl:grid-cols-[1fr_320px]">
             {/* Health Matrix */}
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
               <h3 className="font-heading mb-4 text-lg font-bold text-foreground">
                 Health Matrix
               </h3>
@@ -331,7 +331,7 @@ export function CompareReposPanel() {
 
             {/* Predictive Authority Index */}
             <div className="space-y-4">
-              <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+              <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
                 <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
                   Comparative Score
                 </p>
@@ -360,7 +360,7 @@ export function CompareReposPanel() {
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-4">
+                <div className="rounded-none border border-outline-variant/15 bg-surface-container p-4">
                   <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
                     Languages
                   </p>
@@ -371,7 +371,7 @@ export function CompareReposPanel() {
                     vs {Object.keys(langB.data?.data ?? {}).length}
                   </p>
                 </div>
-                <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-4">
+                <div className="rounded-none border border-outline-variant/15 bg-surface-container p-4">
                   <p className="font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
                     Fork Ratio
                   </p>
@@ -389,7 +389,7 @@ export function CompareReposPanel() {
               </div>
 
               {/* Comparison Report card */}
-              <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 text-center">
+              <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 text-center">
                 <MaterialIcon name="star" size={28} className="mx-auto text-primary" />
                 <h4 className="font-heading mt-2 font-bold text-foreground">
                   Comparison Report
@@ -405,7 +405,7 @@ export function CompareReposPanel() {
           </div>
 
           {/* ── Historical Trajectory ── */}
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-heading text-lg font-bold text-foreground">
                 Repository Timeline

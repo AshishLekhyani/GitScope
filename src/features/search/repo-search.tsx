@@ -195,7 +195,7 @@ export function RepoSearchPanel() {
     <div className="relative w-full overflow-hidden">
       <div className="pointer-events-none absolute top-1/4 left-1/2 -z-10 h-[min(800px,90vw)] w-[min(800px,90vw)] -translate-x-1/2 -translate-y-1/2 rounded-full bg-primary/5 blur-[120px]" />
 
-      <div className="spotlight-glow glass-panel relative overflow-hidden rounded-2xl border border-outline-variant/20 shadow-2xl">
+      <div className="spotlight-glow glass-panel relative overflow-hidden rounded-none border border-outline-variant/20 shadow-2xl">
         <div className="relative flex flex-wrap items-center gap-2 border-b border-white/5 py-2 pr-3 pl-2 sm:flex-nowrap sm:py-0 sm:pr-6 sm:pl-4">
           <div className="text-primary shrink-0 pl-2 sm:pl-4">
             <MaterialIcon name="search" size={28} />
@@ -212,7 +212,7 @@ export function RepoSearchPanel() {
             aria-label="Search repositories"
           />
           <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4">
-            <kbd className="border-border text-muted-foreground hidden rounded border bg-slate-100/80 px-2 py-1 font-mono text-[10px] sm:inline-block dark:bg-slate-800/80">
+            <kbd className="border-border text-muted-foreground hidden rounded border bg-stone-100/80 px-2 py-1 font-mono text-[10px] sm:inline-block dark:bg-stone-800/80">
               ESC
             </kbd>
             <Button
@@ -244,7 +244,7 @@ export function RepoSearchPanel() {
                 {searchQ.isLoading && (
                   <div className="space-y-2">
                     {Array.from({ length: 5 }).map((_, i) => (
-                      <Skeleton key={i} className="h-16 w-full rounded-lg" />
+                      <Skeleton key={i} className="h-16 w-full rounded-none" />
                     ))}
                   </div>
                 )}
@@ -265,7 +265,7 @@ export function RepoSearchPanel() {
                         <button
                           type="button"
                           onClick={() => signIn("github", { callbackUrl: ROUTES.search })}
-                          className="text-xs font-bold text-indigo-500 hover:underline"
+                          className="text-xs font-bold text-amber-500 hover:underline"
                         >
                           Connect GitHub →
                         </button>
@@ -291,7 +291,7 @@ export function RepoSearchPanel() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: idx * 0.02 }}
                       onClick={() => openRepo(r)}
-                      className="hover:bg-muted/60 group flex w-full items-center justify-between rounded-lg border border-transparent p-3 text-left transition-all hover:border-outline-variant/20"
+                      className="hover:bg-muted/60 group flex w-full items-center justify-between rounded-none border border-transparent p-3 text-left transition-all hover:border-outline-variant/20"
                     >
                       <div className="flex min-w-0 items-center gap-3 sm:gap-4">
                         <div className="bg-muted flex size-8 shrink-0 items-center justify-center rounded border border-outline-variant/20">
@@ -345,7 +345,7 @@ export function RepoSearchPanel() {
                   {trendingQ.isLoading && (
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {Array.from({ length: 4 }).map((_, i) => (
-                        <Skeleton key={i} className="h-28 rounded-lg" />
+                        <Skeleton key={i} className="h-28 rounded-none" />
                       ))}
                     </div>
                   )}
@@ -416,7 +416,7 @@ export function RepoSearchPanel() {
               </div>
             </div>
 
-            <div className="border-primary/10 bg-primary/5 rounded-lg border p-4">
+            <div className="border-primary/10 bg-primary/5 rounded-none border p-4">
               <h4 className="text-primary mb-2 font-mono text-[10px] font-bold uppercase">
                 Pro search
               </h4>
@@ -496,8 +496,8 @@ export function RepoSearchPanel() {
             title="Your Bookmarks"
             description="Saved repos"
             href={ROUTES.bookmarks}
-            color="text-purple-500"
-            bgColor="bg-purple-500/10"
+            color="text-amber-500"
+            bgColor="bg-amber-500/10"
           />
         </div>
 
@@ -612,7 +612,7 @@ const QuickActionCard = React.memo(function QuickActionCard({
       className="group cursor-pointer"
     >
       <Card className="p-4 h-full border-border hover:border-primary/30 transition-all hover:shadow-md">
-        <div className={`w-10 h-10 rounded-lg ${bgColor} flex items-center justify-center mb-3`}>
+        <div className={`w-10 h-10 rounded-none ${bgColor} flex items-center justify-center mb-3`}>
           <Icon className={`w-5 h-5 ${color}`} />
         </div>
         <h4 className="font-semibold text-sm mb-1 group-hover:text-primary transition-colors">
@@ -706,7 +706,7 @@ function TrendingPagination({
       <button
         onClick={() => onPageChange(Math.max(0, currentPage - 1))}
         disabled={currentPage === 0}
-        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-1.5 rounded-none hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         aria-label="Previous page"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -719,7 +719,7 @@ function TrendingPagination({
       <button
         onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
         disabled={currentPage >= totalPages - 1}
-        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-1.5 rounded-none hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         aria-label="Next page"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -748,13 +748,13 @@ function TrendingReposGrid({
             r.language === "JavaScript"
               ? "bg-[#f1e05a]"
               : r.language === "TypeScript"
-                ? "bg-[#3178c6]"
+                ? "bg-[#c77a12]"
                 : r.language === "Rust"
                   ? "bg-[#dea584]"
                   : r.language === "Go"
-                    ? "bg-[#00add8]"
+                    ? "bg-[#d97706]"
                     : r.language === "Python"
-                      ? "bg-[#3572A5]"
+                      ? "bg-[#0e9966]"
                       : "bg-muted-foreground/60";
           return (
             <motion.div
@@ -766,7 +766,7 @@ function TrendingReposGrid({
             >
               <Link
                 href={ROUTES.dashboard(owner, name)}
-                className="bg-muted/40 hover:border-primary/50 hover:bg-muted/80 rounded-lg border border-outline-variant/10 p-4 transition-all block"
+                className="bg-muted/40 hover:border-primary/50 hover:bg-muted/80 rounded-none border border-outline-variant/10 p-4 transition-all block"
               >
                 <div className="mb-2 flex items-center gap-2">
                   <MaterialIcon
@@ -853,7 +853,7 @@ function SmartPagination({
       <button
         onClick={() => onPageChange(Math.max(0, currentPage - 1))}
         disabled={currentPage === 0}
-        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-1.5 rounded-none hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         aria-label="Previous page"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -872,7 +872,7 @@ function SmartPagination({
             <button
               key={page}
               onClick={() => onPageChange(page as number)}
-              className={`min-w-7 h-7 px-2 rounded-md text-xs font-medium transition-colors ${
+              className={`min-w-7 h-7 px-2 rounded-none text-xs font-medium transition-colors ${
                 currentPage === page
                   ? 'bg-primary text-primary-foreground'
                   : 'hover:bg-muted text-muted-foreground'
@@ -888,7 +888,7 @@ function SmartPagination({
       <button
         onClick={() => onPageChange(Math.min(totalPages - 1, currentPage + 1))}
         disabled={currentPage >= totalPages - 1}
-        className="p-1.5 rounded-md hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+        className="p-1.5 rounded-none hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         aria-label="Next page"
       >
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

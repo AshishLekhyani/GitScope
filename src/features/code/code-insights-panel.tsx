@@ -7,7 +7,7 @@ import { useTheme } from "next-themes";
 const MonacoEditor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
   loading: () => (
-    <div className="bg-muted/40 h-[320px] w-full animate-pulse rounded-lg" />
+    <div className="bg-muted/40 h-[320px] w-full animate-pulse rounded-none" />
   ),
 });
 
@@ -25,7 +25,7 @@ export function CodeInsightsPanel({
         <CardTitle>Raw languages payload</CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="overflow-hidden rounded-lg border">
+        <div className="overflow-hidden rounded-none border">
           <MonacoEditor
             height="320px"
             defaultLanguage="json"

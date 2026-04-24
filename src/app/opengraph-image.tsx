@@ -29,7 +29,7 @@ export default function OgImage() {
             width: "600px",
             height: "600px",
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(99,102,241,0.2) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(245,158,11,0.2) 0%, transparent 70%)",
             top: "-100px",
             left: "-100px",
           }}
@@ -40,7 +40,7 @@ export default function OgImage() {
             width: "400px",
             height: "400px",
             borderRadius: "50%",
-            background: "radial-gradient(circle, rgba(168,85,247,0.15) 0%, transparent 70%)",
+            background: "radial-gradient(circle, rgba(217,119,6,0.15) 0%, transparent 70%)",
             bottom: "-50px",
             right: "100px",
           }}
@@ -52,7 +52,7 @@ export default function OgImage() {
             width: "80px",
             height: "80px",
             borderRadius: "20px",
-            background: "linear-gradient(135deg, #6366f1, #8b5cf6)",
+            background: "linear-gradient(135deg, #f59e0b, #f59e0b)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -68,7 +68,7 @@ export default function OgImage() {
           style={{
             fontSize: "72px",
             fontWeight: 900,
-            background: "linear-gradient(90deg, #e2e8f0, #a5b4fc)",
+            background: "linear-gradient(90deg, #e2e8f0, #fde68a)",
             backgroundClip: "text",
             color: "transparent",
             letterSpacing: "-2px",
@@ -103,11 +103,11 @@ export default function OgImage() {
             <div
               key={label}
               style={{
-                background: "rgba(99,102,241,0.15)",
-                border: "1px solid rgba(99,102,241,0.3)",
+                background: "rgba(245,158,11,0.15)",
+                border: "1px solid rgba(245,158,11,0.3)",
                 borderRadius: "100px",
                 padding: "8px 20px",
-                color: "#a5b4fc",
+                color: "#fde68a",
                 fontSize: "18px",
                 fontWeight: 600,
               }}

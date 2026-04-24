@@ -30,7 +30,7 @@ const SEVERITY_META: Record<string, { label: string; bg: string; text: string; d
   CRITICAL: { label: "Critical", bg: "bg-red-500/10",    text: "text-red-400",    dot: "bg-red-500",    order: 0 },
   HIGH:     { label: "High",     bg: "bg-orange-500/10", text: "text-orange-400", dot: "bg-orange-500", order: 1 },
   MEDIUM:   { label: "Medium",   bg: "bg-amber-500/10",  text: "text-amber-400",  dot: "bg-amber-500",  order: 2 },
-  LOW:      { label: "Low",      bg: "bg-blue-500/10",   text: "text-blue-400",   dot: "bg-blue-500",   order: 3 },
+  LOW:      { label: "Low",      bg: "bg-amber-500/10",   text: "text-amber-400",   dot: "bg-amber-500",   order: 3 },
   UNKNOWN:  { label: "Unknown",  bg: "bg-muted",         text: "text-muted-foreground", dot: "bg-muted-foreground", order: 4 },
 };
 
@@ -94,14 +94,14 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
             onChange={(e) => setRepo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && scan()}
             placeholder="owner/repo"
-            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500/40 transition-all"
+            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none pl-9 sm:pl-10 pr-3 sm:pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-rose-500/30 focus:border-rose-500/40 transition-all"
           />
         </div>
         <button
           type="button"
           onClick={scan}
           disabled={loading || !repo.trim()}
-          className="flex items-center gap-1.5 px-3 sm:px-5 py-3 rounded-2xl bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 sm:px-5 py-3 rounded-none bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
         >
           {loading ? <MaterialIcon name="sync" size={14} className="animate-spin" /> : <MaterialIcon name="search" size={14} />}
           <span className="hidden sm:inline">{loading ? "Scanning…" : "Scan CVEs"}</span>
@@ -111,7 +111,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
 
       {/* Info strip */}
       {!result && !loading && !error && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-rose-500/5 border border-rose-500/10">
+        <div className="flex items-start gap-3 p-4 rounded-none bg-rose-500/5 border border-rose-500/10">
           <MaterialIcon name="info" size={15} className="text-rose-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
             Scans the repo&apos;s package.json, requirements.txt, and go.mod against the{" "}
@@ -122,14 +122,14 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
       )}
 
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+        <div className="flex items-center gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
           <MaterialIcon name="error" size={16} className="shrink-0" />
           {error}
         </div>
       )}
 
       {loading && (
-        <div className="flex flex-col items-center justify-center gap-4 py-16 rounded-3xl border border-outline-variant/10 bg-surface-container/20">
+        <div className="flex flex-col items-center justify-center gap-4 py-16 rounded-none border border-outline-variant/10 bg-surface-container/20">
           <div className="relative size-14">
             <div className="absolute inset-0 rounded-full border-2 border-rose-500/20" />
             <div className="absolute inset-0 rounded-full border-2 border-rose-500 border-t-transparent animate-spin" />
@@ -149,9 +149,9 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
               { label: "CVEs Found",    value: result.total,            color: result.total > 0 ? "text-red-400" : "text-emerald-400" },
               { label: "Pkgs Scanned",  value: result.scannedPackages,  color: "text-foreground" },
               { label: "Critical/High", value: (counts.CRITICAL ?? 0) + (counts.HIGH ?? 0), color: ((counts.CRITICAL ?? 0) + (counts.HIGH ?? 0)) > 0 ? "text-orange-400" : "text-muted-foreground/40" },
-              { label: "Ecosystems",    value: result.ecosystems.join(", ") || "—", color: "text-indigo-400" },
+              { label: "Ecosystems",    value: result.ecosystems.join(", ") || "—", color: "text-amber-400" },
             ].map((m) => (
-              <div key={m.label} className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
+              <div key={m.label} className="px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
                 <p className={cn("text-lg font-black truncate", m.color)}>{m.value}</p>
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">{m.label}</p>
               </div>
@@ -159,7 +159,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
           </div>
 
           {result.total === 0 ? (
-            <div className="flex flex-col items-center gap-3 py-12 rounded-3xl border border-emerald-500/20 bg-emerald-500/5 text-center">
+            <div className="flex flex-col items-center gap-3 py-12 rounded-none border border-emerald-500/20 bg-emerald-500/5 text-center">
               <MaterialIcon name="verified_user" size={36} className="text-emerald-400" />
               <p className="font-black text-emerald-400">No known CVEs found</p>
               <p className="text-xs text-muted-foreground/50 max-w-xs">
@@ -179,7 +179,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
                       type="button"
                       onClick={() => setFilter(s)}
                       className={cn(
-                        "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all",
+                        "flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-[10px] font-black uppercase tracking-wider transition-all",
                         filter === s
                           ? "bg-foreground text-background border-foreground"
                           : "border-outline-variant/20 text-muted-foreground hover:border-outline-variant/40"
@@ -199,10 +199,10 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
                   .map((f) => {
                     const meta = sev(f.severity);
                     return (
-                      <div key={f.id} className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20 transition-all overflow-hidden">
+                      <div key={f.id} className="rounded-none border border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20 transition-all overflow-hidden">
                         <div className="flex items-start gap-2 sm:gap-4 p-3 sm:p-4">
                           {/* Severity badge */}
-                          <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-black uppercase tracking-widest shrink-0 mt-0.5", meta.bg, meta.text, "border-current/20")}>
+                          <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-none border text-[9px] font-black uppercase tracking-widest shrink-0 mt-0.5", meta.bg, meta.text, "border-current/20")}>
                             <span className={cn("size-1.5 rounded-full", meta.dot)} />
                             {meta.label}
                           </div>
@@ -227,7 +227,7 @@ export function OsvScanner({ selectedRepo }: OsvScannerProps) {
                               )}
                               {f.url && (
                                 <a href={f.url} target="_blank" rel="noopener noreferrer"
-                                  className="text-[9px] font-black text-indigo-400 hover:underline flex items-center gap-1">
+                                  className="text-[9px] font-black text-amber-400 hover:underline flex items-center gap-1">
                                   <MaterialIcon name="open_in_new" size={10} />
                                   {f.id}
                                 </a>

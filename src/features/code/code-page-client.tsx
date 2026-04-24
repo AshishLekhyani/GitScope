@@ -40,9 +40,9 @@ function PRMergeFrequency({
 
   if (isLoading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+      <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
         <Skeleton className="mb-4 h-5 w-40" />
-        <Skeleton className="h-[200px] w-full rounded-lg" />
+        <Skeleton className="h-[200px] w-full rounded-none" />
       </div>
     );
   }
@@ -72,7 +72,7 @@ function PRMergeFrequency({
     .map(([name, v]) => ({ name, ...v }));
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <MaterialIcon name="merge" size={18} className="text-tertiary" />
@@ -103,7 +103,7 @@ function PRMergeFrequency({
                 itemStyle={{ color: "var(--foreground)" }}
               />
               <Bar dataKey="merged" fill="#10b981" radius={[2, 2, 0, 0]} name="Merged" stackId="a" />
-              <Bar dataKey="open" fill="#6366f1" radius={[2, 2, 0, 0]} name="Open" stackId="a" />
+              <Bar dataKey="open" fill="#f59e0b" radius={[2, 2, 0, 0]} name="Open" stackId="a" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -117,7 +117,7 @@ function PRMergeFrequency({
           <span className="size-2.5 rounded-full" style={{ backgroundColor: "#10b981" }} /> Merged
         </span>
         <span className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <span className="size-2.5 rounded-full" style={{ backgroundColor: "#6366f1" }} /> Open
+          <span className="size-2.5 rounded-full" style={{ backgroundColor: "#f59e0b" }} /> Open
         </span>
       </div>
     </div>
@@ -187,7 +187,7 @@ function CodeSizeProgression({ owner, repo }: { owner: string; repo: string }) {
   }));
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <MaterialIcon name="data_usage" size={18} className="text-secondary" />
@@ -198,7 +198,7 @@ function CodeSizeProgression({ owner, repo }: { owner: string; repo: string }) {
             Commits per day for selected range
           </p>
         </div>
-        <div className="flex rounded-md border border-outline-variant/20 bg-surface-container-lowest p-0.5">
+        <div className="flex rounded-none border border-outline-variant/20 bg-surface-container-lowest p-0.5">
           {(["7d", "30d", "90d", "6m", "1y"] as const).map((t) => (
             <button
               key={t}
@@ -221,8 +221,8 @@ function CodeSizeProgression({ owner, repo }: { owner: string; repo: string }) {
             <AreaChart data={data}>
               <defs>
                 <linearGradient id="codeGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0.02} />
+                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
@@ -241,7 +241,7 @@ function CodeSizeProgression({ owner, repo }: { owner: string; repo: string }) {
               <Area
                 type="monotone"
                 dataKey="commits"
-                stroke="#8b5cf6"
+                stroke="#f59e0b"
                 fill="url(#codeGrad)"
                 strokeWidth={2}
                 name="Commits"
@@ -272,7 +272,7 @@ function TopLanguages({ languages, loading }: { languages: Record<string, number
 
   if (loading) {
     return (
-      <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+      <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
         <Skeleton className="mb-4 h-5 w-32" />
         {Array.from({ length: 4 }).map((_, i) => (
           <Skeleton key={i} className="mt-3 h-5 w-full" />
@@ -282,7 +282,7 @@ function TopLanguages({ languages, loading }: { languages: Record<string, number
   }
 
   return (
-    <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
+    <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 shadow-sm dark:shadow-none">
       <div className="mb-4 flex items-center gap-2">
         <MaterialIcon name="code" size={18} className="text-primary" />
         <h3 className="font-heading text-base font-bold text-foreground">
@@ -303,7 +303,7 @@ function TopLanguages({ languages, loading }: { languages: Record<string, number
                 className="h-full rounded-full"
                 style={{
                   width: `${lang.pct}%`,
-                  backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899"][
+                  backgroundColor: ["#f59e0b", "#10b981", "#f59e0b", "#ef4444", "#f59e0b", "#f59e0b"][
                     data.findIndex((l) => l.name === lang.name) % 6
                   ],
                 }}
@@ -342,7 +342,7 @@ function SummaryStats({
       {stats.map((s) => (
         <div
           key={s.label}
-          className="rounded-xl border border-outline-variant/15 bg-surface-container p-4 shadow-sm dark:shadow-none"
+          className="rounded-none border border-outline-variant/15 bg-surface-container p-4 shadow-sm dark:shadow-none"
         >
           <div className="flex items-center gap-2">
             <MaterialIcon name={s.icon} size={18} className="text-muted-foreground" />

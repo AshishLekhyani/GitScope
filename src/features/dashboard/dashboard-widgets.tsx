@@ -50,14 +50,14 @@ function SortableWidget({
       style={style}
       className={
         isDragging
-          ? "border-primary/35 shadow-md ring-primary/20 relative rounded-xl ring-2"
+          ? "border-primary/35 shadow-md ring-primary/20 relative rounded-none ring-2"
           : "relative"
       }
     >
       <div className="flex items-start gap-1">
         <button
           type="button"
-          className="text-muted-foreground hover:text-foreground mt-3 inline-flex cursor-grab touch-none rounded-md p-1 active:cursor-grabbing"
+          className="text-muted-foreground hover:text-foreground mt-3 inline-flex cursor-grab touch-none rounded-none p-1 active:cursor-grabbing"
           aria-label="Drag to reorder widget"
           {...attributes}
           {...listeners}

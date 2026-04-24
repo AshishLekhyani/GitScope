@@ -99,13 +99,13 @@ export function CodeReviewHub({
       {/* ── Header strip ── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-outline-variant/10">
         <div className="flex items-center gap-3">
-          <div className="size-10 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0">
-            <MaterialIcon name="auto_awesome" size={20} className="text-indigo-400" />
+          <div className="size-10 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+            <MaterialIcon name="auto_awesome" size={20} className="text-amber-400" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400/80">Code Lens</span>
-              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+              <span className="text-[9px] font-black uppercase tracking-widest text-amber-400/80">Code Lens</span>
+              <span className="text-[8px] font-black px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20">
                 {aiAgentDepth} depth
               </span>
             </div>
@@ -115,13 +115,13 @@ export function CodeReviewHub({
 
         <div className="flex items-center gap-2 flex-wrap">
           {primaryRepo && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-surface-container/50 border border-outline-variant/10 text-[10px] font-black text-muted-foreground/70">
-              <MaterialIcon name="folder" size={11} className="text-indigo-400" />
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-surface-container/50 border border-outline-variant/10 text-[10px] font-black text-muted-foreground/70">
+              <MaterialIcon name="folder" size={11} className="text-amber-400" />
               {primaryRepo}
             </div>
           )}
           <div className={cn(
-            "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-black",
+            "flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-[10px] font-black",
             githubConnected
               ? "bg-emerald-500/5 border-emerald-500/15 text-emerald-400"
               : "bg-surface-container/40 border-outline-variant/10 text-muted-foreground/50"
@@ -134,7 +134,7 @@ export function CodeReviewHub({
 
       {/* ── Tab bar ── */}
       <div className="relative">
-        <div className="flex gap-1 p-1 bg-surface-container/30 rounded-2xl border border-outline-variant/10 overflow-x-auto scrollbar-none">
+        <div className="flex gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10 overflow-x-auto scrollbar-none">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -143,9 +143,9 @@ export function CodeReviewHub({
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-xl transition-all text-left shrink-0",
+                  "flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-none transition-all text-left shrink-0",
                   isActive
-                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/20"
+                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
                     : "text-muted-foreground/60 hover:text-foreground hover:bg-surface-container-highest/60"
                 )}
               >
@@ -154,7 +154,7 @@ export function CodeReviewHub({
                   <div className={cn("text-[10px] font-black uppercase tracking-wider leading-none whitespace-nowrap", isActive ? "text-white" : "")}>
                     {tab.label}
                   </div>
-                  <div className={cn("text-[8px] mt-0.5 leading-tight truncate hidden lg:block", isActive ? "text-indigo-100/70" : "text-muted-foreground/40")}>
+                  <div className={cn("text-[8px] mt-0.5 leading-tight truncate hidden lg:block", isActive ? "text-amber-100/70" : "text-muted-foreground/40")}>
                     {tab.description}
                   </div>
                 </div>
@@ -168,11 +168,11 @@ export function CodeReviewHub({
 
       {/* GitHub notice */}
       {!githubConnected && (
-        <div className="flex items-start gap-3 p-3.5 rounded-xl bg-amber-500/5 border border-amber-500/10">
+        <div className="flex items-start gap-3 p-3.5 rounded-none bg-amber-500/5 border border-amber-500/10">
           <MaterialIcon name="info" size={14} className="shrink-0 mt-0.5 text-amber-400" />
           <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
             Public repos work without authentication. For private repos,{" "}
-            <a href="/settings" className="text-indigo-400 underline underline-offset-2">connect GitHub in Settings</a>.
+            <a href="/settings" className="text-amber-400 underline underline-offset-2">connect GitHub in Settings</a>.
           </p>
         </div>
       )}

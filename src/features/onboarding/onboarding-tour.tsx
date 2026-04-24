@@ -23,8 +23,8 @@ const STEPS: Step[] = [
   {
     id: "welcome",
     icon: "rocket_launch",
-    accentClass: "text-indigo-400",
-    accentBg: "bg-indigo-500/10 border-indigo-500/25",
+    accentClass: "text-amber-400",
+    accentBg: "bg-amber-500/10 border-amber-500/25",
     title: "Welcome to GitScope",
     body: "Your engineering intelligence dashboard — AI-powered repo health scans, CVE detection, PR reviews, CI/CD analytics, and team dashboards all in one place.",
     bullets: ["Analyze any public or private GitHub repo", "AI scans with Anthropic, OpenAI, or Gemini", "Team workspaces, DORA metrics & more"],
@@ -33,8 +33,8 @@ const STEPS: Step[] = [
   {
     id: "search",
     icon: "travel_explore",
-    accentClass: "text-blue-400",
-    accentBg: "bg-blue-500/10 border-blue-500/25",
+    accentClass: "text-amber-400",
+    accentBg: "bg-amber-500/10 border-amber-500/25",
     title: "Search & Analyze Any Repo",
     body: "Type owner/repo in the search bar (or press / to focus it instantly). GitScope pulls real-time data — stars, commit cadence, contributors, language mix, and more.",
     bullets: [
@@ -48,8 +48,8 @@ const STEPS: Step[] = [
   {
     id: "intelligence",
     icon: "psychology",
-    accentClass: "text-purple-400",
-    accentBg: "bg-purple-500/10 border-purple-500/25",
+    accentClass: "text-amber-400",
+    accentBg: "bg-amber-500/10 border-amber-500/25",
     title: "Intelligence Hub",
     body: "The hub is where deep analysis lives. Switch between tabs to run AI repo scans, OSV CVE checks, PR reviews, code ownership maps, CI/CD run history, and test coverage reports.",
     bullets: [
@@ -94,8 +94,8 @@ const STEPS: Step[] = [
   {
     id: "notifications",
     icon: "notifications_active",
-    accentClass: "text-cyan-400",
-    accentBg: "bg-cyan-500/10 border-cyan-500/25",
+    accentClass: "text-teal-400",
+    accentBg: "bg-teal-500/10 border-teal-500/25",
     title: "Slack & Discord Alerts",
     body: "Get scan results, CVE alerts, and weekly digests delivered directly to your team's Slack or Discord channel. Set up a webhook in under a minute.",
     bullets: [
@@ -162,7 +162,7 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed top-0 left-0 w-screen h-screen min-h-dvh z-9998 bg-black/85 backdrop-blur-[6px]"
+            className="fixed top-0 left-0 w-screen h-screen min-h-dvh z-[9998] bg-black/85 backdrop-blur-[6px]"
           />
 
           {/* Modal */}
@@ -172,14 +172,14 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: 24 }}
             transition={{ type: "spring", stiffness: 340, damping: 28 }}
-            className="fixed inset-x-4 bottom-6 z-9999 mx-auto max-w-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2"
+            className="fixed inset-x-4 bottom-6 z-[9999] mx-auto max-w-lg sm:inset-x-auto sm:left-1/2 sm:-translate-x-1/2"
           >
-            <div className="overflow-hidden rounded-3xl border border-white/8 bg-[#0f1629]/96 shadow-[0_32px_80px_-12px_rgba(0,0,0,0.8)] backdrop-blur-2xl">
+            <div className="overflow-hidden border border-white/8 bg-[#110f0c]/96 shadow-[0_32px_80px_-12px_rgba(0,0,0,0.85)] backdrop-blur-2xl">
 
               {/* Progress bar */}
               <div className="h-0.5 bg-white/5">
                 <motion.div
-                  className="h-full bg-indigo-500"
+                  className="h-full bg-amber-500"
                   animate={{ width: `${progress}%` }}
                   transition={{ ease: "easeOut", duration: 0.4 }}
                 />
@@ -198,9 +198,9 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
                         className={cn(
                           "rounded-full transition-all duration-300",
                           i === step
-                            ? "w-5 h-1.5 bg-indigo-400"
+                            ? "w-5 h-1.5 bg-amber-400"
                             : i < step
-                            ? "size-1.5 bg-indigo-400/40"
+                            ? "size-1.5 bg-amber-400/40"
                             : "size-1.5 bg-white/10"
                         )}
                       />
@@ -230,7 +230,7 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
                     transition={{ duration: 0.22 }}
                     className="space-y-4"
                   >
-                    <div className={cn("inline-flex size-12 items-center justify-center rounded-2xl border", cur.accentBg)}>
+                    <div className={cn("inline-flex size-12 items-center justify-center rounded-none border", cur.accentBg)}>
                       <MaterialIcon name={cur.icon} size={24} className={cur.accentClass} />
                     </div>
 
@@ -257,7 +257,7 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
                   <button
                     type="button"
                     onClick={next}
-                    className="flex-1 rounded-xl bg-indigo-500 hover:bg-indigo-400 px-4 py-2.5 text-sm font-black text-white transition-colors"
+                    className="flex-1 rounded-none bg-amber-500 hover:bg-amber-400 px-4 py-2.5 text-sm font-black text-white transition-colors"
                   >
                     {cur.primaryCta}
                   </button>
@@ -265,7 +265,7 @@ export function OnboardingTour({ userKey }: OnboardingTourProps) {
                     <a
                       href={cur.secondaryCta.href}
                       onClick={next}
-                      className="flex items-center gap-1.5 rounded-xl border border-white/10 px-4 py-2.5 text-sm font-medium text-white/50 hover:text-white hover:border-white/20 transition-all whitespace-nowrap"
+                      className="flex items-center gap-1.5 rounded-none border border-white/10 px-4 py-2.5 text-sm font-medium text-white/50 hover:text-white hover:border-white/20 transition-all whitespace-nowrap"
                     >
                       {cur.secondaryCta.label}
                       <MaterialIcon name="arrow_forward" size={14} />

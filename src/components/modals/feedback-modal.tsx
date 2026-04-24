@@ -58,7 +58,7 @@ export function FeedbackModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] sm:max-w-[480px] p-0 overflow-hidden border border-white/10 bg-slate-900/95 backdrop-blur-xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] sm:max-w-[480px] p-0 overflow-hidden border border-white/10 bg-stone-900/95 backdrop-blur-xl max-h-[90vh] overflow-y-auto">
         <AnimatePresence mode="wait">
           {!isSuccess ? (
             <motion.div
@@ -70,14 +70,14 @@ export function FeedbackModal({
             >
               <DialogHeader className="mb-4 sm:mb-6">
                 <div className="flex items-center gap-3 mb-2">
-                  <div className="size-10 rounded-xl bg-indigo-500/20 flex items-center justify-center shrink-0">
-                    <MaterialIcon name="chat_bubble" className="text-indigo-400" size={22} />
+                  <div className="size-10 rounded-none bg-amber-500/20 flex items-center justify-center shrink-0">
+                    <MaterialIcon name="chat_bubble" className="text-amber-400" size={22} />
                   </div>
                   <div className="min-w-0">
                     <DialogTitle className="text-lg sm:text-xl font-bold tracking-tight text-white font-heading">
                       Help Us Evolve
                     </DialogTitle>
-                    <DialogDescription className="text-slate-400 text-xs sm:text-sm">
+                    <DialogDescription className="text-stone-400 text-xs sm:text-sm">
                       Your feedback directly shapes the future of GitScope.
                     </DialogDescription>
                   </div>
@@ -86,7 +86,7 @@ export function FeedbackModal({
 
               <div className="space-y-4 sm:space-y-6">
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 sm:mb-3 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2 sm:mb-3 block">
                     Category
                   </label>
                   <div className="grid grid-cols-2 gap-2">
@@ -96,13 +96,13 @@ export function FeedbackModal({
                         type="button"
                         onClick={() => setCategory(c.id)}
                         className={cn(
-                          "flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-xl border text-xs sm:text-sm font-semibold transition-all text-left",
+                          "flex items-center gap-2 sm:gap-3 p-2 sm:p-3 rounded-none border text-xs sm:text-sm font-semibold transition-all text-left",
                           category === c.id 
-                            ? "bg-indigo-500/10 border-indigo-500/50 text-indigo-400 shadow-[0_0_15px_rgba(99,102,241,0.1)]" 
-                            : "bg-slate-800/40 border-white/5 text-slate-400 hover:bg-slate-800/80 hover:border-white/10"
+                            ? "bg-amber-500/10 border-amber-500/50 text-amber-400 shadow-[0_0_15px_rgba(245,158,11,0.1)]" 
+                            : "bg-muted/30 border-border text-muted-foreground hover:bg-muted/60 hover:border-border"
                         )}
                       >
-                        <MaterialIcon name={c.icon} size={16} className={cn(category === c.id ? "text-indigo-400" : "text-slate-500")} />
+                        <MaterialIcon name={c.icon} size={16} className={cn(category === c.id ? "text-amber-400" : "text-stone-500")} />
                         <span className="truncate">{c.label}</span>
                       </button>
                     ))}
@@ -110,14 +110,14 @@ export function FeedbackModal({
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2 sm:mb-3 block">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-stone-500 mb-2 sm:mb-3 block">
                     Your Insight
                   </label>
                   <Textarea
                     placeholder="Tell us what's on your mind..."
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
-                    className="min-h-[100px] sm:min-h-[120px] bg-slate-800/40 border-white/5 focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/20 rounded-xl text-white resize-none text-sm"
+                    className="min-h-[100px] sm:min-h-[120px] bg-muted/30 border-border focus:border-amber-500/50 focus:ring-1 focus:ring-amber-500/20 resize-none text-sm"
                   />
                 </div>
               </div>
@@ -126,14 +126,14 @@ export function FeedbackModal({
                 <Button 
                   variant="ghost" 
                   onClick={() => onOpenChange(false)}
-                  className="text-slate-400 hover:text-white w-full sm:w-auto"
+                  className="text-stone-400 hover:text-white w-full sm:w-auto"
                 >
                   Cancel
                 </Button>
                 <Button 
                   onClick={handleSubmit} 
                   disabled={isSubmitting || !message.trim()}
-                  className="bg-indigo-600 hover:bg-indigo-500 text-white min-w-[120px] transition-all active:scale-[0.98] w-full sm:w-auto"
+                  className="bg-amber-600 hover:bg-amber-500 text-white min-w-[120px] transition-all active:scale-[0.98] w-full sm:w-auto"
                 >
                   {isSubmitting ? (
                     <motion.div
@@ -152,11 +152,11 @@ export function FeedbackModal({
               animate={{ opacity: 1, scale: 1 }}
               className="p-6 sm:p-12 text-center"
             >
-              <div className="size-12 sm:size-16 bg-emerald-500/20 rounded-2xl flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <div className="size-12 sm:size-16 bg-emerald-500/20 rounded-none flex items-center justify-center mx-auto mb-4 sm:mb-6">
                 <MaterialIcon name="verified" className="text-emerald-400" size={24} />
               </div>
               <h3 className="text-xl sm:text-2xl font-heading font-black text-white mb-2 tracking-tight">Received!</h3>
-              <p className="text-slate-400 text-sm">Our engineering team has intercepted your transmission.</p>
+              <p className="text-stone-400 text-sm">Our engineering team has intercepted your transmission.</p>
               <p className="text-[10px] uppercase font-black tracking-widest text-emerald-400/50 mt-6 sm:mt-8">Transmitting Data... 100%</p>
             </motion.div>
           )}

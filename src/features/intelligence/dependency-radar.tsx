@@ -82,7 +82,7 @@ function SupplyChainBadge({ risk }: { risk: DepAnalysis["supplyChainRisk"] }) {
   };
   const m = map[risk];
   return (
-    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider", m.bg, m.border, m.color)}>
+    <span className={cn("inline-flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-[10px] font-black uppercase tracking-wider", m.bg, m.border, m.color)}>
       <MaterialIcon name={m.icon} size={13} />
       {m.label}
     </span>
@@ -208,9 +208,9 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-48 gap-6 animate-pulse bg-surface-container/10 rounded-3xl border border-dashed border-outline-variant/10">
-        <div className="size-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-          <MaterialIcon name="scatter_plot" size={32} className="text-indigo-500/30" />
+      <div className="flex flex-col items-center justify-center py-48 gap-6 animate-pulse bg-surface-container/10 rounded-none border border-dashed border-outline-variant/10">
+        <div className="size-16 rounded-none bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+          <MaterialIcon name="scatter_plot" size={32} className="text-amber-500/30" />
         </div>
         <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">Mapping Dependency Ecosystem</p>
       </div>
@@ -219,7 +219,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
 
   if (!data || data.nodes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/10 rounded-3xl border-2 border-dashed border-outline-variant/10">
+      <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/10 rounded-none border-2 border-dashed border-outline-variant/10">
         <MaterialIcon name="hub" size={48} className="text-muted-foreground/10 mb-6" />
         <h4 className="text-xl font-bold">Dependency Map Unavailable</h4>
         <p className="text-sm text-muted-foreground/60 max-w-sm mx-auto mt-2 leading-relaxed">
@@ -248,7 +248,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
     <div className="space-y-5 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* ── Header with stats + actions ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-3xl bg-surface-container/20 border border-outline-variant/10">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-5 rounded-none bg-surface-container/20 border border-outline-variant/10">
         <div className="flex-1 space-y-1">
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
             <MaterialIcon name="radar" size={12} /> Dependency Radar
@@ -288,7 +288,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
           <button type="button" onClick={handleSecurityScan}
             disabled={scanState === "scanning" || libNodes.length === 0}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+              "flex items-center gap-2 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
               scanState === "scanning"
                 ? "bg-amber-500/10 text-amber-400/50 border border-amber-500/20 cursor-not-allowed"
                 : "bg-amber-500/10 border border-amber-500/20 text-amber-400 hover:bg-amber-500/20"
@@ -300,10 +300,10 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
           <button type="button" onClick={fetchAIAnalysis}
             disabled={aiState === "loading"}
             className={cn(
-              "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+              "flex items-center gap-2 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
               aiState === "loading"
-                ? "bg-violet-500/10 text-violet-400/50 border border-violet-500/20 cursor-not-allowed"
-                : "bg-violet-500 border-violet-500 text-white hover:bg-violet-600 shadow-md shadow-violet-500/20"
+                ? "bg-amber-500/10 text-amber-400/50 border border-amber-500/20 cursor-not-allowed"
+                : "bg-amber-500 border-amber-500 text-white hover:bg-amber-600 shadow-md shadow-amber-500/20"
             )}>
             <MaterialIcon name={aiState === "loading" ? "hourglass_top" : "psychology"} size={13}
               className={aiState === "loading" ? "animate-spin" : ""} />
@@ -313,7 +313,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
       </div>
 
       {/* ── View tabs ── */}
-      <div className="flex gap-1 p-1 bg-surface-container/30 rounded-2xl border border-outline-variant/10">
+      <div className="flex gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10">
         {[
           { id: "deps" as const, label: "Dependencies", icon: "account_tree", count: libNodes.length },
           { id: "vulns" as const, label: "Vulnerabilities", icon: "security", count: scanResults.length, badge: criticalCount > 0 ? criticalCount : undefined },
@@ -321,8 +321,8 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
         ].map((tab) => (
           <button key={tab.id} type="button" onClick={() => setActiveView(tab.id)}
             className={cn(
-              "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all",
-              activeView === tab.id ? "bg-indigo-500 text-white shadow-md" : "text-muted-foreground/60 hover:text-foreground"
+              "flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-none text-[9px] font-black uppercase tracking-wider transition-all",
+              activeView === tab.id ? "bg-amber-500 text-white shadow-md" : "text-muted-foreground/60 hover:text-foreground"
             )}>
             <MaterialIcon name={tab.icon} size={12} />
             {tab.label}
@@ -346,9 +346,9 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
             <div className="flex gap-1.5 flex-wrap">
               <button type="button" onClick={() => setSelectedRepo(null)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[9px] font-black transition-all",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-[9px] font-black transition-all",
                   selectedRepo === null
-                    ? "bg-indigo-500 text-white border-indigo-500"
+                    ? "bg-amber-500 text-white border-amber-500"
                     : "bg-surface-container/30 border-outline-variant/10 text-muted-foreground/60 hover:text-foreground"
                 )}>
                 <MaterialIcon name="hub" size={11} /> All repos
@@ -356,9 +356,9 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
               {repoNodes.map((n) => (
                 <button key={n.id} type="button" onClick={() => setSelectedRepo(n.id)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[9px] font-black transition-all",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-[9px] font-black transition-all",
                     selectedRepo === n.id
-                      ? "bg-indigo-500 text-white border-indigo-500"
+                      ? "bg-amber-500 text-white border-amber-500"
                       : "bg-surface-container/30 border-outline-variant/10 text-muted-foreground/60 hover:text-foreground"
                   )}>
                   <MaterialIcon name="folder_zip" size={11} />
@@ -378,7 +378,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
               return (
                 <div key={libId}
                   className={cn(
-                    "flex items-center gap-2.5 px-3 py-2.5 rounded-xl border transition-all",
+                    "flex items-center gap-2.5 px-3 py-2.5 rounded-none border transition-all",
                     vuln
                       ? `${ss!.bg} ${ss!.border}`
                       : "bg-surface-container/20 border-outline-variant/8 hover:border-outline-variant/20"
@@ -398,7 +398,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
               );
             })}
             {activeLibs.length > 48 && (
-              <div className="flex items-center justify-center px-3 py-2.5 rounded-xl border border-outline-variant/8 text-[10px] text-muted-foreground/40">
+              <div className="flex items-center justify-center px-3 py-2.5 rounded-none border border-outline-variant/8 text-[10px] text-muted-foreground/40">
                 +{activeLibs.length - 48} more
               </div>
             )}
@@ -410,11 +410,11 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
       {activeView === "vulns" && (
         <div className="space-y-4 animate-in fade-in duration-200">
           {scanState === "idle" && (
-            <div className="flex flex-col items-center gap-4 py-12 text-center rounded-2xl border-2 border-dashed border-outline-variant/10">
+            <div className="flex flex-col items-center gap-4 py-12 text-center rounded-none border-2 border-dashed border-outline-variant/10">
               <MaterialIcon name="security" size={36} className="text-muted-foreground/20" />
               <div>
                 <p className="text-sm font-black text-foreground/70">No scan run yet</p>
-                <p className="text-xs text-muted-foreground/40 mt-1">Click "Security Scan" to query the npm advisory database for known CVEs in your dependencies.</p>
+                <p className="text-xs text-muted-foreground/40 mt-1">Click &quot;Security Scan&quot; to query the npm advisory database for known CVEs in your dependencies.</p>
               </div>
             </div>
           )}
@@ -427,7 +427,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
           )}
 
           {scanError && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+            <div className="flex items-center gap-2 p-3 rounded-none bg-red-500/5 border border-red-500/10">
               <MaterialIcon name="error" size={14} className="shrink-0 text-red-400" />
               <p className="text-xs text-red-400">{scanError}</p>
             </div>
@@ -441,9 +441,9 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
                   { label: "Critical", count: criticalCount, color: "#ef4444" },
                   { label: "High",     count: highCount,     color: "#f97316" },
                   { label: "Moderate", count: modCount,      color: "#f59e0b" },
-                  { label: "Total",    count: scanResults.length, color: "#6366f1" },
+                  { label: "Total",    count: scanResults.length, color: "#f59e0b" },
                 ].map((s) => (
-                  <div key={s.label} className="p-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 text-center space-y-1">
+                  <div key={s.label} className="p-3 rounded-none bg-surface-container/30 border border-outline-variant/10 text-center space-y-1">
                     <p className="text-xl font-black" style={{ color: s.color }}>{s.count}</p>
                     <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">{s.label}</p>
                     <RiskBar count={s.count} max={maxSevCount} color={s.color} />
@@ -452,7 +452,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
               </div>
 
               {scanResults.length === 0 ? (
-                <div className="flex items-center gap-3 p-5 rounded-2xl bg-emerald-500/5 border border-emerald-500/15">
+                <div className="flex items-center gap-3 p-5 rounded-none bg-emerald-500/5 border border-emerald-500/15">
                   <MaterialIcon name="verified_user" size={24} className="text-emerald-400 shrink-0" />
                   <div>
                     <p className="text-sm font-black text-emerald-400">All clear</p>
@@ -471,7 +471,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
                       const ss = sevStyle(topSev);
                       const isExpanded = expandedVuln === vuln.package;
                       return (
-                        <div key={vuln.package} className={cn("rounded-2xl border overflow-hidden", ss.bg, ss.border)}>
+                        <div key={vuln.package} className={cn("rounded-none border overflow-hidden", ss.bg, ss.border)}>
                           <button type="button" className="w-full flex items-center gap-3 px-4 py-3 text-left"
                             onClick={() => setExpandedVuln(isExpanded ? null : vuln.package)}>
                             <span className={cn("size-2 rounded-full shrink-0", ss.dot)} />
@@ -503,7 +503,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
                                       </div>
                                     )}
                                     <a href={adv.url} target="_blank" rel="noopener noreferrer"
-                                      className="inline-flex items-center gap-1 text-[10px] font-black text-indigo-400 hover:underline">
+                                      className="inline-flex items-center gap-1 text-[10px] font-black text-amber-400 hover:underline">
                                       View advisory <MaterialIcon name="open_in_new" size={10} />
                                     </a>
                                   </div>
@@ -525,12 +525,12 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
       {activeView === "ai" && (
         <div className="space-y-4 animate-in fade-in duration-200">
           {aiState === "idle" && (
-            <div className="flex flex-col items-center gap-4 py-12 text-center rounded-2xl border-2 border-dashed border-outline-variant/10">
+            <div className="flex flex-col items-center gap-4 py-12 text-center rounded-none border-2 border-dashed border-outline-variant/10">
               <MaterialIcon name="psychology" size={36} className="text-muted-foreground/20" />
               <div>
                 <p className="text-sm font-black text-foreground/70">No AI analysis yet</p>
                 <p className="text-xs text-muted-foreground/40 mt-1 max-w-xs mx-auto">
-                  Click "AI Analysis" to get a structured dependency risk assessment, specific vulnerability remediation steps, and hygiene recommendations.
+                  Click &quot;AI Analysis&quot; to get a structured dependency risk assessment, specific vulnerability remediation steps, and hygiene recommendations.
                 </p>
               </div>
             </div>
@@ -538,13 +538,13 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
 
           {aiState === "loading" && (
             <div className="flex items-center gap-3 py-8 justify-center animate-pulse">
-              <div className="size-4 rounded-full border-2 border-violet-500 border-t-transparent animate-spin" />
+              <div className="size-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
               <span className="text-xs text-muted-foreground/50">Evaluating dependency risk surface and supply chain posture…</span>
             </div>
           )}
 
           {aiState === "error" && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+            <div className="flex items-center gap-2 p-3 rounded-none bg-red-500/5 border border-red-500/10">
               <MaterialIcon name="error" size={14} className="shrink-0 text-red-400" />
               <p className="text-[11px] text-red-400">{aiError}</p>
             </div>
@@ -553,22 +553,22 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
           {aiState === "done" && analysis && (
             <div className="space-y-4 animate-in fade-in duration-400">
               {/* Risk header */}
-              <div className="flex items-center justify-between p-4 rounded-2xl bg-surface-container/30 border border-outline-variant/10">
+              <div className="flex items-center justify-between p-4 rounded-none bg-surface-container/30 border border-outline-variant/10">
                 <div className="space-y-0.5">
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Supply Chain Risk Level</p>
                   <SupplyChainBadge risk={analysis.supplyChainRisk} />
                 </div>
                 <button type="button" onClick={fetchAIAnalysis}
-                  className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground/40 hover:text-violet-400 transition-colors">
+                  className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground/40 hover:text-amber-400 transition-colors">
                   <MaterialIcon name="refresh" size={12} /> Re-analyze
                 </button>
               </div>
 
               {/* Summary */}
-              <div className="flex items-start gap-3 p-4 rounded-2xl bg-violet-500/5 border border-violet-500/10">
-                <MaterialIcon name="summarize" size={16} className="text-violet-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/5 border border-amber-500/10">
+                <MaterialIcon name="summarize" size={16} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-violet-400/70 mb-1">Risk Assessment</p>
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/70 mb-1">Risk Assessment</p>
                   <p className="text-xs text-foreground/75 leading-relaxed">{analysis.riskSummary}</p>
                 </div>
               </div>
@@ -584,7 +584,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
                       planned:   "bg-surface-container border-outline-variant/20 text-muted-foreground/60",
                     }[v.urgency];
                     return (
-                      <div key={i} className="p-4 rounded-2xl bg-surface-container/30 border border-outline-variant/8 space-y-2">
+                      <div key={i} className="p-4 rounded-none bg-surface-container/30 border border-outline-variant/8 space-y-2">
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-xs font-black text-foreground/85">{v.pkg}</span>
                           <span className={cn("text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border ml-auto", urgencyStyle)}>
@@ -603,8 +603,8 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
                 <div className="space-y-2">
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">Dependency Hygiene</p>
                   {analysis.hygiene.map((h, i) => (
-                    <div key={i} className="flex items-start gap-3 p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/8">
-                      <MaterialIcon name="lightbulb" size={14} className="text-indigo-400/70 shrink-0 mt-0.5" />
+                    <div key={i} className="flex items-start gap-3 p-4 rounded-none bg-surface-container/20 border border-outline-variant/8">
+                      <MaterialIcon name="lightbulb" size={14} className="text-amber-400/70 shrink-0 mt-0.5" />
                       <div className="space-y-0.5">
                         <p className="text-xs font-semibold text-foreground/80">{h.recommendation}</p>
                         <p className="text-[10px] text-muted-foreground/50 flex items-center gap-1">
@@ -619,7 +619,7 @@ Include up to 5 topVulns (from most to least urgent) and 4 hygiene recommendatio
 
               {/* License note */}
               {analysis.licenseNote && (
-                <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/10">
+                <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/5 border border-amber-500/10">
                   <MaterialIcon name="gavel" size={14} className="text-amber-400 shrink-0 mt-0.5" />
                   <div>
                     <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/70 mb-1">License Considerations</p>

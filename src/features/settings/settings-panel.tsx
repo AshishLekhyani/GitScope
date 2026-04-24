@@ -670,9 +670,9 @@ export function SettingsPanel() {
   const hasCredentials = isProviderConnected("credentials") || hasPassword;
 
   const themeOptions: { value: ThemeOption; label: string; bgClass: string }[] = [
-    { value: "light", label: "Light", bgClass: "bg-slate-200" },
-    { value: "dark", label: "Deep Ocean", bgClass: "bg-[#0b1326]" },
-    { value: "system", label: "System", bgClass: "bg-linear-to-br from-slate-200 to-[#0b1326]" },
+    { value: "light", label: "Light", bgClass: "bg-stone-200" },
+    { value: "dark", label: "Dark", bgClass: "bg-[#100f0d]" },
+    { value: "system", label: "System", bgClass: "bg-linear-to-br from-stone-200 to-[#100f0d]" },
   ];
 
   // ── BYOK handlers ────────────────────────────────────────────────────────────
@@ -731,14 +731,14 @@ export function SettingsPanel() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="mb-8 flex gap-1 rounded-xl border border-outline-variant/15 bg-surface-container p-1">
+      <div className="mb-8 flex gap-1 rounded-none border border-outline-variant/15 bg-surface-container p-1">
         {TABS.map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex flex-1 items-center justify-center gap-2 rounded-lg py-2.5 text-xs font-bold transition-all",
+              "flex flex-1 items-center justify-center gap-2 rounded-none py-2.5 text-xs font-bold transition-all",
               activeTab === tab.id
                 ? "bg-primary text-primary-foreground shadow"
                 : "text-muted-foreground hover:text-foreground hover:bg-surface-container-high"
@@ -753,14 +753,14 @@ export function SettingsPanel() {
       {/* ── Profile Tab ── */}
       {activeTab === "profile" && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-5">Public Profile</h3>
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
               {/* avatar */}
               <div className="shrink-0 space-y-4 w-full sm:w-auto">
                 {/* Preview */}
                 <div className="flex items-center gap-4">
-                  <div className="flex size-20 items-center justify-center overflow-hidden rounded-2xl bg-linear-to-br from-primary/30 to-primary-container/30 text-3xl font-bold text-primary border border-outline-variant/15 shrink-0">
+                  <div className="flex size-20 items-center justify-center overflow-hidden rounded-none bg-linear-to-br from-primary/30 to-primary-container/30 text-3xl font-bold text-primary border border-outline-variant/15 shrink-0">
                     {(avatarUrl || (!avatarCleared && session?.user?.image)) ? (
                       <Image
                         src={avatarUrl || session!.user!.image!}
@@ -779,7 +779,7 @@ export function SettingsPanel() {
                     {session?.user?.image && (
                       <button
                         type="button"
-                        className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors"
+                        className="flex items-center gap-1.5 text-[10px] font-bold text-amber-400 hover:text-amber-300 transition-colors"
                         onClick={() => { dispatch(setAvatarUrl(session.user!.image!)); setAvatarCleared(false); setDirty(true); }}
                       >
                         <MaterialIcon name="sync" size={12} />
@@ -820,8 +820,8 @@ export function SettingsPanel() {
                         type="button"
                         onClick={() => { dispatch(setAvatarUrl(src)); setAvatarUrlInput(src); setAvatarCleared(false); setDirty(true); }}
                         className={cn(
-                          "size-9 rounded-lg overflow-hidden border-2 transition-all hover:scale-110",
-                          (avatarUrl === src) ? "border-indigo-500 shadow-lg shadow-indigo-500/20" : "border-transparent hover:border-outline-variant/40"
+                          "size-9 rounded-none overflow-hidden border-2 transition-all hover:scale-110",
+                          (avatarUrl === src) ? "border-amber-500 shadow-lg shadow-amber-500/20" : "border-transparent hover:border-outline-variant/40"
                         )}
                         title="Select this avatar"
                       >
@@ -843,7 +843,7 @@ export function SettingsPanel() {
                       placeholder="https://example.com/avatar.png"
                       value={avatarUrlInput}
                       onChange={(e) => setAvatarUrlInput(e.target.value)}
-                      className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-1.5 text-xs text-foreground focus:border-primary/50 focus:outline-none"
+                      className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-1.5 text-xs text-foreground focus:border-primary/50 focus:outline-none"
                     />
                     <button
                       type="button"
@@ -855,7 +855,7 @@ export function SettingsPanel() {
                           setDirty(true);
                         }
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 text-xs font-bold hover:bg-indigo-500/20 transition-colors"
+                      className="px-3 py-1.5 rounded-none bg-amber-500/10 border border-amber-500/20 text-amber-400 text-xs font-bold hover:bg-amber-500/20 transition-colors"
                     >
                       Apply
                     </button>
@@ -875,7 +875,7 @@ export function SettingsPanel() {
                       value={displayName}
                       placeholder="Your Name"
                       onChange={(e) => { dispatch(updateProfile({ displayName: e.target.value })); setDirty(true); }}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
                     />
                   </div>
                   <div>
@@ -887,7 +887,7 @@ export function SettingsPanel() {
                       value={gitHandle}
                       placeholder="@username"
                       onChange={(e) => { dispatch(updateProfile({ gitHandle: e.target.value })); setDirty(true); }}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
                     />
                   </div>
                 </div>
@@ -901,7 +901,7 @@ export function SettingsPanel() {
                     placeholder="Tell us about your engineering background..."
                     onChange={(e) => { dispatch(updateProfile({ bio: e.target.value })); setDirty(true); }}
                     rows={3}
-                    className="w-full resize-none rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    className="w-full resize-none rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
                   />
                 </div>
               </div>
@@ -914,7 +914,7 @@ export function SettingsPanel() {
       {activeTab === "account" && (
         <div className="space-y-6">
           {/* Identity */}
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-5">Identity & Sign-In</h3>
             <div className="space-y-5">
               <div>
@@ -927,7 +927,7 @@ export function SettingsPanel() {
                   title="Your account email address"
                   value={session?.user?.email ?? ""}
                   readOnly
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-highest px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
+                  className="w-full rounded-none border border-outline-variant/20 bg-surface-container-highest px-3 py-2 text-sm text-muted-foreground cursor-not-allowed"
                 />
                 <p className="mt-1 font-mono text-[9px] text-muted-foreground">Your primary email cannot be changed here.</p>
               </div>
@@ -939,22 +939,22 @@ export function SettingsPanel() {
                 {/* Active connections */}
                 <div className="flex flex-wrap gap-2 mb-5">
                   {(hasCredentials) && (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-outline-variant/20 bg-surface-container-highest px-3 py-1.5 text-xs font-bold text-foreground">
+                    <span className="inline-flex items-center gap-2 rounded-none border border-outline-variant/20 bg-surface-container-highest px-3 py-1.5 text-xs font-bold text-foreground">
                       <MaterialIcon name="lock" size={14} /> Email & Password
                     </span>
                   )}
                   {hasGithub && (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
+                    <span className="inline-flex items-center gap-2 rounded-none border border-emerald-500/30 bg-emerald-500/10 px-3 py-1.5 text-xs font-bold text-emerald-600 dark:text-emerald-400">
                       <MaterialIcon name="check_circle" size={14} /> GitHub Connected
                     </span>
                   )}
                   {hasGoogle && (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-1.5 text-xs font-bold text-blue-600 dark:text-blue-400">
+                    <span className="inline-flex items-center gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
                       <MaterialIcon name="check_circle" size={14} /> Google Connected
                     </span>
                   )}
                   {!hasCredentials && (
-                    <span className="inline-flex items-center gap-2 rounded-lg border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
+                    <span className="inline-flex items-center gap-2 rounded-none border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
                       <MaterialIcon name="info" size={14} /> No password set
                     </span>
                   )}
@@ -962,10 +962,10 @@ export function SettingsPanel() {
 
                 {/* GitHub connect card */}
                 {!hasGithub && (
-                  <div className="rounded-xl border border-indigo-500/20 bg-linear-to-br from-indigo-500/5 to-purple-500/5 p-4 mb-3">
+                  <div className="rounded-none border border-amber-500/20 bg-linear-to-br from-amber-500/5 to-amber-500/5 p-4 mb-3">
                     <div className="flex items-start gap-3">
-                      <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <MaterialIcon name="hub" size={20} className="text-indigo-500" />
+                      <div className="size-9 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <MaterialIcon name="hub" size={20} className="text-amber-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-foreground mb-0.5">Connect GitHub</p>
@@ -974,7 +974,7 @@ export function SettingsPanel() {
                         </p>
                         <div className="flex flex-wrap gap-1.5 mb-3">
                           {["Intelligence Hub", "Activity Feed", "Org Pulse", "DORA Metrics"].map(f => (
-                            <span key={f} className="text-[10px] font-bold bg-indigo-500/10 text-indigo-500 px-2 py-0.5 rounded-full border border-indigo-500/20">{f}</span>
+                            <span key={f} className="text-[10px] font-bold bg-amber-500/10 text-amber-500 px-2 py-0.5 rounded-full border border-amber-500/20">{f}</span>
                           ))}
                         </div>
                         <button
@@ -984,7 +984,7 @@ export function SettingsPanel() {
                               callbackUrl: "/settings?tab=account&connected=github",
                             })
                           }
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 active:scale-[0.98] transition-all"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-none bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 active:scale-[0.98] transition-all"
                         >
                           <MaterialIcon name="hub" size={14} />
                           Connect GitHub Account
@@ -996,10 +996,10 @@ export function SettingsPanel() {
 
                 {/* Google connect card */}
                 {!hasGoogle && (
-                  <div className="rounded-xl border border-blue-500/20 bg-linear-to-br from-blue-500/5 to-cyan-500/5 p-4">
+                  <div className="rounded-none border border-amber-500/20 bg-linear-to-br from-amber-500/5 to-teal-500/5 p-4">
                     <div className="flex items-start gap-3">
-                      <div className="size-9 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <MaterialIcon name="person" size={20} className="text-blue-500" />
+                      <div className="size-9 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <MaterialIcon name="person" size={20} className="text-amber-500" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-bold text-foreground mb-0.5">Connect Google</p>
@@ -1013,7 +1013,7 @@ export function SettingsPanel() {
                               callbackUrl: "/settings?tab=account&connected=google",
                             })
                           }
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-500 text-white text-xs font-bold hover:bg-blue-600 active:scale-[0.98] transition-all"
+                          className="inline-flex items-center gap-2 px-4 py-2 rounded-none bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 active:scale-[0.98] transition-all"
                         >
                           <MaterialIcon name="person" size={14} />
                           Connect Google Account
@@ -1027,7 +1027,7 @@ export function SettingsPanel() {
           </div>
 
           {/* Password Management */}
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-1">
               {hasPassword ? "Change Password" : "Set a Password"}
             </h3>
@@ -1047,7 +1047,7 @@ export function SettingsPanel() {
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
                   />
                 </div>
               )}
@@ -1060,7 +1060,7 @@ export function SettingsPanel() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Minimum 8 characters"
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
                 />
               </div>
               <div>
@@ -1072,13 +1072,13 @@ export function SettingsPanel() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Repeat new password"
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm focus:border-primary/50 focus:outline-none"
                 />
               </div>
               {passwordMsg && (
                 <div
                   className={cn(
-                    "rounded-lg px-3 py-2 text-xs font-medium border",
+                    "rounded-none px-3 py-2 text-xs font-medium border",
                     passwordMsg.type === "success"
                       ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
                       : "bg-destructive/10 text-destructive border-destructive/20"
@@ -1099,7 +1099,7 @@ export function SettingsPanel() {
           </div>
 
           {/* Session & Danger Zone */}
-          <div className="rounded-xl border border-destructive/20 bg-destructive/5 p-6">
+          <div className="rounded-none border border-destructive/20 bg-destructive/5 p-6">
             <h3 className="font-heading text-lg font-bold text-destructive mb-1">Danger Zone</h3>
             <p className="text-xs text-muted-foreground mb-5">These actions are permanent. Proceed with caution.</p>
             <div className="flex flex-wrap gap-3">
@@ -1124,7 +1124,7 @@ export function SettingsPanel() {
             </div>
 
             {showDeleteConfirm && (
-              <div className="mt-5 rounded-lg border border-destructive/30 bg-destructive/10 p-4 space-y-3">
+              <div className="mt-5 rounded-none border border-destructive/30 bg-destructive/10 p-4 space-y-3">
                 <p className="text-xs font-bold text-destructive">
                   This will permanently delete your account, all search history, notifications, and profile data. This cannot be undone.
                 </p>
@@ -1138,7 +1138,7 @@ export function SettingsPanel() {
                   placeholder={session?.user?.email ?? "your@email.com"}
                   value={deleteEmailInput}
                   onChange={(e) => setDeleteEmailInput(e.target.value)}
-                  className="w-full rounded-lg border border-destructive/30 bg-surface-container-lowest px-3 py-2 text-sm focus:border-destructive focus:outline-none"
+                  className="w-full rounded-none border border-destructive/30 bg-surface-container-lowest px-3 py-2 text-sm focus:border-destructive focus:outline-none"
                 />
                 <div className="flex gap-2">
                   <Button
@@ -1179,7 +1179,7 @@ export function SettingsPanel() {
       {/* ── Appearance Tab ── */}
       {activeTab === "appearance" && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-5">Color Theme</h3>
             <div className="flex flex-wrap gap-4">
               {themeOptions.map((opt) => (
@@ -1189,13 +1189,13 @@ export function SettingsPanel() {
                   aria-label={`Set ${opt.label} theme`}
                   onClick={() => setTheme(opt.value)}
                   className={cn(
-                    "flex flex-col items-center gap-2 rounded-lg border-2 p-3 transition-all",
+                    "flex flex-col items-center gap-2 rounded-none border-2 p-3 transition-all",
                     mounted && currentTheme === opt.value
                       ? "border-primary bg-primary/5"
                       : "border-outline-variant/20 hover:border-outline-variant/40"
                   )}
                 >
-                  <div className={cn("flex size-16 items-center justify-center rounded-lg", opt.bgClass)}>
+                  <div className={cn("flex size-16 items-center justify-center rounded-none", opt.bgClass)}>
                     {mounted && currentTheme === opt.value && (
                       <span className="size-2 rounded-full bg-primary" />
                     )}
@@ -1211,7 +1211,7 @@ export function SettingsPanel() {
             )}
           </div>
 
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-2">Font & Density</h3>
             <p className="text-xs text-muted-foreground mb-5">
               GitScope uses a monospace + heading font combination. Compact mode reduces spacing for dense screens.
@@ -1234,7 +1234,7 @@ export function SettingsPanel() {
       {/* ── Workspace Tab ── */}
       {activeTab === "workspace" && (
         <div className="space-y-6">
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <h3 className="font-heading text-lg font-bold text-foreground mb-5">Notifications & Sync</h3>
             <div className="space-y-5">
               <div className="flex items-center justify-between gap-4">
@@ -1271,7 +1271,7 @@ export function SettingsPanel() {
           </div>
 
           {/* API Health */}
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-heading text-lg font-bold text-foreground">API Health</h3>
               <span className={cn("size-2.5 rounded-full", rateLimit ? "bg-tertiary" : "bg-amber-400 animate-pulse")} />
@@ -1296,7 +1296,7 @@ export function SettingsPanel() {
               </div>
             </div>
 
-            <div className="mt-4 rounded-lg bg-surface-container-lowest p-4 space-y-3">
+            <div className="mt-4 rounded-none bg-surface-container-lowest p-4 space-y-3">
               <div className="flex items-center justify-between font-mono text-[9px] tracking-widest text-muted-foreground uppercase">
                 <span>API Latency</span>
                 <span className={cn(latency > 500 ? "text-amber-400" : "text-tertiary")}>
@@ -1347,7 +1347,7 @@ export function SettingsPanel() {
 	          </div>
 
 	          {/* AI Plan & Usage */}
-	          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-4">
+	          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-4">
 	            <div className="flex items-center justify-between gap-3">
 	              <div>
 	                <h3 className="font-heading text-lg font-bold text-foreground">AI Plan & Usage</h3>
@@ -1397,21 +1397,21 @@ export function SettingsPanel() {
 	            </div>
 
 	            {aiOpsError && (
-	              <div className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+	              <div className="rounded-none border border-destructive/20 bg-destructive/10 px-3 py-2 text-xs text-destructive">
 	                {aiOpsError}
 	              </div>
 	            )}
 
 	            <div className="grid gap-3 md:grid-cols-3">
-	              <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+	              <div className="rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
 	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Resolved Plan</p>
 	                <p className="text-sm font-semibold mt-1 capitalize">{tierInfo?.resolvedPlan ?? "free"}</p>
 	              </div>
-	              <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+	              <div className="rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
 	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Stored Plan</p>
 	                <p className="text-sm font-semibold mt-1 capitalize">{tierInfo?.storedPlan ?? "free"}</p>
 	              </div>
-	              <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
+	              <div className="rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2">
 	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Calls This Window</p>
 	                <p className="text-sm font-semibold mt-1">{usageSnapshot?.total ?? 0}</p>
 	              </div>
@@ -1423,7 +1423,7 @@ export function SettingsPanel() {
 	              </p>
 	            )}
 
-	            <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3 space-y-2">
+	            <div className="rounded-none border border-outline-variant/20 bg-surface-container-lowest p-3 space-y-2">
 	              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Usage By Feature</p>
 	              {usageSnapshot && Object.keys(usageSnapshot.byFeature).length > 0 ? (
 	                <div className="grid gap-1 md:grid-cols-2">
@@ -1441,14 +1441,14 @@ export function SettingsPanel() {
 	              )}
 	            </div>
 
-	            <div className="rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3 space-y-2">
+	            <div className="rounded-none border border-outline-variant/20 bg-surface-container-lowest p-3 space-y-2">
 	              <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Recent AI Jobs</p>
 	              {jobHistory.length === 0 ? (
 	                <p className="text-xs text-muted-foreground">No jobs yet.</p>
 	              ) : (
 	                <div className="space-y-2">
 	                  {jobHistory.slice(0, 6).map((job) => (
-	                    <div key={job.id} className="flex items-center justify-between rounded-md border border-outline-variant/15 px-2 py-1.5 text-xs">
+	                    <div key={job.id} className="flex items-center justify-between rounded-none border border-outline-variant/15 px-2 py-1.5 text-xs">
 	                      <div className="min-w-0">
 	                        <p className="font-mono truncate">{job.id}</p>
 	                        <p className="text-muted-foreground capitalize">{job.type} · {job.plan}</p>
@@ -1468,8 +1468,8 @@ export function SettingsPanel() {
 	            </div>
 
               {tierInfo?.canManage && (
-                <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 p-3 space-y-3">
-                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-indigo-500">
+                <div className="rounded-none border border-amber-500/20 bg-amber-500/5 p-3 space-y-3">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-500">
                     Tier Override (Admin)
                   </p>
                   <div className="grid gap-2 md:grid-cols-[1fr_180px_auto]">
@@ -1478,13 +1478,13 @@ export function SettingsPanel() {
                       value={tierTargetUserId}
                       onChange={(e) => setTierTargetUserId(e.target.value)}
                       placeholder="Target user id (optional, blank = me)"
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
                     />
                     <select
                       aria-label="Target plan"
                       value={tierTargetPlan}
                       onChange={(e) => setTierTargetPlan(e.target.value as AiPlan)}
-                      className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
                     >
                       <option value="free">Free</option>
                       <option value="professional">Professional</option>
@@ -1512,7 +1512,7 @@ export function SettingsPanel() {
 
 	          {/* Personal GitHub API Key */}
           {!hasGithub && (
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6">
               <h3 className="font-heading text-lg font-bold text-foreground mb-1">Personal GitHub Token</h3>
 	              <p className="text-xs text-muted-foreground mb-5 leading-relaxed">
 	                Add your own{" "}
@@ -1521,7 +1521,7 @@ export function SettingsPanel() {
 	                </a>{" "}
 	                to raise the API rate limit from 60 to 5,000 req/hr without connecting GitHub OAuth. Tokens are stored encrypted and never exposed.
 	              </p>
-	              <div className="mb-5 rounded-lg border border-outline-variant/20 bg-surface-container-lowest p-3">
+	              <div className="mb-5 rounded-none border border-outline-variant/20 bg-surface-container-lowest p-3">
 	                <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-2">
 	                  Quick Setup
 	                </p>
@@ -1533,7 +1533,7 @@ export function SettingsPanel() {
 	              </div>
 	              {hasGithubApiKey ? (
                 <div className="space-y-3">
-                  <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                  <div className="flex items-center gap-2 rounded-none border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
                     <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
                     <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">Token active — rate limit boosted to 5,000 req/hr</span>
                   </div>
@@ -1560,7 +1560,7 @@ export function SettingsPanel() {
                     value={githubApiKeyInput}
                     onChange={(e) => setGithubApiKeyInput(e.target.value)}
                     placeholder="ghp_xxxxxxxxxxxxxxxxxxxx"
-                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none"
                   />
                   <Button
                     type="button"
@@ -1589,8 +1589,8 @@ export function SettingsPanel() {
 
           {/* Slack — Professional+ */}
           {tierInfo?.resolvedPlan === "free" ? (
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#4A154B]/10 border border-[#4A154B]/20">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-[#4A154B]/10 border border-[#4A154B]/20">
                 <svg viewBox="0 0 54 54" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M19.712 34.138a3.853 3.853 0 0 1-3.853 3.853 3.853 3.853 0 0 1-3.854-3.853 3.853 3.853 0 0 1 3.854-3.854h3.853v3.854z" fill="#E01E5A"/>
                   <path d="M21.587 34.138a3.853 3.853 0 0 1 3.853-3.854 3.853 3.853 0 0 1 3.854 3.854v9.634a3.853 3.853 0 0 1-3.854 3.853 3.853 3.853 0 0 1-3.853-3.853v-9.634z" fill="#E01E5A"/>
@@ -1606,14 +1606,14 @@ export function SettingsPanel() {
                 <p className="font-bold text-sm text-foreground">Slack Notifications</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Get scan alerts and PR reviews posted directly to Slack. Available on Professional plan and above.</p>
               </div>
-              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
                 <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
               </a>
             </div>
           ) : (
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-[#4A154B]/20 border border-[#4A154B]/30">
+              <div className="flex size-9 items-center justify-center rounded-none bg-[#4A154B]/20 border border-[#4A154B]/30">
                 <svg viewBox="0 0 54 54" width="20" height="20" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M19.712 34.138a3.853 3.853 0 0 1-3.853 3.853 3.853 3.853 0 0 1-3.854-3.853 3.853 3.853 0 0 1 3.854-3.854h3.853v3.854z" fill="#E01E5A"/>
                   <path d="M21.587 34.138a3.853 3.853 0 0 1 3.853-3.854 3.853 3.853 0 0 1 3.854 3.854v9.634a3.853 3.853 0 0 1-3.854 3.853 3.853 3.853 0 0 1-3.853-3.853v-9.634z" fill="#E01E5A"/>
@@ -1636,7 +1636,7 @@ export function SettingsPanel() {
               )}
             </div>
 
-            <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
               <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Setup Guide</p>
               <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
                 <li>In Slack: <strong className="text-foreground">Apps</strong> → search <em>Incoming Webhooks</em> → Add to Slack</li>
@@ -1647,7 +1647,7 @@ export function SettingsPanel() {
 
             {slackSaved ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-none border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
                   <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
                   <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">Webhook active — alerts will post to your Slack channel</span>
                 </div>
@@ -1668,7 +1668,7 @@ export function SettingsPanel() {
                   value={slackWebhook}
                   onChange={(e) => setSlackWebhook(e.target.value)}
                   placeholder="https://hooks.slack.com/services/T.../B.../..."
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-xs text-foreground focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-xs text-foreground focus:border-primary/50 focus:outline-none"
                 />
                 <Button type="button" size="sm" disabled={slackSaving || !slackWebhook.trim().startsWith("https://hooks.slack.com")} onClick={() => handleSaveSlack(false)} className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest">
                   {slackSaving ? "Saving..." : "Connect Slack"}
@@ -1681,8 +1681,8 @@ export function SettingsPanel() {
 
           {/* Discord — Professional+ */}
           {tierInfo?.resolvedPlan === "free" ? (
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-[#5865F2]/10 border border-[#5865F2]/20">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-[#5865F2]/10 border border-[#5865F2]/20">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="#5865F2" xmlns="http://www.w3.org/2000/svg">
                   <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                 </svg>
@@ -1691,14 +1691,14 @@ export function SettingsPanel() {
                 <p className="font-bold text-sm text-foreground">Discord Notifications</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Get scan alerts posted directly to your Discord server. Available on Professional plan and above.</p>
               </div>
-              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
                 <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
               </a>
             </div>
           ) : (
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-[#5865F2]/20 border border-[#5865F2]/30">
+              <div className="flex size-9 items-center justify-center rounded-none bg-[#5865F2]/20 border border-[#5865F2]/30">
                 <svg viewBox="0 0 24 24" width="20" height="20" fill="#5865F2" xmlns="http://www.w3.org/2000/svg">
                   <path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028 14.09 14.09 0 0 0 1.226-1.994.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/>
                 </svg>
@@ -1714,7 +1714,7 @@ export function SettingsPanel() {
               )}
             </div>
 
-            <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
               <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">Setup Guide</p>
               <ol className="list-decimal list-inside space-y-1 text-xs text-muted-foreground">
                 <li>In Discord: open your server settings → <strong className="text-foreground">Integrations</strong> → <strong className="text-foreground">Webhooks</strong></li>
@@ -1725,7 +1725,7 @@ export function SettingsPanel() {
 
             {discordSaved ? (
               <div className="space-y-3">
-                <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                <div className="flex items-center gap-2 rounded-none border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
                   <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
                   <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">Webhook active — scan alerts will post to your Discord channel</span>
                 </div>
@@ -1746,7 +1746,7 @@ export function SettingsPanel() {
                   value={discordWebhook}
                   onChange={(e) => setDiscordWebhook(e.target.value)}
                   placeholder="https://discord.com/api/webhooks/..."
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-xs text-foreground focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-xs text-foreground focus:border-primary/50 focus:outline-none"
                 />
                 <Button type="button" size="sm" disabled={discordSaving || !discordWebhook.trim().startsWith("https://discord.com/api/webhooks/")} onClick={() => handleSaveDiscord(false)} className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest">
                   {discordSaving ? "Saving..." : "Connect Discord"}
@@ -1759,23 +1759,23 @@ export function SettingsPanel() {
 
           {/* Weekly Digest — Professional+ */}
           {tierInfo?.resolvedPlan === "free" ? (
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                <MaterialIcon name="mail" size={18} className="text-indigo-400" />
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20">
+                <MaterialIcon name="mail" size={18} className="text-amber-400" />
               </div>
               <div className="flex-1">
                 <p className="font-bold text-sm text-foreground">Weekly Digest Email</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Fleet health summary every Monday morning. Available on Professional plan and above.</p>
               </div>
-              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
                 <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
               </a>
             </div>
           ) : (
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                <MaterialIcon name="mail" size={18} className="text-indigo-400" />
+              <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20">
+                <MaterialIcon name="mail" size={18} className="text-amber-400" />
               </div>
               <div className="flex-1">
                 <h3 className="font-heading text-lg font-bold text-foreground">Weekly Digest Email</h3>
@@ -1790,8 +1790,8 @@ export function SettingsPanel() {
 
             {weeklyDigest && (
               <div className="space-y-3 pl-12">
-                <div className="rounded-lg border border-indigo-500/20 bg-indigo-500/5 px-4 py-3 space-y-1">
-                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-indigo-400">What's Included</p>
+                <div className="rounded-none border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-1">
+                  <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400">What&apos;s Included</p>
                   <ul className="text-xs text-muted-foreground space-y-0.5 list-disc list-inside">
                     <li>Average fleet health score and week-over-week delta</li>
                     <li>Top performing repos and at-risk repos</li>
@@ -1824,22 +1824,22 @@ export function SettingsPanel() {
 
           {/* GitHub App — Team+ */}
           {(tierInfo?.resolvedPlan === "free" || tierInfo?.resolvedPlan === "professional" || tierInfo?.resolvedPlan === "developer") ? (
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-foreground/5 border border-outline-variant/20">
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-foreground/5 border border-outline-variant/20">
                 <MaterialIcon name="integration_instructions" size={18} className="text-foreground/50" />
               </div>
               <div className="flex-1">
                 <p className="font-bold text-sm text-foreground">GitHub App</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Auto-review PRs and post AI analysis as GitHub review comments. Available on Team plan and above.</p>
               </div>
-              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
                 <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
               </a>
             </div>
           ) : (
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-foreground/5 border border-outline-variant/20">
+              <div className="flex size-9 items-center justify-center rounded-none bg-foreground/5 border border-outline-variant/20">
                 <MaterialIcon name="integration_instructions" size={18} className="text-foreground/70" />
               </div>
               <div>
@@ -1854,7 +1854,7 @@ export function SettingsPanel() {
             </div>
 
             {!ghAppConfigured ? (
-              <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <div className="rounded-none border border-amber-500/20 bg-amber-500/5 px-4 py-3">
                 <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-amber-400 mb-2">Server Setup Required</p>
                 <p className="text-xs text-muted-foreground">
                   The GitScope GitHub App needs to be registered. Ask your admin to set{" "}
@@ -1865,7 +1865,7 @@ export function SettingsPanel() {
               </div>
             ) : (
               <>
-                <div className="rounded-lg border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
+                <div className="rounded-none border border-outline-variant/15 bg-surface-container-lowest p-4 space-y-2">
                   <p className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">What you get</p>
                   <ul className="text-xs text-muted-foreground space-y-1 list-disc list-inside">
                     <li>AI review posted automatically on every PR open/update</li>
@@ -1876,7 +1876,7 @@ export function SettingsPanel() {
 
                 {ghAppInstalled ? (
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
+                    <div className="flex items-center gap-2 rounded-none border border-emerald-500/20 bg-emerald-500/5 px-3 py-2">
                       <MaterialIcon name="check_circle" size={14} className="text-emerald-500 shrink-0" />
                       <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">GitHub App installed — PR reviews are active</span>
                     </div>
@@ -1892,7 +1892,7 @@ export function SettingsPanel() {
                         href={ghAppInstallUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-foreground text-background text-sm font-bold hover:bg-foreground/90 transition-colors"
+                        className="inline-flex items-center gap-2 px-4 py-2.5 rounded-none bg-foreground text-background text-sm font-bold hover:bg-foreground/90 transition-colors"
                       >
                         <MaterialIcon name="add" size={16} />
                         Install GitHub App
@@ -1912,7 +1912,7 @@ export function SettingsPanel() {
                           value={ghInstallIdInput}
                           onChange={(e) => setGhInstallIdInput(e.target.value.replace(/\D/g, ""))}
                           placeholder="12345678"
-                          className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                          className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none"
                         />
                         <Button type="button" size="sm" disabled={ghAppSaving || !ghInstallIdInput.trim()} onClick={() => handleSaveGhApp(false)} className="btn-gitscope-primary font-mono text-[10px] uppercase tracking-widest">
                           {ghAppSaving ? "Saving..." : "Save"}
@@ -1929,23 +1929,23 @@ export function SettingsPanel() {
 
           {/* ── AI Provider Keys (BYOK) — Professional+ only ── */}
           {tierInfo?.resolvedPlan === "free" ? (
-            <div className="rounded-xl border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                <MaterialIcon name="vpn_key" size={18} className="text-indigo-400" />
+            <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
+              <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20">
+                <MaterialIcon name="vpn_key" size={18} className="text-amber-400" />
               </div>
               <div className="flex-1">
                 <p className="font-bold text-sm text-foreground">AI Provider Keys (BYOK)</p>
                 <p className="text-xs text-muted-foreground mt-0.5">Bring your own Anthropic / OpenAI / Gemini key for unlimited AI scans. Available on Professional and Developer plans.</p>
               </div>
-              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 text-white text-[11px] font-black hover:bg-indigo-600 transition-colors">
+              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
                 <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
               </a>
             </div>
           ) : (
-          <div className="rounded-xl border border-outline-variant/15 bg-surface-container p-6 space-y-5">
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-5">
             <div className="flex items-center gap-3 mb-1">
-              <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10 border border-indigo-500/20">
-                <MaterialIcon name="vpn_key" size={18} className="text-indigo-500" />
+              <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20">
+                <MaterialIcon name="vpn_key" size={18} className="text-amber-500" />
               </div>
               <div>
                 <h3 className="font-heading text-lg font-bold text-foreground">AI Provider Keys (BYOK)</h3>
@@ -1977,20 +1977,20 @@ export function SettingsPanel() {
                     value={byokAnthropicInput}
                     onChange={(e) => setByokAnthropicInput(e.target.value)}
                     placeholder={byokSaved.anthropic ? "sk-ant-•••••••••••••••••" : "sk-ant-api03-..."}
-                    className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
+                    className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
                   />
                   <button
                     type="button"
                     disabled={byokSaving || !byokAnthropicInput.trim()}
                     onClick={() => handleSaveByok("anthropic", byokAnthropicInput)}
-                    className="shrink-0 rounded-lg bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
                   >Save</button>
                   {byokSaved.anthropic && (
                     <button
                       type="button"
                       disabled={byokSaving}
                       onClick={() => handleDeleteByok("anthropic")}
-                      className="shrink-0 rounded-lg border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
                     >Remove</button>
                   )}
                 </div>
@@ -2009,20 +2009,20 @@ export function SettingsPanel() {
                     value={byokOpenAIInput}
                     onChange={(e) => setByokOpenAIInput(e.target.value)}
                     placeholder={byokSaved.openai ? "sk-•••••••••••••••••" : "sk-proj-..."}
-                    className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
+                    className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
                   />
                   <button
                     type="button"
                     disabled={byokSaving || !byokOpenAIInput.trim()}
                     onClick={() => handleSaveByok("openai", byokOpenAIInput)}
-                    className="shrink-0 rounded-lg bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
                   >Save</button>
                   {byokSaved.openai && (
                     <button
                       type="button"
                       disabled={byokSaving}
                       onClick={() => handleDeleteByok("openai")}
-                      className="shrink-0 rounded-lg border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
                     >Remove</button>
                   )}
                 </div>
@@ -2041,20 +2041,20 @@ export function SettingsPanel() {
                     value={byokGeminiInput}
                     onChange={(e) => setByokGeminiInput(e.target.value)}
                     placeholder={byokSaved.gemini ? "AIza•••••••••••••••" : "AIzaSy..."}
-                    className="flex-1 rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
+                    className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
                   />
                   <button
                     type="button"
                     disabled={byokSaving || !byokGeminiInput.trim()}
                     onClick={() => handleSaveByok("gemini", byokGeminiInput)}
-                    className="shrink-0 rounded-lg bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
+                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
                   >Save</button>
                   {byokSaved.gemini && (
                     <button
                       type="button"
                       disabled={byokSaving}
                       onClick={() => handleDeleteByok("gemini")}
-                      className="shrink-0 rounded-lg border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
                     >Remove</button>
                   )}
                 </div>
@@ -2086,7 +2086,7 @@ export function SettingsPanel() {
               <button
                 type="button"
                 onClick={() => { setShowRuleForm((v) => !v); setRuleMsg(null); }}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 hover:bg-amber-600 px-4 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
               >
                 <MaterialIcon name="add" size={14} /> New Rule
               </button>
@@ -2095,7 +2095,7 @@ export function SettingsPanel() {
 
           {/* Create rule form */}
           {showRuleForm && (
-            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5 space-y-4">
+            <div className="rounded-none border border-amber-500/20 bg-amber-500/5 p-5 space-y-4">
               <h3 className="text-xs font-black uppercase tracking-widest text-amber-500">New Automation Rule</h3>
               <div className="grid gap-3 sm:grid-cols-2">
                 <div className="sm:col-span-2">
@@ -2104,7 +2104,7 @@ export function SettingsPanel() {
                     type="text" placeholder="e.g. Alert if health drops below 60"
                     value={ruleFormState.name}
                     onChange={(e) => setRuleFormState((s) => ({ ...s, name: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
@@ -2113,7 +2113,7 @@ export function SettingsPanel() {
                     title="Trigger metric"
                     value={ruleFormState.triggerMetric}
                     onChange={(e) => setRuleFormState((s) => ({ ...s, triggerMetric: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="healthScore">Health Score</option>
                     <option value="securityScore">Security Score</option>
@@ -2127,7 +2127,7 @@ export function SettingsPanel() {
                     title="Trigger condition"
                     value={ruleFormState.triggerOp}
                     onChange={(e) => setRuleFormState((s) => ({ ...s, triggerOp: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="lt">Falls below ( &lt; )</option>
                     <option value="gt">Exceeds ( &gt; )</option>
@@ -2142,7 +2142,7 @@ export function SettingsPanel() {
                     placeholder="e.g. 60"
                     value={ruleFormState.triggerThreshold}
                     onChange={(e) => setRuleFormState((s) => ({ ...s, triggerThreshold: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
                 <div>
@@ -2151,7 +2151,7 @@ export function SettingsPanel() {
                     title="Action to perform"
                     value={ruleFormState.actionType}
                     onChange={(e) => setRuleFormState((s) => ({ ...s, actionType: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                   >
                     <option value="slack">Slack (saved webhook)</option>
                     <option value="discord">Discord (saved webhook)</option>
@@ -2169,7 +2169,7 @@ export function SettingsPanel() {
                       placeholder={ruleFormState.actionType === "github_issue" ? "https://api.github.com/repos/owner/repo/issues" : "https://hooks.example.com/..."}
                       value={ruleFormState.actionUrl}
                       onChange={(e) => setRuleFormState((s) => ({ ...s, actionUrl: e.target.value }))}
-                      className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                      className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                     />
                   </div>
                 )}
@@ -2179,7 +2179,7 @@ export function SettingsPanel() {
                     type="text" placeholder="owner/repo — leave blank to apply to all repos"
                     value={ruleFormState.repoFilter}
                     onChange={(e) => setRuleFormState((s) => ({ ...s, repoFilter: e.target.value }))}
-                    className="w-full rounded-xl border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
+                    className="w-full rounded-none border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-amber-500"
                   />
                 </div>
               </div>
@@ -2187,7 +2187,7 @@ export function SettingsPanel() {
                 <p className={cn("text-[11px]", ruleMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>{ruleMsg.text}</p>
               )}
               <div className="flex gap-2 justify-end">
-                <button type="button" onClick={() => setShowRuleForm(false)} className="rounded-xl border border-border px-4 py-2 text-[11px] font-bold text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
+                <button type="button" onClick={() => setShowRuleForm(false)} className="rounded-none border border-border px-4 py-2 text-[11px] font-bold text-muted-foreground hover:bg-muted transition-colors">Cancel</button>
                 <button
                   type="button"
                   disabled={ruleSaving || !ruleFormState.name.trim()}
@@ -2216,7 +2216,7 @@ export function SettingsPanel() {
                     } catch { setRuleMsg({ type: "error", text: "Network error." }); }
                     finally { setRuleSaving(false); }
                   }}
-                  className="rounded-xl bg-amber-500 hover:bg-amber-600 disabled:opacity-50 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
+                  className="rounded-none bg-amber-500 hover:bg-amber-600 disabled:opacity-50 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors"
                 >
                   {ruleSaving ? "Saving…" : "Create Rule"}
                 </button>
@@ -2226,13 +2226,13 @@ export function SettingsPanel() {
 
           {/* Upgrade gate */}
           {tierInfo && tierInfo.resolvedPlan !== "team" && tierInfo.resolvedPlan !== "enterprise" && (
-            <div className="rounded-2xl border border-dashed border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-3">
+            <div className="rounded-none border border-dashed border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-3">
               <MaterialIcon name="bolt" size={32} className="text-amber-500/40 mx-auto" />
               <p className="text-sm font-bold">Team plan required</p>
               <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                 Automation rules trigger Slack, Discord, GitHub Issues, or custom webhooks when your repo health crosses a threshold.
               </p>
-              <a href="/pricing" className="inline-flex items-center gap-1.5 rounded-xl bg-amber-500 hover:bg-amber-600 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors">
+              <a href="/pricing" className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 hover:bg-amber-600 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors">
                 <MaterialIcon name="upgrade" size={13} /> Upgrade to Team
               </a>
             </div>
@@ -2245,7 +2245,7 @@ export function SettingsPanel() {
           {!autoLoading && autoRules.length > 0 && (
             <div className="space-y-3">
               {autoRules.map((rule) => (
-                <div key={rule.id} className="rounded-2xl border border-border bg-card p-4 flex items-start gap-4">
+                <div key={rule.id} className="rounded-none border border-border bg-card p-4 flex items-start gap-4">
                   <div className="flex-1 min-w-0 space-y-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="text-xs font-bold">{rule.name}</span>
@@ -2270,7 +2270,7 @@ export function SettingsPanel() {
                         const res = await fetch(`/api/webhook-rules/${rule.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ enabled: !rule.enabled }) });
                         if (res.ok) { const d = await res.json(); setAutoRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, enabled: d.rule.enabled } : r)); }
                       }}
-                      className="p-1.5 rounded-lg border border-border hover:bg-muted transition-colors"
+                      className="p-1.5 rounded-none border border-border hover:bg-muted transition-colors"
                     >
                       <MaterialIcon name={rule.enabled ? "pause" : "play_arrow"} size={14} className="text-muted-foreground" />
                     </button>
@@ -2281,7 +2281,7 @@ export function SettingsPanel() {
                         const res = await fetch(`/api/webhook-rules/${rule.id}`, { method: "DELETE" });
                         if (res.ok) setAutoRules((prev) => prev.filter((r) => r.id !== rule.id));
                       }}
-                      className="p-1.5 rounded-lg border border-destructive/30 hover:bg-destructive/10 transition-colors"
+                      className="p-1.5 rounded-none border border-destructive/30 hover:bg-destructive/10 transition-colors"
                     >
                       <MaterialIcon name="delete" size={14} className="text-destructive" />
                     </button>
@@ -2291,7 +2291,7 @@ export function SettingsPanel() {
             </div>
           )}
           {!autoLoading && autoRules.length === 0 && (tierInfo?.resolvedPlan === "team" || tierInfo?.resolvedPlan === "enterprise") && (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
+            <div className="rounded-none border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
               <MaterialIcon name="bolt" size={28} className="text-muted-foreground/30 mx-auto" />
               <p className="text-sm font-semibold text-muted-foreground">No automation rules yet</p>
               <p className="text-[11px] text-muted-foreground/70">Create a rule to automatically notify your team when scan scores drop.</p>
@@ -2310,7 +2310,7 @@ export function SettingsPanel() {
 
           {/* Plan gate */}
           {pubApiKeyMaxKeys === 0 && !pubApiKeysLoading && (
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-5 space-y-2">
+            <div className="rounded-none border border-primary/20 bg-primary/5 p-5 space-y-2">
               <p className="text-sm font-black text-primary flex items-center gap-2">
                 <MaterialIcon name="vpn_key" size={16} /> API Keys require Professional plan or higher
               </p>
@@ -2320,19 +2320,19 @@ export function SettingsPanel() {
 
           {/* Revealed key one-time banner */}
           {revealedKey && (
-            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
+            <div className="rounded-none border border-emerald-500/30 bg-emerald-500/5 p-4 space-y-2">
               <p className="text-[10px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
                 <MaterialIcon name="check_circle" size={13} /> Key created — copy it now, it will never be shown again
               </p>
               <div className="flex items-center gap-2">
-                <code className="flex-1 font-mono text-[11px] bg-surface-container-highest px-3 py-2 rounded-xl border border-outline-variant/20 text-foreground/80 break-all select-all">
+                <code className="flex-1 font-mono text-[11px] bg-surface-container-highest px-3 py-2 rounded-none border border-outline-variant/20 text-foreground/80 break-all select-all">
                   {revealedKey}
                 </code>
                 <button
                   type="button"
                   title="Copy API key"
                   onClick={() => { void navigator.clipboard.writeText(revealedKey); }}
-                  className="p-2 rounded-xl border border-outline-variant/20 hover:bg-surface-container-highest transition-colors shrink-0"
+                  className="p-2 rounded-none border border-outline-variant/20 hover:bg-surface-container-highest transition-colors shrink-0"
                 >
                   <MaterialIcon name="content_copy" size={14} className="text-muted-foreground" />
                 </button>
@@ -2345,7 +2345,7 @@ export function SettingsPanel() {
 
           {/* Create key form */}
           {pubApiKeyMaxKeys > 0 && pubApiKeys.length < pubApiKeyMaxKeys && (
-            <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-5 space-y-4">
+            <div className="rounded-none border border-outline-variant/10 bg-surface-container/20 p-5 space-y-4">
               <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Create New Key</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div className="space-y-1">
@@ -2357,7 +2357,7 @@ export function SettingsPanel() {
                     onChange={(e) => setNewPubKeyName(e.target.value)}
                     maxLength={64}
                     title="Key name"
-                    className="w-full text-sm bg-surface-container-highest border border-outline-variant/20 rounded-xl px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className="w-full text-sm bg-surface-container-highest border border-outline-variant/20 rounded-none px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
                 <div className="space-y-1">
@@ -2370,7 +2370,7 @@ export function SettingsPanel() {
                     onChange={(e) => setNewPubKeyExpiry(e.target.value)}
                     placeholder="90"
                     title="Expiry in days"
-                    className="w-full text-sm bg-surface-container-highest border border-outline-variant/20 rounded-xl px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
+                    className="w-full text-sm bg-surface-container-highest border border-outline-variant/20 rounded-none px-3 py-2 font-mono placeholder:text-muted-foreground/40 focus:outline-none focus:ring-1 focus:ring-primary/30"
                   />
                 </div>
               </div>
@@ -2422,7 +2422,7 @@ export function SettingsPanel() {
                   } catch { setPubApiKeyMsg({ type: "error", text: "Network error" }); }
                   finally { setPubApiKeyCreating(false); }
                 }}
-                className="px-4 py-2 rounded-xl bg-primary/90 hover:bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
+                className="px-4 py-2 rounded-none bg-primary/90 hover:bg-primary text-white text-xs font-black uppercase tracking-widest disabled:opacity-50 transition-colors"
               >
                 {pubApiKeyCreating ? "Creating…" : "Generate Key"}
               </button>
@@ -2438,8 +2438,8 @@ export function SettingsPanel() {
           {!pubApiKeysLoading && pubApiKeys.length > 0 && (
             <div className="space-y-3">
               {pubApiKeys.map((key) => (
-                <div key={key.id} className="flex items-start gap-3 p-4 rounded-2xl border border-outline-variant/10 bg-surface-container/20">
-                  <div className="size-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                <div key={key.id} className="flex items-start gap-3 p-4 rounded-none border border-outline-variant/10 bg-surface-container/20">
+                  <div className="size-8 rounded-none bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
                     <MaterialIcon name="vpn_key" size={14} className="text-primary" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -2463,7 +2463,7 @@ export function SettingsPanel() {
                       const res = await fetch(`/api/user/api-keys?id=${key.id}`, { method: "DELETE" });
                       if (res.ok) setPubApiKeys((prev) => prev.filter((k) => k.id !== key.id));
                     }}
-                    className="p-1.5 rounded-lg border border-destructive/30 hover:bg-destructive/10 transition-colors shrink-0"
+                    className="p-1.5 rounded-none border border-destructive/30 hover:bg-destructive/10 transition-colors shrink-0"
                   >
                     <MaterialIcon name="delete" size={14} className="text-destructive" />
                   </button>
@@ -2472,7 +2472,7 @@ export function SettingsPanel() {
             </div>
           )}
           {!pubApiKeysLoading && pubApiKeys.length === 0 && pubApiKeyMaxKeys > 0 && (
-            <div className="rounded-2xl border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
+            <div className="rounded-none border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
               <MaterialIcon name="vpn_key" size={28} className="text-muted-foreground/30 mx-auto" />
               <p className="text-sm font-semibold text-muted-foreground">No API keys yet</p>
               <p className="text-[11px] text-muted-foreground/70">
@@ -2484,14 +2484,14 @@ export function SettingsPanel() {
 
           {/* Endpoint reference */}
           {pubApiKeyMaxKeys > 0 && (
-            <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-5 space-y-3">
+            <div className="rounded-none border border-outline-variant/10 bg-surface-container/20 p-5 space-y-3">
               <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Available Endpoints</p>
               <div className="space-y-2">
                 {[
                   { method: "GET", path: "/api/v1/repos/{owner}/{repo}/scan", scope: "scans:read", desc: "Latest scan result" },
                   { method: "GET", path: "/api/v1/repos/{owner}/{repo}/dora", scope: "dora:read",  desc: "DORA metrics" },
                 ].map((ep) => (
-                  <div key={ep.path} className="flex items-start gap-3 p-3 rounded-xl bg-surface-container-highest/30 border border-outline-variant/10">
+                  <div key={ep.path} className="flex items-start gap-3 p-3 rounded-none bg-surface-container-highest/30 border border-outline-variant/10">
                     <span className="font-mono text-[9px] px-2 py-1 rounded bg-primary/10 text-primary border border-primary/20 shrink-0">{ep.method}</span>
                     <div className="min-w-0">
                       <p className="font-mono text-[10px] text-foreground/70 truncate">{ep.path}</p>

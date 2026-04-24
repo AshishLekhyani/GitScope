@@ -18,7 +18,7 @@ export default function DashboardError({
   return (
     <div className="flex flex-col items-center justify-center min-h-[80vh] text-foreground p-8">
       <div className="text-center space-y-6 max-w-md w-full">
-        <div className="size-20 mx-auto rounded-3xl bg-destructive/10 border border-destructive/20 flex items-center justify-center">
+        <div className="size-20 mx-auto rounded-none bg-destructive/10 border border-destructive/20 flex items-center justify-center">
           <AlertCircle className="size-9 text-destructive/70" />
         </div>
 
@@ -37,14 +37,14 @@ export default function DashboardError({
         <div className="flex items-center justify-center gap-3">
           <button
             onClick={reset}
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none btn-gitscope-primary text-sm font-bold"
           >
             <RefreshCw className="size-4" />
             Retry
           </button>
           <Link
             href="/overview"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-border bg-card hover:bg-muted text-sm font-bold transition-all"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none border border-border bg-card hover:bg-muted text-sm font-bold transition-all"
           >
             <LayoutDashboard className="size-4" />
             Overview

@@ -26,8 +26,8 @@ interface CodeOwnershipProps {
 }
 
 const PALETTE = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316",
-  "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#3b82f6",
+  "#f59e0b", "#f59e0b", "#f59e0b", "#f43f5e", "#f97316",
+  "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#f59e0b",
 ];
 
 export function CodeOwnership({ repos }: CodeOwnershipProps) {
@@ -113,11 +113,11 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
         return (
           <div key={repo} className="space-y-5">
             <div className="flex items-center gap-3">
-              <div className="size-8 rounded-xl bg-violet-500/10 border border-violet-500/20 flex items-center justify-center shrink-0">
-                <MaterialIcon name="group" size={16} className="text-violet-400" />
+              <div className="size-8 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0">
+                <MaterialIcon name="group" size={16} className="text-amber-400" />
               </div>
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-violet-400/80">Code Ownership</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/80">Code Ownership</p>
                 <p className="text-sm font-black">{repo}</p>
               </div>
             </div>
@@ -125,14 +125,14 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
             {!state && null}
 
             {state === "loading" && (
-              <div className="flex items-center justify-center gap-3 py-16 rounded-3xl border border-outline-variant/10 bg-surface-container/20">
-                <MaterialIcon name="sync" size={18} className="animate-spin text-violet-400" />
+              <div className="flex items-center justify-center gap-3 py-16 rounded-none border border-outline-variant/10 bg-surface-container/20">
+                <MaterialIcon name="sync" size={18} className="animate-spin text-amber-400" />
                 <span className="text-sm text-muted-foreground/60">Computing contributor ownership…</span>
               </div>
             )}
 
             {state === "error" && (
-              <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+              <div className="flex items-center gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
                 <MaterialIcon name="error" size={16} className="shrink-0" />
                 Failed to load contributor stats — repo may be private, empty, or does not exist.
               </div>
@@ -154,15 +154,15 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
                 <div className="space-y-4">
                   {/* Summary strip */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    <div className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
+                    <div className="px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
                       <p className="text-lg font-black text-foreground">{d.contributors.length}</p>
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Contributors</p>
                     </div>
-                    <div className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
+                    <div className="px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
                       <p className="text-lg font-black text-foreground">{d.totalCommits.toLocaleString()}</p>
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Total Commits</p>
                     </div>
-                    <div className={cn("px-4 py-3 rounded-2xl border space-y-1", busClasses.bg, busClasses.border)}>
+                    <div className={cn("px-4 py-3 rounded-none border space-y-1", busClasses.bg, busClasses.border)}>
                       <div className="flex items-center gap-2">
                         <p className={cn("text-lg font-black", busClasses.text)}>{d.busFactor}</p>
                         <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded border", busClasses.text, busClasses.bg, busClasses.border)}>{busRisk}</span>
@@ -172,7 +172,7 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
                   </div>
 
                   {/* Stacked ownership bar */}
-                  <div className="p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-3">
+                  <div className="p-4 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-3">
                     <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
                       <MaterialIcon name="bar_chart" size={12} /> Commit ownership breakdown
                     </p>
@@ -206,28 +206,28 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
                     {d.contributors.map((c, i) => (
                       <div
                         key={c.login}
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-surface-container/20 border border-outline-variant/8 hover:border-violet-500/20 transition-all"
+                        className="flex items-center gap-3 px-4 py-3 rounded-none bg-surface-container/20 border border-outline-variant/8 hover:border-amber-500/20 transition-all"
                       >
                         <span className="text-[10px] font-black text-muted-foreground/25 w-4 text-center shrink-0">{i + 1}</span>
                         {c.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={c.avatarUrl} alt={c.login} className="size-7 rounded-full ring-1 ring-white/10 shrink-0" />
                         ) : (
-                          <div className="size-7 rounded-full bg-violet-500/20 flex items-center justify-center shrink-0">
-                            <MaterialIcon name="person" size={14} className="text-violet-400" />
+                          <div className="size-7 rounded-full bg-amber-500/20 flex items-center justify-center shrink-0">
+                            <MaterialIcon name="person" size={14} className="text-amber-400" />
                           </div>
                         )}
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-black text-foreground/85">{c.login}</span>
                             {i === 0 && (
-                              <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-violet-500/10 border border-violet-500/20 text-violet-400">
+                              <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">
                                 Top Contributor
                               </span>
                             )}
                           </div>
                           <div className="flex h-1.5 rounded-full overflow-hidden bg-surface-container-highest">
-                            <div className="h-full rounded-full bg-violet-500 transition-all duration-700" style={{ width: `${c.commitPct}%` }} />
+                            <div className="h-full rounded-full bg-amber-500 transition-all duration-700" style={{ width: `${c.commitPct}%` }} />
                           </div>
                         </div>
                         <div className="text-right shrink-0 space-y-0.5">
@@ -243,7 +243,7 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
                   </div>
 
                   {/* Bus factor callout */}
-                  <div className={cn("flex items-start gap-3 p-4 rounded-2xl border", busClasses.bg, busClasses.border)}>
+                  <div className={cn("flex items-start gap-3 p-4 rounded-none border", busClasses.bg, busClasses.border)}>
                     <MaterialIcon
                       name={busRisk === "HEALTHY" ? "verified_user" : "warning"}
                       size={15}

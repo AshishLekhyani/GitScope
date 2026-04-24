@@ -20,7 +20,7 @@ export const metadata: Metadata = {
 const LANG_COLORS: Record<string, string> = {
   TypeScript: "#3178C6",
   JavaScript: "#F7DF1E",
-  Python: "#3572A5",
+  Python: "#0e9966",
   Rust: "#DEA584",
   Go: "#00ADD8",
   Java: "#B07219",
@@ -28,10 +28,10 @@ const LANG_COLORS: Record<string, string> = {
   C: "#555555",
   "C#": "#178600",
   Ruby: "#701516",
-  PHP: "#4F5D95",
+  PHP: "#a16207",
   Swift: "#FA7343",
-  Kotlin: "#A97BFF",
-  Dart: "#00B4AB",
+  Kotlin: "#f59e0b",
+  Dart: "#10b981",
   Scala: "#C22D40",
   Shell: "#89E051",
   HTML: "#E34C26",
@@ -169,13 +169,13 @@ export default async function LanguagesPage() {
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/10 border border-blue-500/20 mb-3">
-            <span className="size-1.5 rounded-full bg-blue-500" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-blue-500">Analytics</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-amber-500/10 border border-amber-500/20 mb-3">
+            <span className="size-1.5 rounded-full bg-amber-500" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Analytics</span>
           </div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-            <MaterialIcon name="code" size={32} className="text-blue-500" />
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-blue-500 to-cyan-500">
+            <MaterialIcon name="code" size={32} className="text-amber-500" />
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-teal-500">
               Language Analytics
             </span>
           </h1>
@@ -184,7 +184,7 @@ export default async function LanguagesPage() {
           </p>
         </div>
         {totalBytes > 0 && (
-          <div className="hidden sm:flex items-center gap-3 px-4 py-3 rounded-2xl bg-card border border-border">
+          <div className="hidden sm:flex items-center gap-3 px-4 py-3 rounded-none bg-card border border-border">
             <MaterialIcon name="data_usage" size={20} className="text-muted-foreground" />
             <div>
               <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Code</div>
@@ -196,9 +196,9 @@ export default async function LanguagesPage() {
 
       {/* No history empty state */}
       {!hasHistory ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center rounded-3xl border-2 border-dashed border-border/50 gap-5">
-          <div className="flex size-20 items-center justify-center rounded-3xl bg-blue-500/10">
-            <MaterialIcon name="code" size={40} className="text-blue-500/60" />
+        <div className="flex flex-col items-center justify-center py-24 text-center rounded-none border-2 border-dashed border-border/50 gap-5">
+          <div className="flex size-20 items-center justify-center rounded-none bg-amber-500/10">
+            <MaterialIcon name="code" size={40} className="text-amber-500/60" />
           </div>
           <div className="space-y-2 max-w-sm">
             <h3 className="text-xl font-black">No Repository History Yet</h3>
@@ -208,14 +208,14 @@ export default async function LanguagesPage() {
           </div>
           <Link
             href={ROUTES.search}
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 hover:bg-indigo-600 text-white text-sm font-bold transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-none bg-amber-500 hover:bg-amber-600 text-white text-sm font-bold transition-colors"
           >
             <MaterialIcon name="search" size={18} className="text-white" />
             Analyze a Repository
           </Link>
         </div>
       ) : rankedLangs.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-center rounded-3xl border-2 border-dashed border-border/50 gap-4">
+        <div className="flex flex-col items-center justify-center py-20 text-center rounded-none border-2 border-dashed border-border/50 gap-4">
           <MaterialIcon name="warning" size={40} className="text-muted-foreground/30" />
           <div>
             <h3 className="text-lg font-black mb-1">No Language Data Found</h3>
@@ -227,9 +227,9 @@ export default async function LanguagesPage() {
       ) : (
         <div className="space-y-8">
           {/* ── Global Distribution ── */}
-          <Card className="rounded-3xl border border-border p-6 sm:p-8 shadow-sm">
+          <Card className="rounded-none border border-border p-6 sm:p-8 shadow-sm">
             <h2 className="text-base font-black uppercase tracking-widest text-muted-foreground mb-6 flex items-center gap-2">
-              <MaterialIcon name="pie_chart" size={18} className="text-indigo-500" />
+              <MaterialIcon name="pie_chart" size={18} className="text-amber-500" />
               Overall Distribution
             </h2>
 
@@ -256,7 +256,7 @@ export default async function LanguagesPage() {
                         />
                         <span className="text-sm font-bold">{lang.name}</span>
                         {i < 3 && (
-                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-indigo-500/10 text-indigo-400 font-black uppercase">
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 font-black uppercase">
                             #{i + 1}
                           </span>
                         )}
@@ -291,7 +291,7 @@ export default async function LanguagesPage() {
           {perRepo.length > 0 && (
             <section className="space-y-4">
               <h2 className="text-base font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <MaterialIcon name="bar_chart" size={18} className="text-indigo-500" />
+                <MaterialIcon name="bar_chart" size={18} className="text-amber-500" />
                 Per-Repository Breakdown
               </h2>
 
@@ -305,15 +305,15 @@ export default async function LanguagesPage() {
                   return (
                     <Card
                       key={query}
-                      className="rounded-3xl border border-border p-5 space-y-4 shadow-sm"
+                      className="rounded-none border border-border p-5 space-y-4 shadow-sm"
                     >
                       <div className="flex items-center justify-between gap-2">
                         <Link
                           href={owner && repo ? ROUTES.dashboard(owner, repo) : ROUTES.search}
-                          className="text-sm font-black hover:text-indigo-500 transition-colors truncate font-mono"
+                          className="text-sm font-black hover:text-amber-500 transition-colors truncate font-mono"
                         >
                           <span className="text-muted-foreground">{owner}/</span>
-                          <span className="text-indigo-500">{repo}</span>
+                          <span className="text-amber-500">{repo}</span>
                         </Link>
                         <span className="text-[10px] text-muted-foreground shrink-0">
                           {formatBytes(total)}

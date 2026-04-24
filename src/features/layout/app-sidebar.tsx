@@ -185,12 +185,12 @@ export function AppSidebar({
 
   const linkCls = (active: boolean) =>
     cn(
-      "flex items-center active:scale-[0.98]",
-      isCollapsed ? "justify-center p-2 rounded-md mx-2 my-1" : "gap-3 border-l-2 py-2.5 pr-4 pl-3 text-sm",
+      "flex items-center active:scale-[0.98] font-mono text-[11px] tracking-wide",
+      isCollapsed ? "justify-center p-2 rounded-none mx-2 my-1" : "gap-3 border-l-2 py-2.5 pr-4 pl-3 text-sm",
       active
         ? isCollapsed
-          ? "bg-sidebar-accent text-indigo-400 dark:text-indigo-400"
-          : "border-tertiary bg-sidebar-accent text-indigo-400 dark:text-indigo-400 font-bold"
+          ? "bg-sidebar-accent text-amber-400 dark:text-amber-400"
+          : "border-tertiary bg-sidebar-accent text-amber-400 dark:text-amber-400 font-bold"
         : isCollapsed
           ? "text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground border-transparent"
           : "border-transparent text-muted-foreground hover:bg-sidebar-accent/80 hover:text-foreground"
@@ -208,11 +208,11 @@ export function AppSidebar({
       <div className={cn("mb-1 flex items-center px-5", isCollapsed ? "justify-center px-0" : "justify-between")}>
         {!isCollapsed && (
           <div className="flex items-center gap-2">
-            <div className={cn("bg-indigo-500 size-2 rounded-full shadow-[0_0_8px_rgba(99,102,241,0.5)]", isLoading && "animate-pulse")} />
+            <div className={cn("bg-amber-500 size-2 rounded-full shadow-[0_0_8px_rgba(251,191,36,0.5)]", isLoading && "animate-pulse")} />
             {isLoading ? (
-              <div className="h-7 w-36 animate-pulse rounded bg-slate-700/80 dark:bg-slate-800/90" />
+              <div className="h-7 w-36 animate-pulse rounded bg-stone-700/80 dark:bg-stone-800/90" />
             ) : (
-              <span className="font-heading text-lg font-bold text-foreground">
+              <span className="font-heading text-lg font-bold text-foreground tracking-tight">
                 Engineering Hub
               </span>
             )}
@@ -224,7 +224,7 @@ export function AppSidebar({
           </button>
         )}
         {isCollapsed && onToggleCollapse && (
-          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-sidebar-accent/80">
+          <button onClick={onToggleCollapse} className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-none hover:bg-sidebar-accent/80">
             <MaterialIcon name="keyboard_double_arrow_right" size={20} />
           </button>
         )}
@@ -233,9 +233,9 @@ export function AppSidebar({
       {!isCollapsed && (
         <div className="border-border mb-1 border-b px-5 pb-1 dark:border-white/5">
           {isLoading ? (
-            <div className="h-4 w-44 animate-pulse rounded bg-slate-700/40 dark:bg-slate-900/80" />
+            <div className="h-4 w-44 animate-pulse rounded bg-stone-700/40 dark:bg-stone-900/80" />
           ) : (
-            <p className="font-mono text-[8px] tracking-widest text-muted-foreground uppercase">
+            <p className="font-heading text-[9px] tracking-[0.12em] text-muted-foreground uppercase">
               Main Analytics Console
             </p>
           )}
@@ -246,7 +246,7 @@ export function AppSidebar({
         <nav className="pb-4">
           {/* Main */}
           {!isCollapsed && (
-            <p className="text-muted-foreground px-3 pb-1 pt-2 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Main</p>
+            <p className="font-heading text-muted-foreground px-3 pb-1 pt-2 text-[9px] font-bold tracking-[0.12em] uppercase opacity-50">Main</p>
           )}
           <div className="space-y-0.5 mb-2">
             {mainNav.map((item) => (
@@ -266,7 +266,7 @@ export function AppSidebar({
           {/* Discover */}
           {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
           {!isCollapsed && (
-            <p className="text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Discover</p>
+            <p className="font-heading text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-bold tracking-[0.12em] uppercase opacity-50">Discover</p>
           )}
           <div className="space-y-0.5 mb-2">
             {discoverNav.map((item) => (
@@ -286,7 +286,7 @@ export function AppSidebar({
           {/* Analytics */}
           {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
           {!isCollapsed && (
-            <p className="text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Analytics</p>
+            <p className="font-heading text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-bold tracking-[0.12em] uppercase opacity-50">Analytics</p>
           )}
           <div className="space-y-0.5 mb-2">
             {analyticsNav.map((item) => (
@@ -308,7 +308,7 @@ export function AppSidebar({
             <>
               {isCollapsed && <div className="mx-4 my-3 h-px bg-border dark:bg-white/10" />}
               {!isCollapsed && (
-                <p className="text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-black tracking-[0.15em] uppercase opacity-50">Repository</p>
+                <p className="font-heading text-muted-foreground px-3 pb-1 pt-3 text-[9px] font-bold tracking-[0.12em] uppercase opacity-50">Repository</p>
               )}
               <div className="space-y-0.5 mb-2">
                 {repoNav.map((item) => (
@@ -358,17 +358,16 @@ export function AppSidebar({
           <div className="px-3 mb-4">
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-1.5">
-                <MaterialIcon name="speed" size={14} className="text-indigo-400" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground">API Rate</span>
+                <MaterialIcon name="speed" size={14} className="text-amber-400" />
+                <span className="font-mono text-[9px] font-black uppercase tracking-widest text-muted-foreground">API Rate</span>
               </div>
-              <span className={cn("text-[9px] font-mono font-bold", (rateLimit?.remaining || 0) < 500 ? "text-amber-500" : "text-indigo-400")}>
+              <span className={cn("text-[9px] font-mono font-bold", (rateLimit?.remaining || 0) < 500 ? "text-amber-500" : "text-amber-400")}>
                 {rateLimitLoading ? "…" : `${(rateLimit?.remaining ?? 0).toLocaleString()} / ${(rateLimit?.limit ?? 5000).toLocaleString()}`}
               </span>
             </div>
             <div className="h-1 w-full bg-outline-variant/10 rounded-full overflow-hidden">
               <div
-                className="h-full bg-indigo-500 transition-all duration-1000 rounded-full"
-                /* dynamic percentage — cannot be a static Tailwind class */
+                className="h-full bg-amber-500 transition-all duration-1000 rounded-full"
                 style={{ width: rateLimit ? `${(rateLimit.remaining / rateLimit.limit) * 100}%` : "100%" }}
               />
             </div>
@@ -380,12 +379,12 @@ export function AppSidebar({
           <button
             type="button"
             onClick={() => signIn("github")}
-            className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/5 border border-indigo-500/20 hover:bg-indigo-500/10 transition-colors text-left"
+            className="w-full mb-3 flex items-center gap-2 px-3 py-2 rounded-none bg-amber-500/5 border border-amber-500/20 hover:bg-amber-500/10 transition-colors text-left"
           >
-            <MaterialIcon name="hub" size={16} className="text-indigo-400 shrink-0" />
+            <MaterialIcon name="hub" size={16} className="text-amber-400 shrink-0" />
             <div className="min-w-0">
-              <div className="text-[10px] font-bold text-indigo-400">Connect GitHub</div>
-              <div className="text-[9px] text-muted-foreground truncate">Unlock full features</div>
+              <div className="font-mono text-[10px] font-bold text-amber-400">Connect GitHub</div>
+              <div className="font-mono text-[9px] text-muted-foreground truncate">Unlock full features</div>
             </div>
           </button>
         )}
@@ -397,17 +396,17 @@ export function AppSidebar({
           onClick={onNavigate}
           className={cn(
             "text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 flex items-center transition-colors group",
-            isCollapsed ? "justify-center p-2 rounded-md mx-2 my-1" : "gap-3 px-4 py-1.5 text-xs rounded-md"
+            isCollapsed ? "justify-center p-2 rounded-none mx-2 my-1" : "gap-3 px-4 py-1.5 text-xs rounded-none"
           )}
         >
-          <MaterialIcon name="history" size={18} className="group-hover:text-indigo-400 transition-colors" />
-          {!isCollapsed && <span>Session Activity</span>}
+          <MaterialIcon name="history" size={18} className="group-hover:text-amber-400 transition-colors" />
+          {!isCollapsed && <span className="font-mono text-[11px]">Session Activity</span>}
         </Link>
 
         {isCollapsed && (
           <button
             onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-            className="text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 flex items-center justify-center p-2 rounded-md mx-2 my-1 transition-colors"
+            className="text-muted-foreground hover:text-foreground hover:bg-sidebar-accent/80 flex items-center justify-center p-2 rounded-none mx-2 my-1 transition-colors"
           >
             <MaterialIcon name={resolvedTheme === 'dark' ? 'light_mode' : 'dark_mode'} size={18} />
           </button>

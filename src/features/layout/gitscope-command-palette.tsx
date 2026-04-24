@@ -152,10 +152,10 @@ export function GitScopeCommandPalette() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-white/95 dark:bg-slate-900/95 backdrop-blur-xl shadow-2xl"
+        className="relative w-full max-w-2xl overflow-hidden border border-border bg-background backdrop-blur-xl shadow-2xl"
       >
         <div className="flex items-center border-b border-border px-4 py-3.5 gap-3">
-          <Terminal className="size-4 text-indigo-500 shrink-0" />
+          <Terminal className="size-4 text-amber-500 shrink-0" />
           <input
             ref={inputRef}
             value={search}
@@ -172,8 +172,8 @@ export function GitScopeCommandPalette() {
             <button type="button"
               onClick={() => navTo(ROUTES.dashboard(q.split("/")[0], q.split("/")[1]))}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors mb-1",
-                selectedIdx === filteredHistory.length ? "bg-indigo-500 text-white" : "hover:bg-indigo-500/10 hover:text-indigo-500"
+                "flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-semibold transition-colors mb-1",
+                selectedIdx === filteredHistory.length ? "bg-amber-500 text-white" : "hover:bg-amber-500/10 hover:text-amber-500"
               )}
             >
               <Github className="size-4 opacity-70 shrink-0" />
@@ -195,8 +195,8 @@ export function GitScopeCommandPalette() {
                 </div>
                 {historyLoading ? (
                   [1, 2].map((i) => (
-                    <div key={i} className="flex items-center gap-3 rounded-xl px-3 py-2 animate-pulse">
-                      <div className="size-8 rounded-lg bg-muted" />
+                    <div key={i} className="flex items-center gap-3 rounded-none px-3 py-2 animate-pulse">
+                      <div className="size-8 rounded-none bg-muted" />
                       <div className="h-3 w-32 bg-muted rounded" />
                     </div>
                   ))
@@ -205,11 +205,11 @@ export function GitScopeCommandPalette() {
                     <button key={item.id} type="button"
                       onClick={() => navTo(item.type === "repo" ? ROUTES.dashboard(item.id.split("/")[0], item.id.split("/")[1]) : `/${item.name}`)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition-colors",
-                        selectedIdx === idx ? "bg-indigo-500 text-white" : "hover:bg-indigo-500/10 hover:text-indigo-500"
+                        "flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-left text-sm font-semibold transition-colors",
+                        selectedIdx === idx ? "bg-amber-500 text-white" : "hover:bg-amber-500/10 hover:text-amber-500"
                       )}
                     >
-                      <div className="size-8 rounded-lg overflow-hidden border border-outline-variant/20 shrink-0 bg-muted">
+                      <div className="size-8 rounded-none overflow-hidden border border-outline-variant/20 shrink-0 bg-muted">
                         {item.avatar && <Image src={item.avatar} width={32} height={32} alt={item.name} className="size-full object-cover" />}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -242,10 +242,10 @@ export function GitScopeCommandPalette() {
                         if (!action.action) dispatch(setCommandPaletteOpen(false));
                       }}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-semibold transition-colors",
+                        "flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-sm font-semibold transition-colors",
                         selectedIdx === idx
-                          ? action.danger ? "bg-destructive text-white" : "bg-indigo-500 text-white"
-                          : action.danger ? "text-destructive hover:bg-destructive/10" : "hover:bg-indigo-500/10 hover:text-indigo-500"
+                          ? action.danger ? "bg-destructive text-white" : "bg-amber-500 text-white"
+                          : action.danger ? "text-destructive hover:bg-destructive/10" : "hover:bg-amber-500/10 hover:text-amber-500"
                       )}
                     >
                       <action.icon className="size-4 opacity-60 shrink-0" />
@@ -271,7 +271,7 @@ export function GitScopeCommandPalette() {
             <span>↑↓ navigate</span>
             <span>↵ select</span>
           </div>
-          <span className="font-bold text-indigo-500/60">GITSCOPE V1.0</span>
+          <span className="font-bold text-amber-500/60">GITSCOPE V1.0</span>
         </div>
       </motion.div>
     </div>

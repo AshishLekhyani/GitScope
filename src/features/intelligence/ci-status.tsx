@@ -36,7 +36,7 @@ interface CiStatusProps {
 
 function runColors(conclusion: string | null, status: string) {
   if (status === "in_progress" || status === "queued")
-    return { text: "text-blue-400",   bg: "bg-blue-500/10",    border: "border-blue-500/20",    dot: "bg-blue-400"    };
+    return { text: "text-amber-400",   bg: "bg-amber-500/10",    border: "border-amber-500/20",    dot: "bg-amber-400"    };
   if (conclusion === "success")
     return { text: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/20", dot: "bg-emerald-400" };
   if (conclusion === "failure")
@@ -163,30 +163,30 @@ export function CiStatus({ repos }: CiStatusProps) {
         return (
           <div key={repo} className="space-y-5">
             <div className="flex items-center gap-3">
-              <div className="size-8 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
-                <MaterialIcon name="rocket_launch" size={16} className="text-cyan-400" />
+              <div className="size-8 rounded-none bg-teal-500/10 border border-teal-500/20 flex items-center justify-center shrink-0">
+                <MaterialIcon name="rocket_launch" size={16} className="text-teal-400" />
               </div>
               <div>
-                <p className="text-[9px] font-black uppercase tracking-widest text-cyan-400/80">CI/CD Status</p>
+                <p className="text-[9px] font-black uppercase tracking-widest text-teal-400/80">CI/CD Status</p>
                 <p className="text-sm font-black">{repo}</p>
               </div>
             </div>
 
             {state === "loading" && (
-              <div className="flex items-center justify-center gap-3 py-16 rounded-3xl border border-outline-variant/10 bg-surface-container/20">
-                <MaterialIcon name="sync" size={18} className="animate-spin text-cyan-400" />
+              <div className="flex items-center justify-center gap-3 py-16 rounded-none border border-outline-variant/10 bg-surface-container/20">
+                <MaterialIcon name="sync" size={18} className="animate-spin text-teal-400" />
                 <span className="text-sm text-muted-foreground/60">Fetching GitHub Actions runs…</span>
               </div>
             )}
 
             {state === "no-ci" && (
-              <div className="flex flex-col items-center gap-4 py-16 text-center rounded-3xl border-2 border-dashed border-outline-variant/15 bg-surface-container/10">
+              <div className="flex flex-col items-center gap-4 py-16 text-center rounded-none border-2 border-dashed border-outline-variant/15 bg-surface-container/10">
                 <MaterialIcon name="rocket_launch" size={32} className="text-muted-foreground/20" />
                 <div>
                   <p className="text-sm font-black text-foreground/60">No CI/CD workflows found</p>
                   <p className="text-xs text-muted-foreground/40 mt-1 max-w-xs mx-auto leading-relaxed">
                     No GitHub Actions workflows detected. Actions may be disabled or private.{" "}
-                    <a href="https://docs.github.com/en/actions/quickstart" target="_blank" rel="noopener noreferrer" className="text-cyan-400 underline underline-offset-2">
+                    <a href="https://docs.github.com/en/actions/quickstart" target="_blank" rel="noopener noreferrer" className="text-teal-400 underline underline-offset-2">
                       Set up a workflow →
                     </a>
                   </p>
@@ -195,7 +195,7 @@ export function CiStatus({ repos }: CiStatusProps) {
             )}
 
             {state === "error" && (
-              <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+              <div className="flex items-center gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
                 <MaterialIcon name="error" size={16} className="shrink-0" />
                 Failed to load CI data — repo may be private or rate-limited by GitHub.
               </div>
@@ -212,7 +212,7 @@ export function CiStatus({ repos }: CiStatusProps) {
                 <div className="space-y-4">
                   {/* Summary strip */}
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
-                    <div className={cn("px-4 py-3 rounded-2xl border space-y-1", latestC.bg, latestC.border)}>
+                    <div className={cn("px-4 py-3 rounded-none border space-y-1", latestC.bg, latestC.border)}>
                       <div className="flex items-center gap-1.5">
                         <span className={cn("size-2 rounded-full", latestC.dot)} />
                         <p className={cn("text-sm font-black", latestC.text)}>
@@ -221,11 +221,11 @@ export function CiStatus({ repos }: CiStatusProps) {
                       </div>
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Latest Run</p>
                     </div>
-                    <div className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
+                    <div className="px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
                       <p className={cn("text-lg font-black", passColor)}>{d.overallPassRate}%</p>
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Pass Rate</p>
                     </div>
-                    <div className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
+                    <div className="px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/10 space-y-0.5">
                       <p className="text-lg font-black text-foreground">{d.workflows.length}</p>
                       <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/40">Workflows</p>
                     </div>
@@ -241,10 +241,10 @@ export function CiStatus({ repos }: CiStatusProps) {
                       wf.passRate >= 60 ? "text-amber-400" : "text-red-400";
 
                     return (
-                      <div key={wf.name} className="rounded-2xl border border-outline-variant/10 bg-surface-container/20 p-4 space-y-3">
+                      <div key={wf.name} className="rounded-none border border-outline-variant/10 bg-surface-container/20 p-4 space-y-3">
                         <div className="flex items-center justify-between flex-wrap gap-2">
                           <div className="flex items-center gap-2">
-                            <MaterialIcon name="play_circle" size={14} className="text-cyan-400" />
+                            <MaterialIcon name="play_circle" size={14} className="text-teal-400" />
                             <span className="text-xs font-black text-foreground/85">{wf.name}</span>
                           </div>
                           <div className="flex items-center gap-3 text-[9px] font-mono">
@@ -264,7 +264,7 @@ export function CiStatus({ repos }: CiStatusProps) {
                               <div
                                 key={run.id}
                                 title={`${runLabel(run.conclusion, run.status)} · ${run.headBranch} · ${date}`}
-                                className={cn("size-6 rounded-md border flex items-center justify-center cursor-default", rc.bg, rc.border)}
+                                className={cn("size-6 rounded-none border flex items-center justify-center cursor-default", rc.bg, rc.border)}
                               >
                                 <span className={cn("size-1.5 rounded-full", rc.dot)} />
                               </div>
@@ -291,7 +291,7 @@ export function CiStatus({ repos }: CiStatusProps) {
                     {[
                       { dot: "bg-emerald-400", label: "Success" },
                       { dot: "bg-red-400",     label: "Failure" },
-                      { dot: "bg-blue-400",    label: "Running" },
+                      { dot: "bg-amber-400",    label: "Running" },
                       { dot: "bg-muted-foreground", label: "Cancelled" },
                       { dot: "bg-amber-400",   label: "Other" },
                     ].map(({ dot, label }) => (

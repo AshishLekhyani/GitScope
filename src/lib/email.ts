@@ -86,12 +86,12 @@ function baseTemplate(title: string, body: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>${title}</title>
 </head>
-<body style="margin:0;padding:0;background:#0b1326;font-family:'Segoe UI',system-ui,sans-serif;color:#e2e8f0;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0b1326;padding:40px 0;">
+<body style="margin:0;padding:0;background:#110f0c;font-family:'Segoe UI',system-ui,sans-serif;color:#e2e8f0;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#110f0c;padding:40px 0;">
     <tr><td align="center">
-      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#111827;border-radius:16px;border:1px solid rgba(99,102,241,0.2);overflow:hidden;">
+      <table width="560" cellpadding="0" cellspacing="0" style="max-width:560px;width:100%;background:#1a1612;border-radius:4px;border:1px solid rgba(245,158,11,0.2);overflow:hidden;">
         <!-- Header -->
-        <tr><td style="background:linear-gradient(135deg,#4361ee,#7c3aed);padding:32px 40px;">
+        <tr><td style="background:linear-gradient(135deg,#d97706,#b45309);padding:32px 40px;">
           <h1 style="margin:0;font-size:22px;font-weight:800;color:#fff;letter-spacing:-0.5px;">GitScope</h1>
           <p style="margin:4px 0 0;font-size:12px;color:rgba(255,255,255,0.7);font-family:monospace;letter-spacing:2px;text-transform:uppercase;">${title}</p>
         </td></tr>
@@ -123,7 +123,7 @@ export function buildVerificationEmail(name: string, token: string) {
          Click the button below to verify your email address and activate your GitScope account.
          This link expires in <strong style="color:#e2e8f0;">30 minutes</strong>.
        </p>
-       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
+       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
          Verify Email Address
        </a>
        <p style="margin:24px 0 0;font-size:12px;color:rgba(255,255,255,0.3);font-family:monospace;word-break:break-all;">
@@ -171,7 +171,7 @@ export function buildScanAlertEmail(opts: {
     subject: `⚠️ Health score dropped ${drop} pts for ${repo}`,
     html: baseTemplate(
       "Repo Health Alert",
-      `<p style="margin:0 0 8px;font-size:16px;font-weight:600;color:#f1f5f9;">Health score alert for <span style="color:#818cf8;">${repo}</span></p>
+      `<p style="margin:0 0 8px;font-size:16px;font-weight:600;color:#f1f5f9;">Health score alert for <span style="color:#fbbf24;">${repo}</span></p>
        <p style="margin:0 0 24px;font-size:14px;color:#94a3b8;line-height:1.6;">
          Your ${scanMode} scan detected a significant drop in the repository health score.
        </p>
@@ -202,10 +202,10 @@ export function buildScanAlertEmail(opts: {
          </div>` : ""}
        </div>` : ""}
        <div style="padding:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08);border-radius:10px;margin-bottom:24px;">
-         <p style="margin:0;font-size:11px;font-weight:700;color:#6366f1;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Summary</p>
+         <p style="margin:0;font-size:11px;font-weight:700;color:#d97706;text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;">Summary</p>
          <p style="margin:0;font-size:13px;color:#94a3b8;line-height:1.6;">${summary}</p>
        </div>
-       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
+       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
          View Full Report
        </a>`
     ),
@@ -248,16 +248,16 @@ export function buildWeeklyDigestEmail(opts: {
        <!-- Summary stats -->
        <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:28px;">
          <tr>
-           <td style="text-align:center;padding:20px 12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:12px 0 0 12px;">
+           <td style="text-align:center;padding:20px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:4px 0 0 4px;">
              <p style="margin:0;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Repos Tracked</p>
              <p style="margin:6px 0 0;font-size:28px;font-weight:900;color:#e2e8f0;">${repoCount}</p>
            </td>
-           <td style="text-align:center;padding:20px 12px;background:rgba(99,102,241,0.08);border-top:1px solid rgba(99,102,241,0.2);border-bottom:1px solid rgba(99,102,241,0.2);">
+           <td style="text-align:center;padding:20px 12px;background:rgba(245,158,11,0.08);border-top:1px solid rgba(245,158,11,0.2);border-bottom:1px solid rgba(245,158,11,0.2);">
              <p style="margin:0;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Avg Health</p>
              <p style="margin:6px 0 0;font-size:28px;font-weight:900;color:${scoreColor};">${avgScore}</p>
              <p style="margin:2px 0 0;font-size:12px;font-weight:700;color:${deltaColor};">${deltaStr} vs last week</p>
            </td>
-           <td style="text-align:center;padding:20px 12px;background:rgba(99,102,241,0.08);border:1px solid rgba(99,102,241,0.2);border-radius:0 12px 12px 0;">
+           <td style="text-align:center;padding:20px 12px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.2);border-radius:0 4px 4px 0;">
              <p style="margin:0;font-size:11px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:1px;">Scans Run</p>
              <p style="margin:6px 0 0;font-size:28px;font-weight:900;color:#e2e8f0;">${totalScans}</p>
            </td>
@@ -282,12 +282,12 @@ export function buildWeeklyDigestEmail(opts: {
          </table>
        </div>` : ""}
 
-       <a href="${APP_URL}/intelligence" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
+       <a href="${APP_URL}/intelligence" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
          Open GitScope Dashboard
        </a>
        <p style="margin:20px 0 0;font-size:11px;color:rgba(255,255,255,0.3);">
          You're receiving this because weekly digests are enabled.
-         <a href="${APP_URL}/settings?tab=workspace" style="color:#6366f1;">Manage preferences</a>
+         <a href="${APP_URL}/settings?tab=workspace" style="color:#d97706;">Manage preferences</a>
        </p>`
     ),
   };
@@ -304,7 +304,7 @@ export function buildSetPasswordEmail(name: string, token: string) {
          You're signing in with Google/GitHub but haven't set a password yet. Click below to create one so you can also log in with your email and password.
          This link expires in <strong style="color:#e2e8f0;">1 hour</strong>.
        </p>
-       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#4361ee,#7c3aed);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
+       <a href="${url}" style="display:inline-block;padding:14px 28px;background:linear-gradient(135deg,#d97706,#b45309);color:#fff;font-size:14px;font-weight:700;text-decoration:none;border-radius:10px;letter-spacing:0.5px;">
          Set Password
        </a>
        <p style="margin:24px 0 0;font-size:12px;color:rgba(255,255,255,0.3);font-family:monospace;word-break:break-all;">

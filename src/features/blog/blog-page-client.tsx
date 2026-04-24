@@ -96,10 +96,10 @@ const POSTS: Post[] = [
 
 const CATEGORY_COLORS: Record<Category, string> = {
   All: "bg-muted text-muted-foreground border-border",
-  Engineering: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
+  Engineering: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
   "Open Source": "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
   Productivity: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
-  Updates: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+  Updates: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
 };
 
 function CategoryBadge({ category }: { category: Category }) {
@@ -124,7 +124,7 @@ export function BlogPageClient() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
       {/* Header */}
       <div className="mb-12">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-500">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-500">
           <BookOpen className="size-3" />
           Engineer&apos;s Log
         </div>
@@ -140,15 +140,15 @@ export function BlogPageClient() {
       {/* Featured post */}
       <Link
         href={`/blog/${featured.slug}`}
-        className="group mb-10 block rounded-2xl border border-border bg-card p-7 transition hover:border-indigo-500/30 hover:shadow-md sm:p-10"
+        className="group mb-10 block rounded-none border border-border bg-card p-7 transition hover:border-amber-500/30 hover:shadow-md sm:p-10"
       >
         <div className="mb-4 flex flex-wrap items-center gap-3">
-          <span className="rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest text-indigo-500">
+          <span className="rounded-full border border-amber-500/30 bg-amber-500/10 px-3 py-0.5 text-[10px] font-bold uppercase tracking-widest text-amber-500">
             Featured
           </span>
           <CategoryBadge category={featured.category} />
         </div>
-        <h2 className="mb-3 font-heading text-2xl font-black tracking-tight text-foreground transition group-hover:text-indigo-500 sm:text-3xl">
+        <h2 className="mb-3 font-heading text-2xl font-black tracking-tight text-foreground transition group-hover:text-amber-500 sm:text-3xl">
           {featured.title}
         </h2>
         <p className="mb-6 max-w-3xl text-sm leading-relaxed text-muted-foreground">
@@ -173,7 +173,7 @@ export function BlogPageClient() {
               <Clock className="size-3" />
               {featured.readTime} min read
             </span>
-            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-500 transition group-hover:gap-2.5">
+            <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-500 transition group-hover:gap-2.5">
               Read article <ArrowRight className="size-3" />
             </span>
           </div>
@@ -189,7 +189,7 @@ export function BlogPageClient() {
             onClick={() => setActive(cat)}
             className={`rounded-full border px-4 py-1.5 text-xs font-semibold uppercase tracking-widest transition ${
               active === cat
-                ? "border-indigo-500/40 bg-indigo-500/10 text-indigo-500"
+                ? "border-amber-500/40 bg-amber-500/10 text-amber-500"
                 : "border-border bg-transparent text-muted-foreground hover:border-primary/30 hover:text-foreground"
             }`}
           >
@@ -209,7 +209,7 @@ export function BlogPageClient() {
             <Link
               key={post.slug}
               href={`/blog/${post.slug}`}
-              className="group flex flex-col rounded-2xl border border-border bg-card p-6 transition hover:border-indigo-500/30 hover:shadow-md"
+              className="group flex flex-col rounded-none border border-border bg-card p-6 transition hover:border-amber-500/30 hover:shadow-md"
             >
               <div className="mb-4 flex items-start justify-between gap-3">
                 <CategoryBadge category={post.category} />
@@ -218,7 +218,7 @@ export function BlogPageClient() {
                   {post.readTime} min
                 </span>
               </div>
-              <h3 className="mb-3 font-heading text-base font-black leading-snug tracking-tight text-foreground transition group-hover:text-indigo-500">
+              <h3 className="mb-3 font-heading text-base font-black leading-snug tracking-tight text-foreground transition group-hover:text-amber-500">
                 {post.title}
               </h3>
               <p className="mb-6 grow text-xs leading-relaxed text-muted-foreground">

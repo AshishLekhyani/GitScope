@@ -162,10 +162,10 @@ export default async function ReleasesPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight">
-            <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-indigo-500/10">
-              <MaterialIcon name="new_releases" size={22} className="text-indigo-500" />
+            <span className="inline-flex size-10 items-center justify-center rounded-none bg-amber-500/10">
+              <MaterialIcon name="new_releases" size={22} className="text-amber-500" />
             </span>
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-amber-500">
               Release Radar
             </span>
           </h1>
@@ -176,14 +176,14 @@ export default async function ReleasesPage() {
 
         {hasHistory && totalReleases > 0 && (
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2">
-              <MaterialIcon name="new_releases" size={15} className="text-indigo-500" />
+            <div className="flex items-center gap-2 rounded-none border border-border bg-card px-4 py-2">
+              <MaterialIcon name="new_releases" size={15} className="text-amber-500" />
               <span className="text-xs font-bold">
                 {totalReleases} release{totalReleases !== 1 ? "s" : ""}
               </span>
             </div>
             {latestRelease?.published_at && (
-              <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2">
+              <div className="flex items-center gap-2 rounded-none border border-border bg-card px-4 py-2">
                 <MaterialIcon name="calendar_today" size={15} className="text-emerald-500" />
                 <span className="text-xs font-bold text-muted-foreground">
                   Latest:{" "}
@@ -199,9 +199,9 @@ export default async function ReleasesPage() {
 
       {/* ── No history CTA ──────────────────────────────────────────────────── */}
       {!hasHistory && (
-        <div className="flex flex-col items-center justify-center gap-6 rounded-3xl border-2 border-dashed border-border/50 py-24 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/10">
-            <MaterialIcon name="manage_search" size={32} className="text-indigo-400" />
+        <div className="flex flex-col items-center justify-center gap-6 rounded-none border-2 border-dashed border-border/50 py-24 text-center">
+          <div className="flex size-16 items-center justify-center rounded-none bg-amber-500/10">
+            <MaterialIcon name="manage_search" size={32} className="text-amber-400" />
           </div>
           <div className="max-w-sm space-y-2">
             <h3 className="text-xl font-black">No repository history yet</h3>
@@ -212,7 +212,7 @@ export default async function ReleasesPage() {
           </div>
           <Link
             href={ROUTES.search}
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
+            className="inline-flex items-center gap-2 rounded-none bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-500"
           >
             <MaterialIcon name="search" size={16} className="text-white" />
             Search a Repository
@@ -222,7 +222,7 @@ export default async function ReleasesPage() {
 
       {/* ── No releases found ────────────────────────────────────────────────── */}
       {hasHistory && totalReleases === 0 && (
-        <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed border-border/50 py-16 text-center">
+        <div className="flex flex-col items-center justify-center gap-4 rounded-none border-2 border-dashed border-border/50 py-16 text-center">
           <MaterialIcon name="new_releases" size={40} className="text-muted-foreground/20" />
           <div>
             <h3 className="text-lg font-black">No releases found</h3>
@@ -262,7 +262,7 @@ export default async function ReleasesPage() {
                       className={cn(
                         "absolute -left-6 mt-1 flex size-[22px] shrink-0 items-center justify-center rounded-full border-2 border-background",
                         isLatest
-                          ? "bg-indigo-500 shadow-lg shadow-indigo-500/30"
+                          ? "bg-amber-500 shadow-lg shadow-amber-500/30"
                           : release.prerelease
                           ? "bg-amber-500/20 border-amber-500/50"
                           : "bg-muted"
@@ -276,9 +276,9 @@ export default async function ReleasesPage() {
                     {/* Card */}
                     <div
                       className={cn(
-                        "flex-1 overflow-hidden rounded-3xl border bg-card shadow-sm transition-all hover:shadow-md",
+                        "flex-1 overflow-hidden rounded-none border bg-card shadow-sm transition-all hover:shadow-md",
                         isLatest
-                          ? "border-indigo-500/30 bg-indigo-500/[0.02]"
+                          ? "border-amber-500/30 bg-amber-500/[0.02]"
                           : "border-border hover:border-border/80"
                       )}
                     >
@@ -292,13 +292,13 @@ export default async function ReleasesPage() {
                               alt={release.repoOwner}
                               width={22}
                               height={22}
-                              className="size-[22px] shrink-0 rounded-md border border-border/50"
+                              className="size-[22px] shrink-0 rounded-none border border-border/50"
                             />
                           )}
                           <div className="min-w-0">
                             <Link
                               href={ROUTES.dashboard(release.repoOwner, release.repoName)}
-                              className="font-mono text-sm font-bold hover:text-indigo-500 transition-colors truncate block"
+                              className="font-mono text-sm font-bold hover:text-amber-500 transition-colors truncate block"
                             >
                               <span className="text-muted-foreground">
                                 {release.repoOwner}/
@@ -310,7 +310,7 @@ export default async function ReleasesPage() {
 
                         <div className="flex items-center gap-2 shrink-0 flex-wrap">
                           {isLatest && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-white">
                               Latest
                             </span>
                           )}
@@ -319,7 +319,7 @@ export default async function ReleasesPage() {
                               Pre-release
                             </span>
                           )}
-                          <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-0.5 font-mono text-[11px] font-black text-indigo-500">
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2.5 py-0.5 font-mono text-[11px] font-black text-amber-500">
                             {release.tag_name}
                           </span>
                         </div>
@@ -368,7 +368,7 @@ export default async function ReleasesPage() {
                             href={release.html_url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition-all hover:border-indigo-500/30 hover:bg-indigo-500/5 hover:text-indigo-500"
+                            className="inline-flex items-center gap-1.5 rounded-none border border-border px-3 py-1.5 text-[11px] font-bold text-muted-foreground transition-all hover:border-amber-500/30 hover:bg-amber-500/5 hover:text-amber-500"
                           >
                             View on GitHub
                             <MaterialIcon name="open_in_new" size={11} />
@@ -385,7 +385,7 @@ export default async function ReleasesPage() {
           {/* Right: sidebar */}
           <div className="space-y-4">
             {/* Aggregate stats */}
-            <Card className="rounded-3xl border border-border p-5 shadow-sm">
+            <Card className="rounded-none border border-border p-5 shadow-sm">
               <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
                 Summary
               </h3>
@@ -395,13 +395,13 @@ export default async function ReleasesPage() {
                     label: "Total Releases",
                     value: totalReleases,
                     icon: "new_releases",
-                    color: "text-indigo-500",
+                    color: "text-amber-500",
                   },
                   {
                     label: "Repositories",
                     value: recentRepos.length,
                     icon: "source",
-                    color: "text-purple-500",
+                    color: "text-amber-500",
                   },
                   {
                     label: "Pre-releases",
@@ -428,7 +428,7 @@ export default async function ReleasesPage() {
             </Card>
 
             {/* Per-repo release counts */}
-            <Card className="rounded-3xl border border-border p-5 shadow-sm">
+            <Card className="rounded-none border border-border p-5 shadow-sm">
               <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
                 By Repository
               </h3>
@@ -445,16 +445,16 @@ export default async function ReleasesPage() {
                         alt={r.owner}
                         width={20}
                         height={20}
-                        className="size-5 shrink-0 rounded-md border border-border/50"
+                        className="size-5 shrink-0 rounded-none border border-border/50"
                       />
                     ) : (
-                      <div className="flex size-5 shrink-0 items-center justify-center rounded-md bg-muted text-[9px] font-black">
+                      <div className="flex size-5 shrink-0 items-center justify-center rounded-none bg-muted text-[9px] font-black">
                         {r.owner[0]?.toUpperCase()}
                       </div>
                     )}
                     <Link
                       href={ROUTES.dashboard(r.owner, r.repo)}
-                      className="flex-1 min-w-0 font-mono text-xs truncate text-muted-foreground hover:text-indigo-500 transition-colors"
+                      className="flex-1 min-w-0 font-mono text-xs truncate text-muted-foreground hover:text-amber-500 transition-colors"
                     >
                       <span className="text-muted-foreground/60">{r.owner}/</span>
                       <span className="font-bold text-foreground">{r.repo}</span>
@@ -476,7 +476,7 @@ export default async function ReleasesPage() {
 
             {/* Token info */}
             {!token && (
-              <Card className="rounded-3xl border border-amber-500/20 bg-amber-500/5 p-5">
+              <Card className="rounded-none border border-amber-500/20 bg-amber-500/5 p-5">
                 <div className="flex items-start gap-3">
                   <MaterialIcon name="warning" size={16} className="text-amber-500 shrink-0 mt-0.5" />
                   <div className="space-y-1">
@@ -501,11 +501,11 @@ export default async function ReleasesPage() {
             {/* Quick nav */}
             <Link
               href={ROUTES.activity}
-              className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-indigo-500/30 hover:bg-muted/40"
+              className="flex items-center justify-between gap-3 rounded-none border border-border bg-card p-5 shadow-sm transition-colors hover:border-amber-500/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10">
-                  <MaterialIcon name="bolt" size={18} className="text-indigo-500" />
+                <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10">
+                  <MaterialIcon name="bolt" size={18} className="text-amber-500" />
                 </div>
                 <div>
                   <p className="text-sm font-bold">Activity Pulse</p>
@@ -517,11 +517,11 @@ export default async function ReleasesPage() {
 
             <Link
               href={ROUTES.search}
-              className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-indigo-500/30 hover:bg-muted/40"
+              className="flex items-center justify-between gap-3 rounded-none border border-border bg-card p-5 shadow-sm transition-colors hover:border-amber-500/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-purple-500/10">
-                  <MaterialIcon name="search" size={18} className="text-purple-500" />
+                <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10">
+                  <MaterialIcon name="search" size={18} className="text-amber-500" />
                 </div>
                 <div>
                   <p className="text-sm font-bold">Search Repos</p>

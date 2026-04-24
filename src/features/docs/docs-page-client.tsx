@@ -889,7 +889,7 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
                     const hasTerm = colonIdx !== -1;
                     return (
                       <li key={j} className="flex gap-3 text-sm leading-relaxed text-muted-foreground">
-                        <span className="mt-1.5 shrink-0 size-1.5 rounded-full bg-indigo-500/50" />
+                        <span className="mt-1.5 shrink-0 size-1.5 rounded-full bg-amber-500/50" />
                         <span>
                           {hasTerm ? (
                             <>
@@ -911,12 +911,12 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
             return (
               <div key={i} className="space-y-2">
                 <div className="flex items-center gap-2 px-1">
-                  <div className="size-2 rounded-full bg-indigo-500" />
+                  <div className="size-2 rounded-full bg-amber-500" />
                   <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
                     {block.label}
                   </span>
                 </div>
-                <pre className="overflow-x-auto rounded-2xl border border-border bg-[#0d152a] dark:bg-[#0d152a] p-6 font-mono text-xs leading-relaxed text-emerald-400/90 shadow-2xl">
+                <pre className="overflow-x-auto rounded-none border border-border bg-[#171512] dark:bg-[#171512] p-6 font-mono text-xs leading-relaxed text-emerald-400/90 shadow-2xl">
                   <code>{block.code}</code>
                 </pre>
               </div>
@@ -930,14 +930,14 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
                     {block.heading}
                   </p>
                 )}
-                <div className="overflow-x-auto rounded-xl border border-border">
+                <div className="overflow-x-auto rounded-none border border-border">
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="bg-indigo-500/10 border-b border-border">
+                      <tr className="bg-amber-500/10 border-b border-border">
                         {block.headers.map((h, j) => (
                           <th
                             key={j}
-                            className="px-4 py-3 text-left font-black uppercase tracking-widest text-indigo-400 whitespace-nowrap"
+                            className="px-4 py-3 text-left font-black uppercase tracking-widest text-amber-400 whitespace-nowrap"
                           >
                             {h}
                           </th>
@@ -978,7 +978,7 @@ function RenderBlocks({ blocks }: { blocks: ContentBlock[] }) {
             return (
               <div
                 key={i}
-                className="flex gap-3 rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-4"
+                className="flex gap-3 rounded-none border border-amber-500/20 bg-amber-500/5 px-4 py-4"
               >
                 <MaterialIcon name="info" size={16} className="text-amber-400 shrink-0 mt-0.5" />
                 <p className="text-xs leading-relaxed text-amber-300/80 font-medium">{block.text}</p>
@@ -1046,10 +1046,10 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-8">
           <div>
             <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-              <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
+              <span className="bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-amber-500">
                 Documentation
               </span>
-              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-500">
+              <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-500">
                 <MaterialIcon name="menu_book" size={14} />
                 <span className="text-[10px] uppercase font-bold tracking-widest">Reference</span>
               </div>
@@ -1059,12 +1059,12 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
             </p>
           </div>
           <div className="relative group max-w-xs w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-amber-500 transition-colors" />
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search docs..."
-              className="pl-10 pr-4 py-6 rounded-2xl bg-card border-border focus:ring-2 ring-indigo-500/20 font-medium"
+              className="pl-10 pr-4 py-6 rounded-none bg-card border-border focus:ring-2 ring-amber-500/20 font-medium"
             />
           </div>
         </div>
@@ -1080,12 +1080,12 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
           {/* Search bar — marketing mode */}
           {!isDashboard && (
             <div className="relative group mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-indigo-500 transition-colors" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground group-focus-within:text-amber-500 transition-colors" />
               <Input
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search docs..."
-                className="pl-10 pr-4 py-2 rounded-xl bg-card border-border focus:ring-2 ring-indigo-500/20 font-medium text-sm"
+                className="pl-10 pr-4 py-2 rounded-none bg-card border-border focus:ring-2 ring-amber-500/20 font-medium text-sm"
               />
             </div>
           )}
@@ -1096,9 +1096,9 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
               key={s.id}
               onClick={() => setActive(s.id)}
               className={cn(
-                "flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left text-sm transition-all group",
+                "flex w-full items-center gap-3 rounded-none px-4 py-3 text-left text-sm transition-all group",
                 active === s.id
-                  ? "bg-indigo-500/10 font-bold text-indigo-500 border border-indigo-500/20 shadow-lg shadow-indigo-500/5"
+                  ? "bg-amber-500/10 font-bold text-amber-500 border border-amber-500/20 shadow-lg shadow-amber-500/5"
                   : "text-muted-foreground hover:bg-muted/50 hover:text-foreground border border-transparent"
               )}
             >
@@ -1108,7 +1108,7 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
                 className={cn(
                   "shrink-0 transition-colors",
                   active === s.id
-                    ? "text-indigo-500"
+                    ? "text-amber-500"
                     : "text-muted-foreground group-hover:text-foreground"
                 )}
               />
@@ -1117,7 +1117,7 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
           ))}
 
           {filteredSections.length === 0 && (
-            <div className="px-4 py-8 text-center border border-dashed border-border rounded-xl">
+            <div className="px-4 py-8 text-center border border-dashed border-border rounded-none">
               <MaterialIcon name="search_off" size={24} className="text-muted-foreground mx-auto mb-2" />
               <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 No matching sections
@@ -1132,7 +1132,7 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
           initial={{ opacity: 0, x: 8 }}
           animate={{ opacity: 1, x: 0 }}
           transition={{ duration: 0.2 }}
-          className="rounded-2xl p-8 lg:p-12 relative overflow-hidden border border-border bg-card"
+          className="rounded-none p-8 lg:p-12 relative overflow-hidden border border-border bg-card"
         >
           {/* Decorative background icon */}
           <div className="absolute top-0 right-0 p-10 opacity-[0.04] pointer-events-none select-none">
@@ -1149,9 +1149,9 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
                 <MaterialIcon
                   name={sections.find((s) => s.id === active)?.icon ?? "article"}
                   size={20}
-                  className="text-indigo-500"
+                  className="text-amber-500"
                 />
-                <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/70">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/70">
                   {sections.find((s) => s.id === active)?.label}
                 </span>
               </div>
@@ -1179,7 +1179,7 @@ export function DocsPageClient({ variant = "marketing" }: DocsPageClientProps) {
                       href={l.href}
                       target={l.href.startsWith("http") ? "_blank" : undefined}
                       rel={l.href.startsWith("http") ? "noopener noreferrer" : undefined}
-                      className="group inline-flex items-center gap-2 rounded-xl border border-indigo-500/20 bg-indigo-500/5 px-5 py-2.5 text-xs font-bold text-indigo-400 transition-all hover:bg-indigo-500/10 hover:border-indigo-500/40 hover:text-indigo-300 shadow-sm"
+                      className="group inline-flex items-center gap-2 rounded-none border border-amber-500/20 bg-amber-500/5 px-5 py-2.5 text-xs font-bold text-amber-400 transition-all hover:bg-amber-500/10 hover:border-amber-500/40 hover:text-amber-300 shadow-sm"
                     >
                       {l.label}
                       <MaterialIcon

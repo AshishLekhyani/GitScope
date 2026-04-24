@@ -519,6 +519,19 @@ model ApiKey {
   @@map("api_keys")
 }
 
+// ── Global Announcement Banner ────────────────────────────────────────────────
+// Admin-controlled banner shown to all logged-in users.
+model Announcement {
+  id        String   @id @default(cuid())
+  message   String   @db.Text
+  type      String   @default("info") // info | warning | error | success
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("announcements")
+}
+
 // identifier prefixes:
 //   "verify:{email}"  — email address verification (expires 24h)
 //   "reset:{email}"   — password reset (expires 1h)

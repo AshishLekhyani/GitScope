@@ -80,9 +80,9 @@ const PLANS = [
     name: "Team",
     price: 49,
     description: "For engineering teams that need fleet-wide analytics and DORA metrics.",
-    color: "border-indigo-500/40",
+    color: "border-amber-500/40",
     badge: "Best for Teams",
-    badgeColor: "bg-indigo-500 text-white",
+    badgeColor: "bg-amber-500 text-white",
     cta: "Start Team Trial",
     ctaHref: "/login?mode=signup&plan=team",
     features: [
@@ -155,7 +155,7 @@ export interface PricingPageClientProps {
 
 export function PricingPageClient({ variant = "marketing", isAuthenticated = false }: PricingPageClientProps) {
   const [annual, setAnnual] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [showPaymentModal, setShowPaymentModal] = useState(true);
   const isDashboard = variant === "dashboard";
 
   useEffect(() => {
@@ -163,7 +163,6 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
     try {
       const key = "gitscope_payment_notice_shown";
       if (!sessionStorage.getItem(key)) {
-        setShowPaymentModal(true);
         sessionStorage.setItem(key, "1");
       }
     } catch { /* sessionStorage blocked */ }
@@ -189,14 +188,14 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
-            className="fixed bottom-5 left-4 z-200 w-[calc(100vw-2rem)] max-w-xs sm:left-5 sm:w-80"
+            className="fixed bottom-5 left-4 z-[200] w-[calc(100vw-2rem)] max-w-xs sm:left-5 sm:w-80"
           >
-            <div className="overflow-hidden rounded-2xl border border-amber-500/25 bg-[#0f1629]/95 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)] backdrop-blur-xl">
+            <div className="overflow-hidden border border-amber-500/25 bg-[#110f0c]/95 shadow-[0_16px_48px_-8px_rgba(0,0,0,0.7)] backdrop-blur-xl">
               <div className="h-0.5 bg-linear-to-r from-amber-500 to-orange-400" />
               <div className="p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">
                   <div className="flex items-start gap-3">
-                    <div className="size-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="size-8 bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
                       <MaterialIcon name="payments" size={16} className="text-amber-400" />
                     </div>
                     <div className="space-y-0.5">
@@ -212,14 +211,14 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
                     onClick={() => setShowPaymentModal(false)}
                     className="text-white/25 hover:text-white/60 transition-colors shrink-0 mt-0.5"
                   >
-                    <MaterialIcon name="close" size={14} />
+                  <MaterialIcon name="close" size={14} />
                   </button>
                 </div>
                 <a
                   href="https://www.linkedin.com/in/ashishlekhyani"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-xl bg-[#0077b5] hover:bg-[#0066a0] px-3 py-2 text-[11px] font-black text-white transition-colors"
+                  className="flex w-full items-center justify-center gap-2 border border-amber-500/30 bg-amber-500/10 px-3 py-2 font-mono text-[11px] font-black uppercase tracking-[0.08em] text-amber-300 transition-colors hover:bg-amber-500/20 hover:text-amber-200"
                 >
                   <MaterialIcon name="open_in_new" size={12} />
                   Message on LinkedIn
@@ -240,24 +239,24 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
         {isDashboard ? (
           <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between mb-2">
             <div>
-              <h1 className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
+              <h1 className="text-3xl font-black tracking-tight bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-amber-500">
                 Subscription & Billing
               </h1>
               <p className="text-muted-foreground mt-1 text-sm">Manage your plan, billing, and workspace limits.</p>
             </div>
-            <div className="flex items-center gap-3 px-5 py-3 rounded-2xl bg-indigo-500/5 border border-indigo-500/20">
-              <div className="size-9 rounded-xl bg-indigo-500 flex items-center justify-center text-white">
+            <div className="flex items-center gap-3 border border-amber-500/20 bg-amber-500/5 px-5 py-3">
+              <div className="size-9 bg-amber-500 flex items-center justify-center text-white">
                 <MaterialIcon name="rocket_launch" size={18} />
               </div>
               <div>
                 <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Current Plan</p>
-                <p className="text-sm font-black text-indigo-500">Explorer (Free)</p>
+                <p className="text-sm font-black text-amber-500">Explorer (Free)</p>
               </div>
             </div>
           </div>
         ) : (
           <>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-widest text-primary/70">
+            <div className="inline-flex items-center gap-2 border border-primary/10 bg-primary/5 px-3 py-1 font-mono text-[10px] font-black uppercase tracking-widest text-primary/70">
               <Zap className="size-3" /> Engineering-Grade Pricing
             </div>
             <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground md:text-5xl">
@@ -271,19 +270,19 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
 
         {/* Billing toggle */}
         <div className={cn("flex", isDashboard ? "mt-4" : "justify-center mt-6")}>
-          <div className="inline-flex items-center gap-1 rounded-2xl border border-border bg-card p-1.5 shadow-sm">
+          <div className="inline-flex items-center gap-1 border border-border bg-card p-1.5 shadow-sm">
             <button type="button" onClick={() => setAnnual(false)}
-              className={cn("rounded-xl px-4 py-2 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
-                !annual ? "bg-indigo-500 text-white shadow" : "text-muted-foreground hover:text-foreground"
+              className={cn("px-4 py-2 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
+                !annual ? "bg-amber-500 text-white shadow" : "text-muted-foreground hover:text-foreground"
               )}>
               Monthly
             </button>
             <button type="button" onClick={() => setAnnual(true)}
-              className={cn("rounded-xl px-4 py-2 font-mono text-[10px] font-bold tracking-widest uppercase transition-all flex items-center gap-1.5",
-                annual ? "bg-indigo-500 text-white shadow" : "text-muted-foreground hover:text-foreground"
+              className={cn("flex items-center gap-1.5 px-4 py-2 font-mono text-[10px] font-bold tracking-widest uppercase transition-all",
+                annual ? "bg-amber-500 text-white shadow" : "text-muted-foreground hover:text-foreground"
               )}>
               Annual
-              <span className="rounded bg-emerald-500/20 px-1.5 py-0.5 text-[8px] text-emerald-500 font-black">−20%</span>
+              <span className="bg-emerald-500/20 px-1.5 py-0.5 text-[8px] text-emerald-500 font-black">−20%</span>
             </button>
           </div>
         </div>
@@ -298,13 +297,13 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: idx * 0.07 }}
             className={cn(
-              "relative flex flex-col rounded-2xl border-2 bg-card p-7 transition-all hover:shadow-xl",
+              "relative flex flex-col border-2 bg-card p-7 transition-all hover:shadow-xl",
               plan.color,
               plan.badge === "Most Popular" && "ring-2 ring-primary/20 shadow-primary/5 shadow-xl"
             )}
           >
             {plan.badge && (
-              <span className={cn("absolute -top-3 left-6 rounded-full px-3 py-1 font-mono text-[9px] font-black tracking-widest uppercase shadow", plan.badgeColor)}>
+              <span className={cn("absolute -top-3 left-6 px-3 py-1 font-mono text-[9px] font-black tracking-widest uppercase shadow", plan.badgeColor)}>
                 {plan.badge}
               </span>
             )}
@@ -346,7 +345,7 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
             <Link
               href={plan.ctaHref}
               className={cn(
-                "mt-6 flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-widest transition-all",
+                "mt-6 flex w-full items-center justify-center gap-2 py-2.5 text-xs font-bold uppercase tracking-widest transition-all",
                 plan.id === "pro" || plan.id === "developer" || plan.id === "team"
                   ? "btn-gitscope-primary"
                   : "border border-border hover:bg-muted"
@@ -362,8 +361,8 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
       {!isDashboard && (
         <div className="space-y-6">
           <h2 className="font-heading text-2xl font-bold text-center">Full Feature Comparison</h2>
-          <div className="overflow-x-auto rounded-2xl border border-border">
-            <table className="w-full text-sm">
+          <div className="overflow-x-auto border border-border">
+            <table className="min-w-[760px] text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
                   <th className="py-4 px-6 text-left font-bold text-xs text-muted-foreground uppercase tracking-widest">Feature</th>
@@ -405,7 +404,7 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
             <MaterialIcon name="receipt_long" size={18} className="text-muted-foreground" />
             Billing History
           </h3>
-          <div className="glass-panel rounded-2xl p-8 flex flex-col items-center text-center gap-4">
+          <div className="glass-panel flex flex-col items-center gap-4 p-8 text-center">
             <MaterialIcon name="receipt_long" size={32} className="text-muted-foreground/30" />
             <div>
               <h4 className="text-sm font-bold">No Billing History</h4>
@@ -413,7 +412,7 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
                 Upgrade to Professional or Team to unlock advanced analytics and access billing history.
               </p>
             </div>
-            <Link href="/login?mode=signup&plan=pro" className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gitscope-primary text-xs font-bold">
+            <Link href="/login?mode=signup&plan=pro" className="inline-flex items-center gap-2 px-5 py-2.5 btn-gitscope-primary text-xs font-bold">
               Upgrade Now
             </Link>
           </div>
@@ -432,7 +431,7 @@ export function PricingPageClient({ variant = "marketing", isAuthenticated = fal
               { q: "Can I analyze private repositories?", a: "Yes — if you sign in with GitHub OAuth and your account has access to the repository, GitScope can analyze it using your token." },
               { q: "How does the AI analysis work?", a: "GitScope runs a tiered AI pipeline. Explorer uses a lightweight single-agent pass, Professional uses multi-agent synthesis, and Team/Enterprise add specialist agents (security, architecture, testability, performance) with deeper code context." },
             ].map((faq) => (
-              <div key={faq.q} className="rounded-xl border border-border p-5 hover:bg-muted/20 transition-colors">
+              <div key={faq.q} className="border border-border p-5 transition-colors hover:bg-muted/20">
                 <h3 className="text-sm font-bold mb-2">{faq.q}</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">{faq.a}</p>
               </div>

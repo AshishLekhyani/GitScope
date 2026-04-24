@@ -54,7 +54,7 @@ function mapEvent(ev: GitHubEvent) {
       const count = ev.payload.commits?.length ?? 1;
       const branch = ev.payload.ref?.replace("refs/heads/", "") ?? "branch";
       return {
-        icon: GitCommit, color: "text-indigo-500", bg: "bg-indigo-500/10",
+        icon: GitCommit, color: "text-amber-500", bg: "bg-amber-500/10",
         desc: `pushed ${count} commit${count !== 1 ? "s" : ""} to ${branch}`,
         link: `https://github.com/${ev.repo.name}/commits/${branch}`,
       };
@@ -79,13 +79,13 @@ function mapEvent(ev: GitHubEvent) {
       };
     case "CreateEvent":
       return {
-        icon: GitBranch, color: "text-purple-500", bg: "bg-purple-500/10",
+        icon: GitBranch, color: "text-amber-500", bg: "bg-amber-500/10",
         desc: `created ${ev.payload.ref ? `branch ${ev.payload.ref}` : "repository"}`,
         link: `https://github.com/${ev.repo.name}`,
       };
     case "ForkEvent":
       return {
-        icon: GitMerge, color: "text-blue-500", bg: "bg-blue-500/10",
+        icon: GitMerge, color: "text-amber-500", bg: "bg-amber-500/10",
         desc: `forked to ${ev.payload.forkee?.full_name ?? ""}`,
         link: ev.payload.forkee?.html_url,
       };
@@ -130,12 +130,12 @@ async function getUserEvents(username: string, token: string, page: number): Pro
 
 const EVENT_FILTERS = [
   { label: "All",      value: "",                  color: "text-foreground"         },
-  { label: "Commits",  value: "PushEvent",          color: "text-indigo-500"         },
+  { label: "Commits",  value: "PushEvent",          color: "text-amber-500"         },
   { label: "PRs",      value: "PullRequestEvent",   color: "text-emerald-500"        },
   { label: "Issues",   value: "IssuesEvent",         color: "text-amber-500"          },
   { label: "Stars",    value: "WatchEvent",          color: "text-yellow-500"         },
   { label: "Releases", value: "ReleaseEvent",        color: "text-rose-500"           },
-  { label: "Forks",    value: "ForkEvent",           color: "text-blue-500"           },
+  { label: "Forks",    value: "ForkEvent",           color: "text-amber-500"           },
 ];
 
 export default async function ActivityPage({
@@ -187,7 +187,7 @@ export default async function ActivityPage({
       <div className="flex items-center justify-between flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-black tracking-tight flex items-center gap-3">
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-amber-500">
               Activity Pulse
             </span>
             {isGitHubUser ? (
@@ -207,14 +207,14 @@ export default async function ActivityPage({
               : "Connect GitHub to see your live activity feed."}
           </p>
         </div>
-        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-card border border-border">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-none bg-card border border-border">
           <Globe className="size-4 text-muted-foreground" />
           <span className="text-xs font-bold text-muted-foreground">GitHub Events API</span>
         </div>
       </div>
 
       {!isGitHubUser ? (
-        <div className="flex flex-col items-center justify-center py-24 text-center rounded-2xl border-2 border-dashed border-border/50 gap-4">
+        <div className="flex flex-col items-center justify-center py-24 text-center rounded-none border-2 border-dashed border-border/50 gap-4">
           <GitCommit className="size-12 text-muted-foreground/20" />
           <div>
             <h3 className="text-lg font-black mb-2">GitHub Account Required</h3>
@@ -234,9 +234,9 @@ export default async function ActivityPage({
                   key={f.value || "all"}
                   href={`/activity?page=1${f.value ? `&type=${f.value}` : ""}`}
                   className={cn(
-                    "px-3 py-1.5 rounded-xl text-xs font-bold border transition-all",
+                    "px-3 py-1.5 rounded-none text-xs font-bold border transition-all",
                     activeFilter === f.value
-                      ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-400"
+                      ? "border-amber-500/50 bg-amber-500/10 text-amber-400"
                       : "border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -244,7 +244,7 @@ export default async function ActivityPage({
                 </Link>
               ))}
             </div>
-            <div className="glass-panel rounded-2xl p-1 overflow-hidden">
+            <div className="glass-panel rounded-none p-1 overflow-hidden">
               {events.length === 0 ? (
                 <div className="py-12 text-center text-muted-foreground text-sm">
                   {page > 1
@@ -271,9 +271,9 @@ export default async function ActivityPage({
                           alt={ev.actor.login}
                           width={32}
                           height={32}
-                          className="size-8 sm:size-9 rounded-lg border border-border/50 shrink-0 mt-0.5"
+                          className="size-8 sm:size-9 rounded-none border border-border/50 shrink-0 mt-0.5"
                         />
-                        <div className={cn("flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-xl shadow-sm transition-transform group-hover:scale-110", mapped.bg)}>
+                        <div className={cn("flex size-9 sm:size-10 shrink-0 items-center justify-center rounded-none shadow-sm transition-transform group-hover:scale-110", mapped.bg)}>
                           <Icon className={cn("size-4 sm:size-5", mapped.color)} />
                         </div>
                         <div className="flex-1 space-y-1 min-w-0">
@@ -285,7 +285,7 @@ export default async function ActivityPage({
                                 href={repoLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-foreground hover:text-indigo-500 transition-colors"
+                                className="text-foreground hover:text-amber-500 transition-colors"
                               >
                                 {ev.repo.name}
                               </a>
@@ -297,7 +297,7 @@ export default async function ActivityPage({
                           </div>
                           <p className="text-sm text-muted-foreground/90 font-medium truncate">
                             {mapped.link ? (
-                              <a href={mapped.link} target="_blank" rel="noopener noreferrer" className="hover:text-indigo-500 transition-colors">
+                              <a href={mapped.link} target="_blank" rel="noopener noreferrer" className="hover:text-amber-500 transition-colors">
                                 {mapped.desc}
                               </a>
                             ) : mapped.desc}
@@ -318,9 +318,9 @@ export default async function ActivityPage({
                   <Link
                     href={`/activity?page=${page - 1}${typeParam}`}
                     className={cn(
-                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all",
+                      "inline-flex items-center gap-2 px-4 py-2 rounded-none border text-xs font-bold transition-all",
                       hasPrev
-                        ? "border-border bg-card hover:bg-muted hover:border-indigo-500/30"
+                        ? "border-border bg-card hover:bg-muted hover:border-amber-500/30"
                         : "border-border/30 text-muted-foreground/30 pointer-events-none"
                     )}
                     aria-disabled={!hasPrev}
@@ -333,9 +333,9 @@ export default async function ActivityPage({
                   <Link
                     href={`/activity?page=${page + 1}${typeParam}`}
                     className={cn(
-                      "inline-flex items-center gap-2 px-4 py-2 rounded-xl border text-xs font-bold transition-all",
+                      "inline-flex items-center gap-2 px-4 py-2 rounded-none border text-xs font-bold transition-all",
                       hasNext
-                        ? "border-border bg-card hover:bg-muted hover:border-indigo-500/30"
+                        ? "border-border bg-card hover:bg-muted hover:border-amber-500/30"
                         : "border-border/30 text-muted-foreground/30 pointer-events-none"
                     )}
                     aria-disabled={!hasNext}
@@ -370,7 +370,7 @@ export default async function ActivityPage({
               <h3 className="text-xs font-black uppercase tracking-widest mb-2">Pro Tip</h3>
               <p className="text-xs leading-relaxed text-muted-foreground">
                 GitHub&apos;s Events API stores up to 90 days of activity across 10 pages. Use pagination to explore your full history. Visit the{" "}
-                <Link href="/intelligence" className="text-indigo-500 hover:underline">Intelligence Hub</Link>{" "}
+                <Link href="/intelligence" className="text-amber-500 hover:underline">Intelligence Hub</Link>{" "}
                 for DORA metrics and cycle time analysis.
               </p>
             </Card>
@@ -379,7 +379,7 @@ export default async function ActivityPage({
               <h3 className="text-xs font-black uppercase tracking-widest mb-3">Event Types</h3>
               <div className="space-y-2">
                 {[
-                  { type: "Push", color: "bg-indigo-500", count: pushCount },
+                  { type: "Push", color: "bg-amber-500", count: pushCount },
                   { type: "Pull Requests", color: "bg-emerald-500", count: prCount },
                   { type: "Stars", color: "bg-yellow-500", count: starCount },
                   { type: "Other", color: "bg-muted-foreground", count: events.length - pushCount - prCount - starCount },

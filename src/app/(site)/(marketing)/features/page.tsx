@@ -46,11 +46,11 @@ const CORE_FEATURES = [
     tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
-    icon: <GitPullRequest className="size-7 text-indigo-400" />,
+    icon: <GitPullRequest className="size-7 text-amber-400" />,
     title: "PR Description Generator",
     desc: "Paste a diff and get a professional pull request description in seconds. Choose your tone: Concise summary, Detailed with rationale, or Conventional Commits format with type/scope/breaking-change sections.",
     tag: "AI Writing",
-    tagColor: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+    tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
     icon: <BookOpen className="size-7 text-emerald-400" />,
@@ -60,25 +60,25 @@ const CORE_FEATURES = [
     tagColor: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
   },
   {
-    icon: <BarChart3 className="size-7 text-cyan-400" />,
+    icon: <BarChart3 className="size-7 text-teal-400" />,
     title: "Repository Analytics",
     desc: "Stars, forks, open issues, language breakdown, contributor heatmaps, commit frequency charts, DORA metrics, and side-by-side comparison of up to 3 repos — all from live GitHub data, no stale snapshots.",
     tag: "Analytics",
-    tagColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+    tagColor: "text-teal-400 bg-teal-500/10 border-teal-500/20",
   },
   {
-    icon: <TrendingUp className="size-7 text-violet-400" />,
+    icon: <TrendingUp className="size-7 text-amber-400" />,
     title: "Stack Trending",
     desc: "Real-time trending repository feed filterable by programming language. Language preference persists across sessions. Spot what's gaining momentum in TypeScript, Python, Rust, Go, or any ecosystem before it hits HN.",
     tag: "Discovery",
-    tagColor: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+    tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
-    icon: <Bell className="size-7 text-blue-400" />,
+    icon: <Bell className="size-7 text-amber-400" />,
     title: "Slack & Discord Alerts",
     desc: "Connect a webhook in Settings and GitScope pushes real-time scan alerts to your channel when a repo's health drops. Works with both Slack and Discord — no bot installation, just a webhook URL.",
     tag: "Notifications",
-    tagColor: "text-blue-400 bg-blue-500/10 border-blue-500/20",
+    tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
     icon: <Activity className="size-7 text-orange-400" />,
@@ -95,18 +95,18 @@ const CORE_FEATURES = [
     tagColor: "text-teal-400 bg-teal-500/10 border-teal-500/20",
   },
   {
-    icon: <Users className="size-7 text-violet-400" />,
+    icon: <Users className="size-7 text-amber-400" />,
     title: "Code Ownership Maps",
     desc: "See exactly who owns what. Per-contributor commit percentage, additions/deletions, a stacked ownership bar across your top 8 contributors, and a Bus Factor score — the minimum number of developers who control 80% of the codebase.",
     tag: "Ownership",
-    tagColor: "text-violet-400 bg-violet-500/10 border-violet-500/20",
+    tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
-    icon: <GitMerge className="size-7 text-cyan-400" />,
+    icon: <GitMerge className="size-7 text-teal-400" />,
     title: "CI/CD Status Dashboard",
     desc: "Live GitHub Actions workflow runs per repo — pass rate, run streak (color-coded dots), average build duration, and per-workflow breakdown. Spot flaky pipelines before they block your team.",
     tag: "CI/CD",
-    tagColor: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
+    tagColor: "text-teal-400 bg-teal-500/10 border-teal-500/20",
   },
   {
     icon: <TestTube2 className="size-7 text-green-400" />,
@@ -123,11 +123,11 @@ const CORE_FEATURES = [
     tagColor: "text-rose-400 bg-rose-500/10 border-rose-500/20",
   },
   {
-    icon: <Building2 className="size-7 text-indigo-400" />,
+    icon: <Building2 className="size-7 text-amber-400" />,
     title: "Shared Team Workspaces",
     desc: "On the Organizations page, click any org to open a Shared Workspace — aggregated scan history across all team members for every repo in that org. See fleet health, critical repo count, and per-repo scores at a glance.",
     tag: "Team",
-    tagColor: "text-indigo-400 bg-indigo-500/10 border-indigo-500/20",
+    tagColor: "text-amber-400 bg-amber-500/10 border-amber-500/20",
   },
   {
     icon: <Lock className="size-7 text-amber-400" />,
@@ -195,16 +195,16 @@ export default function FeaturesPage() {
       {/* Hero */}
       <section className="relative pt-28 pb-20 px-6 text-center overflow-hidden">
         <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-indigo-500/5 blur-[120px] rounded-full" />
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-amber-500/5 blur-[120px] rounded-full" />
         </div>
         <div className="relative z-10 max-w-4xl mx-auto">
-          <div className="hero-text inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-indigo-400 text-xs font-bold uppercase tracking-widest mb-8">
+          <div className="hero-text inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-amber-500/20 bg-amber-500/5 text-amber-400 text-xs font-bold uppercase tracking-widest mb-8">
             <Zap className="size-3" />
             GitHub Intelligence Platform
           </div>
           <h1 className="hero-text font-heading text-5xl md:text-7xl font-black tracking-tight mb-6">
             Everything you need to<br />
-            <span className="text-indigo-400">understand any codebase</span>
+            <span className="text-amber-400">understand any codebase</span>
           </h1>
           <p className="hero-text text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
             AI-powered health scans, CVE detection, PR generation, contributor analytics, Slack/Discord alerts — all in one platform, for any public GitHub repo.
@@ -212,14 +212,14 @@ export default function FeaturesPage() {
           <div className="hero-text flex flex-wrap items-center justify-center gap-4">
             <Link
               href={ROUTES.signup}
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-colors shadow-lg shadow-indigo-500/20"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-none bg-amber-600 hover:bg-amber-500 text-white font-bold transition-colors shadow-lg shadow-amber-500/20"
             >
               Start for free
               <ArrowRight className="size-4" />
             </Link>
             <Link
               href="/guest"
-              className="inline-flex items-center gap-2 px-8 py-4 rounded-xl border border-border hover:bg-muted transition-colors font-semibold text-sm"
+              className="inline-flex items-center gap-2 px-8 py-4 rounded-none border border-border hover:bg-muted transition-colors font-semibold text-sm"
             >
               Try without signing in
             </Link>
@@ -231,7 +231,7 @@ export default function FeaturesPage() {
       <section className="py-20 px-6">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400 mb-3">Capabilities</p>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-amber-400 mb-3">Capabilities</p>
             <h2 className="font-heading text-4xl md:text-5xl font-black tracking-tight">
               The full feature set
             </h2>
@@ -244,19 +244,19 @@ export default function FeaturesPage() {
             {CORE_FEATURES.map((f, i) => (
               <div
                 key={i}
-                className="feature-card group relative p-7 rounded-2xl border border-border bg-card hover:border-indigo-500/30 hover:shadow-lg hover:shadow-indigo-500/5 transition-all duration-300 overflow-hidden"
+                className="feature-card group relative p-7 rounded-none border border-border bg-card hover:border-amber-500/30 hover:shadow-lg hover:shadow-amber-500/5 transition-all duration-300 overflow-hidden"
               >
-                <div className="absolute -bottom-16 -right-16 size-48 bg-indigo-500/3 blur-[80px] rounded-full group-hover:bg-indigo-500/8 transition-colors" />
+                <div className="absolute -bottom-16 -right-16 size-48 bg-amber-500/3 blur-[80px] rounded-full group-hover:bg-amber-500/8 transition-colors" />
                 <div className="relative z-10">
                   <div className="mb-4 flex items-start justify-between gap-3">
-                    <div className="p-2.5 rounded-xl bg-muted/60 border border-border">
+                    <div className="p-2.5 rounded-none bg-muted/60 border border-border">
                       {f.icon}
                     </div>
                     <span className={`mt-1 inline-flex items-center rounded-full border px-2.5 py-0.5 text-[9px] font-black uppercase tracking-widest ${f.tagColor}`}>
                       {f.tag}
                     </span>
                   </div>
-                  <h3 className="font-heading text-lg font-black mb-2 group-hover:text-indigo-400 transition-colors">
+                  <h3 className="font-heading text-lg font-black mb-2 group-hover:text-amber-400 transition-colors">
                     {f.title}
                   </h3>
                   <p className="text-sm text-muted-foreground leading-relaxed">
@@ -273,13 +273,13 @@ export default function FeaturesPage() {
       <section className="how-section py-20 px-6 bg-muted/20 dark:bg-muted/5">
         <div className="max-w-5xl mx-auto">
           <div className="text-center mb-14">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-indigo-400 mb-3">Workflow</p>
+            <p className="text-xs font-black uppercase tracking-[0.3em] text-amber-400 mb-3">Workflow</p>
             <h2 className="font-heading text-4xl font-black tracking-tight">How it works</h2>
           </div>
           <div className="grid gap-6 sm:gap-8 sm:grid-cols-2 lg:grid-cols-4">
             {HOW_IT_WORKS.map((s, i) => (
               <div key={i} className="step-item flex flex-col gap-4">
-                <span className="font-mono text-4xl font-black text-indigo-500/20">{s.step}</span>
+                <span className="font-mono text-4xl font-black text-amber-500/20">{s.step}</span>
                 <h3 className="font-heading text-lg font-black">{s.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{s.body}</p>
               </div>
@@ -290,9 +290,9 @@ export default function FeaturesPage() {
 
       {/* Keyboard shortcuts callout */}
       <section className="py-16 px-6">
-        <div className="max-w-4xl mx-auto rounded-2xl border border-border bg-card p-10 flex flex-col md:flex-row items-center gap-8">
+        <div className="max-w-4xl mx-auto rounded-none border border-border bg-card p-10 flex flex-col md:flex-row items-center gap-8">
           <div className="flex-1">
-            <p className="text-xs font-black uppercase tracking-widest text-indigo-400 mb-2">Power users</p>
+            <p className="text-xs font-black uppercase tracking-widest text-amber-400 mb-2">Power users</p>
             <h3 className="font-heading text-2xl font-black mb-3">Fully keyboard-driven</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Press <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">⌘K</kbd> to open the command palette, <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">T</kbd> to toggle theme, <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">F</kbd> for fullscreen, and <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">G→O</kbd> / <kbd className="px-1.5 py-0.5 rounded bg-muted border border-border font-mono text-xs">G→E</kbd> to jump between views — no mouse required.
@@ -308,7 +308,7 @@ export default function FeaturesPage() {
               ["G → E", "Search"],
             ].map(([key, label]) => (
               <div key={key} className="flex items-center gap-2">
-                <kbd className="px-2 py-1 rounded-md bg-muted border border-border font-mono text-[10px] font-bold shrink-0">{key}</kbd>
+                <kbd className="px-2 py-1 rounded-none bg-muted border border-border font-mono text-[10px] font-bold shrink-0">{key}</kbd>
                 <span className="text-muted-foreground">{label}</span>
               </div>
             ))}
@@ -318,26 +318,26 @@ export default function FeaturesPage() {
 
       {/* CTA */}
       <section className="py-20 px-6">
-        <div className="cta-block max-w-4xl mx-auto rounded-3xl bg-linear-to-br from-indigo-600 to-indigo-900 p-12 md:p-20 text-center text-white relative overflow-hidden">
+        <div className="cta-block max-w-4xl mx-auto rounded-none bg-linear-to-br from-amber-600 to-amber-900 p-12 md:p-20 text-center text-white relative overflow-hidden">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.07)_0%,_transparent_70%)]" />
           <div className="relative z-10">
             <h2 className="font-heading text-4xl md:text-5xl font-black mb-5 tracking-tight">
               Start analyzing in 30 seconds
             </h2>
-            <p className="text-indigo-100/80 text-base mb-10 max-w-xl mx-auto leading-relaxed">
+            <p className="text-amber-100/80 text-base mb-10 max-w-xl mx-auto leading-relaxed">
               No credit card. No install. Search any public GitHub repository and get full analytics immediately.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-4">
               <Link
                 href={ROUTES.signup}
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-white text-indigo-900 font-black hover:bg-indigo-50 transition-colors shadow-xl"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-none bg-white text-amber-900 font-black hover:bg-amber-50 transition-colors shadow-xl"
               >
                 Create free account
                 <Code2 className="size-4" />
               </Link>
               <Link
                 href="/guest"
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl border border-white/20 text-white font-bold hover:bg-white/10 transition-colors text-sm"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-none border border-white/20 text-white font-bold hover:bg-white/10 transition-colors text-sm"
               >
                 Try as guest
               </Link>

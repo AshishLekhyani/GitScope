@@ -23,7 +23,7 @@ export default function TermsPage() {
         <p>
           By accessing or using GitScope (the &ldquo;Service&rdquo;), you agree to be bound by
           these Terms of Service (&ldquo;Terms&rdquo;) and our{" "}
-          <Link href="/privacy" className="text-indigo-400 hover:underline">
+          <Link href="/privacy" className="text-amber-400 hover:underline">
             Privacy Policy
           </Link>
           . If you do not agree, do not use the Service. If you are using GitScope on behalf of a
@@ -45,7 +45,7 @@ export default function TermsPage() {
             summaries, and related engineering intelligence tools. The Service is provided on a
             subscription basis with Free, Pro, and Enterprise tiers, each carrying different
             feature limits described on our{" "}
-            <Link href="/pricing" className="text-indigo-400 hover:underline">
+            <Link href="/pricing" className="text-amber-400 hover:underline">
               Pricing page
             </Link>
             .
@@ -75,8 +75,8 @@ export default function TermsPage() {
               "Notify us immediately at acnotros2@gmail.com if you suspect unauthorised access to your account.",
               "Not share your account credentials with any third party.",
             ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-400" />
+              <li key={i} className="flex items-start gap-2 text-sm text-stone-400">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400" />
                 {item}
               </li>
             ))}
@@ -107,7 +107,7 @@ export default function TermsPage() {
               "Impersonate any person or entity, or misrepresent your affiliation with any person or entity.",
               "Use the Service in any way that violates applicable law, including data protection laws such as GDPR or CCPA.",
             ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
+              <li key={i} className="flex items-start gap-2 text-sm text-stone-400">
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-red-400" />
                 {item}
               </li>
@@ -219,7 +219,7 @@ export default function TermsPage() {
           Questions about these Terms should be directed to{" "}
           <Link
             href="mailto:acnotros2@gmail.com"
-            className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
+            className="font-semibold text-amber-400 hover:text-amber-300 hover:underline"
           >
             acnotros2@gmail.com
           </Link>
@@ -233,15 +233,15 @@ export default function TermsPage() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
       {/* Header */}
       <div className="mb-12">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-400">
           <Scale className="size-3" />
           Legal
         </div>
         <h1 className="font-heading text-4xl font-black tracking-tight text-white sm:text-5xl">
           Terms of Service
         </h1>
-        <p className="mt-3 text-sm text-slate-500">Last updated: April 1, 2026</p>
-        <p className="mt-4 max-w-2xl text-base text-slate-400">
+        <p className="mt-3 text-sm text-stone-500">Last updated: April 1, 2026</p>
+        <p className="mt-4 max-w-2xl text-base text-stone-400">
           Please read these terms carefully before using GitScope. By creating an account or
           accessing the Service you agree to be bound by them.
         </p>
@@ -250,15 +250,15 @@ export default function TermsPage() {
       <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
         {/* Sticky sidebar nav */}
         <nav className="hidden lg:block">
-          <div className="sticky top-24 space-y-1 rounded-2xl border border-white/5 bg-[#171f33]/80 p-4 backdrop-blur-xl">
-            <p className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="sticky top-24 space-y-1 rounded-none border border-white/5 bg-[#171512]/90 p-4 backdrop-blur-xl">
+            <p className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-stone-500">
               Sections
             </p>
             {sections.map((s) => (
               <a
                 key={s.id}
                 href={`#${s.id}`}
-                className="block rounded-lg px-3 py-2 text-xs text-slate-400 transition hover:bg-white/5 hover:text-white"
+                className="block rounded-none px-3 py-2 text-xs text-stone-400 transition hover:bg-white/5 hover:text-white"
               >
                 {s.heading}
               </a>
@@ -272,10 +272,10 @@ export default function TermsPage() {
             <section
               key={s.id}
               id={s.id}
-              className="scroll-mt-24 rounded-2xl border border-white/5 bg-[#171f33]/80 p-7 backdrop-blur-xl"
+              className="scroll-mt-24 rounded-none border border-white/5 bg-[#171512]/90 p-7 backdrop-blur-xl"
             >
               <h2 className="mb-4 font-heading text-lg font-black text-white">{s.heading}</h2>
-              <div className="text-sm leading-relaxed text-slate-400">{s.content}</div>
+              <div className="text-sm leading-relaxed text-stone-400">{s.content}</div>
             </section>
           ))}
         </div>

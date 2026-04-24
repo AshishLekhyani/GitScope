@@ -8,14 +8,14 @@ export default function DashboardLoading() {
   return (
     <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
       {/* Header Skeleton */}
-      <Card className="relative overflow-hidden rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-8">
+      <Card className="relative overflow-hidden rounded-none border border-border bg-card p-5 shadow-sm sm:p-8">
         <div className="absolute inset-0 bg-linear-to-r from-primary/5 to-transparent" />
         <div className="relative z-10 space-y-4">
-          <Skeleton className="h-8 w-1/3 rounded-lg" />
-          <Skeleton className="h-4 w-1/2 rounded-lg" />
+          <Skeleton className="h-8 w-1/3 rounded-none" />
+          <Skeleton className="h-4 w-1/2 rounded-none" />
           <div className="flex gap-3 pt-2">
-            <Skeleton className="h-10 w-40 rounded-lg" />
-            <Skeleton className="h-10 w-32 rounded-lg" />
+            <Skeleton className="h-10 w-40 rounded-none" />
+            <Skeleton className="h-10 w-32 rounded-none" />
           </div>
         </div>
       </Card>
@@ -26,7 +26,7 @@ export default function DashboardLoading() {
           <Card key={i} className="relative overflow-hidden p-4 h-40 sm:p-6">
             <div className="absolute inset-0 bg-linear-to-br from-muted/30 to-transparent" />
             <div className="relative z-10 flex flex-col justify-between h-full">
-              <Skeleton className="size-10 rounded-lg" />
+              <Skeleton className="size-10 rounded-none" />
               <div className="space-y-2">
                 <Skeleton className="h-4 w-3/4 rounded" />
                 <Skeleton className="h-3 w-full rounded" />
@@ -54,7 +54,7 @@ export default function DashboardLoading() {
           <div className="space-y-3">
             {[1, 2, 3].map((i) => (
               <div key={i} className="flex items-center gap-3">
-                <Skeleton className="size-8 rounded-lg" />
+                <Skeleton className="size-8 rounded-none" />
                 <Skeleton className="h-4 flex-1 rounded" />
               </div>
             ))}

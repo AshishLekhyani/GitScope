@@ -2,7 +2,6 @@
 
 import { ROUTES } from "@/constants/routes";
 import Link from "next/link";
-import NextImage from "next/image";
 import { Icon } from "@iconify/react";
 
 const FOOTER_LINKS = {
@@ -27,7 +26,7 @@ const FOOTER_LINKS = {
 };
 
 const SOCIAL = [
-  { icon: "mdi:github",   href: "https://github.com/AshishLekhyani",               label: "GitHub"   },
+  { icon: "mdi:github",   href: "https://github.com/AshishLekhyani/GitScope", label: "GitHub" },
   { icon: "mdi:linkedin", href: "https://www.linkedin.com/in/ashishlekhyani", label: "LinkedIn" },
 ];
 
@@ -54,17 +53,25 @@ export function MarketingFooter() {
           <div className="space-y-5 lg:col-span-2">
             <Link href="/" className="flex items-center gap-2.5 group w-fit">
               <div className="relative">
-                <div className="absolute -inset-1 rounded-xl bg-primary/15 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
-                <NextImage
+                <div className="absolute -inset-1 bg-primary/15 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
+                <img
                   src="/logo.png"
                   alt="GitScope"
-                  width={36}
-                  height={36}
-                  className="relative size-9 rounded-lg ring-1 ring-white/10 shadow-lg shadow-primary/15"
+                  width={32}
+                  height={32}
+                  className="relative size-8 object-contain hidden dark:block"
+                />
+                <img
+                  src="/logo-light.png"
+                  alt="GitScope"
+                  width={32}
+                  height={32}
+                  className="relative size-8 object-contain block dark:hidden"
+                  onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
                 />
               </div>
-              <span className="font-heading text-lg font-bold tracking-tight">
-                Git<span className="text-primary">Scope</span>
+              <span className="font-mono text-[13px] font-bold tracking-[0.06em]">
+                GIT<span className="text-primary">SCOPE</span><span className="text-primary">.</span>
               </span>
             </Link>
 
@@ -83,7 +90,7 @@ export function MarketingFooter() {
                   target="_blank"
                   rel="noopener noreferrer"
                   aria-label={s.label}
-                  className="flex size-8 items-center justify-center rounded-lg border border-outline-variant/20 text-muted-foreground hover:border-primary/30 hover:text-primary hover:bg-primary/5 transition-all duration-200"
+                  className="flex size-8 items-center justify-center border border-outline-variant/20 text-muted-foreground transition-all duration-200 hover:border-primary/30 hover:bg-primary/5 hover:text-primary"
                 >
                   <Icon icon={s.icon} width={16} height={16} />
                 </Link>
@@ -95,7 +102,7 @@ export function MarketingFooter() {
               {TECH_BADGES.map((b) => (
                 <div
                   key={b.label}
-                  className="flex items-center gap-1.5 rounded-full border border-outline-variant/15 bg-surface-container-lowest/50 px-2.5 py-1"
+                  className="flex items-center gap-1.5 border border-outline-variant/15 bg-surface-container-lowest/50 px-2.5 py-1"
                 >
                   <Icon icon={b.icon} width={12} height={12} />
                   <span className="font-mono text-[9px] tracking-widest text-muted-foreground/60 uppercase">{b.label}</span>

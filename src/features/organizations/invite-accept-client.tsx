@@ -38,10 +38,10 @@ export function InviteAcceptClient({ token }: { token: string }) {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-6">
-      <div className="max-w-sm w-full rounded-2xl border border-border bg-card p-8 text-center space-y-4 shadow-xl">
+      <div className="max-w-sm w-full rounded-none border border-border bg-card p-8 text-center space-y-4 shadow-xl">
         {state === "loading" && (
           <>
-            <Loader2 className="size-10 animate-spin text-indigo-500 mx-auto" />
+            <Loader2 className="size-10 animate-spin text-amber-500 mx-auto" />
             <p className="text-sm font-semibold">Accepting invite…</p>
           </>
         )}
@@ -50,7 +50,7 @@ export function InviteAcceptClient({ token }: { token: string }) {
             <div className="size-12 rounded-full bg-emerald-500/15 flex items-center justify-center mx-auto">
               <Check className="size-6 text-emerald-500" />
             </div>
-            <p className="text-sm font-bold">You&apos;ve joined <span className="text-indigo-500">{orgName}</span>!</p>
+            <p className="text-sm font-bold">You&apos;ve joined <span className="text-amber-500">{orgName}</span>!</p>
             <p className="text-xs text-muted-foreground">Redirecting to Organizations…</p>
           </>
         )}
@@ -63,7 +63,7 @@ export function InviteAcceptClient({ token }: { token: string }) {
             <button
               type="button"
               onClick={() => router.push("/organizations")}
-              className="text-xs text-indigo-500 hover:underline"
+              className="text-xs text-amber-500 hover:underline"
             >
               Go to Organizations
             </button>

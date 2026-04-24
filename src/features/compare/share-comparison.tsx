@@ -288,7 +288,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
         variant="outline"
         size="sm"
         onClick={() => setIsOpen(!isOpen)}
-        className="rounded-full border-indigo-500/20 text-indigo-500 hover:bg-indigo-500/10"
+        className="rounded-full border-amber-500/20 text-amber-500 hover:bg-amber-500/10"
       >
         <MaterialIcon name="share" size={16} className="mr-2" />
         Share
@@ -300,16 +300,16 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
             initial={{ opacity: 0, y: 10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.95 }}
-            className="absolute right-0 top-full mt-2 w-96 z-50 rounded-2xl border border-outline-variant/10 bg-surface-container/95 backdrop-blur-xl shadow-2xl p-4"
+            className="absolute right-0 top-full mt-2 w-96 z-50 rounded-none border border-outline-variant/10 bg-surface-container/95 backdrop-blur-xl shadow-2xl p-4"
           >
             <div className="flex items-center justify-between mb-4">
-              <div className="flex gap-1 bg-surface-container-highest/50 rounded-lg p-1">
+              <div className="flex gap-1 bg-surface-container-highest/50 rounded-none p-1">
                 <button
                   onClick={() => setActiveTab("share")}
                   className={cn(
-                    "px-3 py-1.5 rounded-md text-xs font-bold transition-all",
+                    "px-3 py-1.5 rounded-none text-xs font-bold transition-all",
                     activeTab === "share"
-                      ? "bg-indigo-500 text-white"
+                      ? "bg-amber-500 text-white"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -318,9 +318,9 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                 <button
                   onClick={() => setActiveTab("export")}
                   className={cn(
-                    "px-3 py-1.5 rounded-md text-xs font-bold transition-all",
+                    "px-3 py-1.5 rounded-none text-xs font-bold transition-all",
                     activeTab === "export"
-                      ? "bg-indigo-500 text-white"
+                      ? "bg-amber-500 text-white"
                       : "text-muted-foreground hover:text-foreground"
                   )}
                 >
@@ -346,11 +346,11 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                       type="text"
                       value={shareUrl}
                       readOnly
-                      className="flex-1 bg-surface-container-highest/50 rounded-lg px-3 py-2 text-[10px] font-mono truncate border border-outline-variant/10"
+                      className="flex-1 bg-surface-container-highest/50 rounded-none px-3 py-2 text-[10px] font-mono truncate border border-outline-variant/10"
                     />
                     <button
                       onClick={handleCopy}
-                      className="px-3 py-2 rounded-lg bg-indigo-500 text-white text-xs font-bold hover:bg-indigo-600 transition-colors"
+                      className="px-3 py-2 rounded-none bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 transition-colors"
                     >
                       {copied ? "Copied!" : "Copy"}
                     </button>
@@ -366,7 +366,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                       href={`https://twitter.com/intent/tweet?text=Check out this repository comparison on GitScope!&url=${encodeURIComponent(shareUrl)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#1DA1F2]/10 text-[#1DA1F2] hover:bg-[#1DA1F2]/20 text-xs font-bold transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-none bg-[#1DA1F2]/10 text-[#1DA1F2] hover:bg-[#1DA1F2]/20 text-xs font-bold transition-colors"
                     >
                       <MaterialIcon name="chat" size={14} />
                       Twitter
@@ -375,7 +375,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                       href={`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(shareUrl)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2]/20 text-xs font-bold transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-none bg-[#0A66C2]/10 text-[#0A66C2] hover:bg-[#0A66C2]/20 text-xs font-bold transition-colors"
                     >
                       <MaterialIcon name="business_center" size={14} />
                       LinkedIn
@@ -400,9 +400,9 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                         key={format.id}
                         onClick={() => setExportFormat(format.id as any)}
                         className={cn(
-                          "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                          "flex items-center gap-2 px-3 py-2 rounded-none text-xs font-bold transition-all",
                           exportFormat === format.id
-                            ? "bg-indigo-500 text-white"
+                            ? "bg-amber-500 text-white"
                             : "bg-surface-container-highest/50 hover:bg-surface-container-highest border border-outline-variant/10"
                         )}
                       >
@@ -417,7 +417,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                   <label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
                     Preview
                   </label>
-                  <div className="bg-surface-container-highest/50 rounded-lg p-3 border border-outline-variant/10 max-h-40 overflow-y-auto">
+                  <div className="bg-surface-container-highest/50 rounded-none p-3 border border-outline-variant/10 max-h-40 overflow-y-auto">
                     <pre className="text-[10px] font-mono text-muted-foreground whitespace-pre-wrap">
                       {loading 
                         ? "Loading repository data..." 
@@ -438,7 +438,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={copyToClipboard}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-surface-container-highest/50 hover:bg-surface-container-highest border border-outline-variant/10 text-xs font-bold transition-colors"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-none bg-surface-container-highest/50 hover:bg-surface-container-highest border border-outline-variant/10 text-xs font-bold transition-colors"
                   >
                     <MaterialIcon name="content_copy" size={14} />
                     Copy
@@ -446,7 +446,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                   <button
                     onClick={handleExport}
                     disabled={loading}
-                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-indigo-500 text-white hover:bg-indigo-600 text-xs font-bold transition-colors disabled:opacity-50"
+                    className="flex items-center justify-center gap-2 px-3 py-2 rounded-none bg-amber-500 text-white hover:bg-amber-600 text-xs font-bold transition-colors disabled:opacity-50"
                   >
                     <MaterialIcon name="download" size={14} />
                     {loading ? "Loading..." : "Download"}
@@ -463,7 +463,7 @@ export function ShareComparison({ repositories }: ShareComparisonProps) {
                 {repositories.map((repo) => (
                   <span 
                     key={`${repo.owner}/${repo.repo}`}
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold"
                   >
                     {repo.owner}/{repo.repo}
                   </span>

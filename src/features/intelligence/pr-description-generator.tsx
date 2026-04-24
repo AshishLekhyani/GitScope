@@ -50,14 +50,14 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
 
   if (!isPro) {
     return (
-      <div className="rounded-2xl border border-indigo-500/20 bg-indigo-500/5 p-8 text-center space-y-3">
-        <MaterialIcon name="edit_note" size={32} className="text-indigo-400 mx-auto" />
+      <div className="rounded-none border border-amber-500/20 bg-amber-500/5 p-8 text-center space-y-3">
+        <MaterialIcon name="edit_note" size={32} className="text-amber-400 mx-auto" />
         <p className="font-black text-base text-foreground">PR Description Generator requires Professional+</p>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Auto-generate structured PR descriptions from your commits and diff. Upgrade to unlock.
         </p>
         <a href="/pricing-settings"
-          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-black hover:bg-indigo-600 transition-colors">
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-none bg-amber-500 text-white text-sm font-black hover:bg-amber-600 transition-colors">
           <MaterialIcon name="upgrade" size={14} className="text-white" /> Upgrade Plan
         </a>
       </div>
@@ -72,21 +72,21 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
       {!selectedRepo && (
         <input value={repo} onChange={(e) => setRepo(e.target.value)}
           placeholder="Repository (owner/repo)"
-          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
       )}
       {selectedRepo && (
-        <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-indigo-500/8 border border-indigo-500/20 text-xs font-mono text-indigo-400">
+        <div className="flex items-center gap-2 px-3 py-2 rounded-none bg-amber-500/8 border border-amber-500/20 text-xs font-mono text-amber-400">
           <MaterialIcon name="folder" size={12} /> {selectedRepo}
         </div>
       )}
 
       {/* Mode toggle */}
-      <div className="flex gap-1 p-1 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+      <div className="flex gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10">
         {(["pr", "branch"] as const).map((m) => (
           <button key={m} type="button" onClick={() => setMode(m)}
             className={cn(
-              "flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all",
-              mode === m ? "bg-indigo-500 text-white" : "text-muted-foreground/60 hover:text-foreground"
+              "flex-1 py-2 text-[10px] font-black uppercase tracking-wider rounded-none transition-all",
+              mode === m ? "bg-amber-500 text-white" : "text-muted-foreground/60 hover:text-foreground"
             )}>
             {m === "pr" ? "By PR Number" : "By Branch"}
           </button>
@@ -97,26 +97,26 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
       {mode === "pr" ? (
         <input value={prNumber} onChange={(e) => setPrNumber(e.target.value.replace(/\D/g, ""))}
           placeholder="PR number (e.g. 42)"
-          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+          className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
           <input value={baseBranch} onChange={(e) => setBaseBranch(e.target.value)}
             placeholder="Base branch (e.g. main)"
-            className="bg-surface-container/40 border border-outline-variant/15 rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+            className="bg-surface-container/40 border border-outline-variant/15 rounded-none px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
           <input value={headBranch} onChange={(e) => setHeadBranch(e.target.value)}
             placeholder="Head branch (your branch)"
-            className="bg-surface-container/40 border border-outline-variant/15 rounded-xl px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30" />
+            className="bg-surface-container/40 border border-outline-variant/15 rounded-none px-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30" />
         </div>
       )}
 
       <button type="button" onClick={generate} disabled={!canGenerate || loading}
-        className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-500 text-white text-sm font-black hover:bg-indigo-600 transition-colors disabled:opacity-40">
+        className="flex items-center gap-2 px-5 py-2.5 rounded-none bg-amber-500 text-white text-sm font-black hover:bg-amber-600 transition-colors disabled:opacity-40">
         <MaterialIcon name={loading ? "hourglass_top" : "edit_note"} size={15} className="text-white" />
         {loading ? "Generating…" : "Generate PR Description"}
       </button>
 
       {error && (
-        <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">{error}</div>
+        <div className="rounded-none border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">{error}</div>
       )}
 
       {result && (
@@ -126,12 +126,12 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
               Generated · {result.model}
             </p>
             <button type="button" onClick={copy}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-outline-variant/20 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 hover:text-indigo-400 hover:border-indigo-500/30 transition-colors">
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-none border border-outline-variant/20 text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 hover:text-amber-400 hover:border-amber-500/30 transition-colors">
               <MaterialIcon name={copied ? "check" : "content_copy"} size={11} />
               {copied ? "Copied!" : "Copy Markdown"}
             </button>
           </div>
-          <pre className="whitespace-pre-wrap font-mono text-[11px] text-foreground/80 leading-relaxed bg-surface-container/30 rounded-2xl border border-outline-variant/10 p-5 overflow-x-auto max-h-120 overflow-y-auto">
+          <pre className="whitespace-pre-wrap font-mono text-[11px] text-foreground/80 leading-relaxed bg-surface-container/30 rounded-none border border-outline-variant/10 p-5 overflow-x-auto max-h-120 overflow-y-auto">
             {result.description}
           </pre>
         </div>

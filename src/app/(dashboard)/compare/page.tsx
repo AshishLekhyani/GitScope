@@ -38,17 +38,17 @@ export default function ComparePage() {
     >
       {/* Hero Section */}
       <Card className="p-6 sm:p-8 relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-r from-indigo-500/5 via-transparent to-purple-500/5" />
-        <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-br from-indigo-500/10 to-transparent rounded-full blur-3xl" />
+        <div className="absolute inset-0 bg-linear-to-r from-amber-500/5 via-transparent to-amber-500/5" />
+        <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-br from-amber-500/10 to-transparent rounded-full blur-3xl" />
         
         <div className="relative z-10 flex flex-col md:flex-row md:items-end justify-between gap-6">
           <div className="space-y-4">
-            <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20">
-              <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500">Pro Dashboard</span>
+            <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+              <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Pro Dashboard</span>
             </div>
             <h1 className="text-2xl sm:text-4xl font-black tracking-tight">
-              Repository <span className="bg-linear-to-r from-indigo-500 to-purple-500 bg-clip-text text-transparent italic">Battle Mode</span>
+              Repository <span className="bg-linear-to-r from-amber-500 to-amber-500 bg-clip-text text-transparent italic">Battle Mode</span>
             </h1>
             <p className="text-sm text-muted-foreground max-w-xl leading-relaxed">
               Uncover deep engineering health metrics, velocity analysis, and competitive insights. 
@@ -70,9 +70,9 @@ export default function ComparePage() {
             )}
             <ShareComparison repositories={selectedRepos} />
             
-            <div className="flex items-center gap-4 bg-surface-container/50 p-4 rounded-2xl border border-outline-variant/20">
-              <div className="size-10 rounded-xl bg-indigo-500/10 flex items-center justify-center">
-                <MaterialIcon name="show_chart" size={24} className="text-indigo-500" />
+            <div className="flex items-center gap-4 bg-surface-container/50 p-4 rounded-none border border-outline-variant/20">
+              <div className="size-10 rounded-none bg-amber-500/10 flex items-center justify-center">
+                <MaterialIcon name="show_chart" size={24} className="text-amber-500" />
               </div>
               <div>
                 <div className="text-[10px] font-black uppercase text-muted-foreground/60 tracking-widest">Repos Selected</div>
@@ -101,9 +101,9 @@ export default function ComparePage() {
                 key={tab.id}
                 onClick={() => setViewMode(tab.id as ViewMode)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold uppercase tracking-wider transition-all duration-300",
+                  "flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold uppercase tracking-wider transition-all duration-300",
                   viewMode === tab.id
-                    ? "bg-indigo-500 text-white shadow-lg shadow-indigo-500/25"
+                    ? "bg-amber-500 text-white shadow-lg shadow-amber-500/25"
                     : "bg-surface-container/50 text-muted-foreground hover:text-foreground border border-outline-variant/10"
                 )}
               >
@@ -165,8 +165,8 @@ export default function ComparePage() {
             className="flex flex-col items-center justify-center py-24 text-center"
           >
             <div className="relative">
-              <div className="size-24 rounded-3xl bg-linear-to-br from-indigo-500/10 to-purple-500/10 flex items-center justify-center border border-indigo-500/10 mb-6">
-                <MaterialIcon name="compare_arrows" size={48} className="text-indigo-500/40" />
+              <div className="size-24 rounded-none bg-linear-to-br from-amber-500/10 to-amber-500/10 flex items-center justify-center border border-amber-500/10 mb-6">
+                <MaterialIcon name="compare_arrows" size={48} className="text-amber-500/40" />
               </div>
               <motion.div
                 animate={{ 
@@ -174,7 +174,7 @@ export default function ComparePage() {
                   opacity: [0.5, 1, 0.5]
                 }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="absolute -top-2 -right-2 size-6 rounded-full bg-indigo-500"
+                className="absolute -top-2 -right-2 size-6 rounded-full bg-amber-500"
               />
             </div>
             <h3 className="text-xl font-bold bg-linear-to-br from-foreground to-foreground/40 bg-clip-text text-transparent mb-2">

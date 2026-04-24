@@ -46,7 +46,7 @@ function getLanguageColor(language: string): string {
   const colors: { [key: string]: string } = {
     JavaScript: "#f1e05a",
     TypeScript: "#2b7489",
-    Python: "#3572A5",
+    Python: "#0e9966",
     Java: "#b07219",
     "C++": "#f34b7d",
     C: "#555555",
@@ -54,18 +54,18 @@ function getLanguageColor(language: string): string {
     Ruby: "#701516",
     Go: "#00ADD8",
     Rust: "#dea584",
-    PHP: "#4F5D95",
+    PHP: "#a16207",
     Swift: "#ffac45",
-    Kotlin: "#A97BFF",
+    Kotlin: "#f59e0b",
     "Objective-C": "#438eff",
     Shell: "#89e051",
     R: "#198CE7",
     "Jupyter Notebook": "#DA5B0B",
     Vue: "#41b883",
     HTML: "#e34c26",
-    CSS: "#563d7c",
+    CSS: "#92400e",
     SCSS: "#c6538c",
-    Dart: "#00B4AB",
+    Dart: "#10b981",
     Elixir: "#6e4a7e",
     Haskell: "#5e5086",
     Scala: "#c22d40",
@@ -178,16 +178,16 @@ function LanguageDistribution({ repos, languageStats, loading }: { repos: GitHub
 
   if (loading) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl dark:bg-slate-900/30">
+      <div className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl dark:bg-stone-900/30">
         <Skeleton className="mb-4 h-5 w-36" />
-        <Skeleton className="h-[200px] w-full rounded-lg" />
+        <Skeleton className="h-[200px] w-full rounded-none" />
       </div>
     );
   }
 
   if (languages.length === 0) {
     return (
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl dark:bg-slate-900/30">
+      <div className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl dark:bg-stone-900/30">
         <h3 className="mb-3 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
           Language Distribution
         </h3>
@@ -197,7 +197,7 @@ function LanguageDistribution({ repos, languageStats, loading }: { repos: GitHub
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl dark:bg-slate-900/30">
+    <div className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl dark:bg-stone-900/30">
       <h3 className="mb-4 font-mono text-[10px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
         Language Distribution
       </h3>
@@ -274,12 +274,12 @@ function UserStatsCards({
       )[0] || "N/A";
 
     return [
-      { title: "Followers", value: user?.followers.toLocaleString() ?? "0", icon: Users, color: "text-blue-400", bg: "bg-blue-400/10", trend: null },
+      { title: "Followers", value: user?.followers.toLocaleString() ?? "0", icon: Users, color: "text-amber-400", bg: "bg-amber-400/10", trend: null },
       { title: "Following", value: user?.following.toLocaleString() ?? "0", icon: Users, color: "text-green-400", bg: "bg-green-400/10", trend: null },
       { title: "Total Stars", value: totalStars.toLocaleString(), icon: Star, color: "text-yellow-400", bg: "bg-yellow-400/10", trend: null },
-      { title: "Total Forks", value: totalForks.toLocaleString(), icon: GitFork, color: "text-purple-400", bg: "bg-purple-400/10", trend: null },
+      { title: "Total Forks", value: totalForks.toLocaleString(), icon: GitFork, color: "text-amber-400", bg: "bg-amber-400/10", trend: null },
       { title: "Active Repos", value: activeRepos.toString(), icon: FolderGit, color: "text-orange-400", bg: "bg-orange-400/10", trend: null },
-      { title: "Top Language", value: topLanguage, icon: Code, color: "text-pink-400", bg: "bg-pink-400/10", trend: null },
+      { title: "Top Language", value: topLanguage, icon: Code, color: "text-amber-400", bg: "bg-amber-400/10", trend: null },
     ];
   }, [user, repos]);
 
@@ -287,7 +287,7 @@ function UserStatsCards({
     return (
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-white/10 bg-white/5 p-6">
+          <div key={i} className="rounded-none border border-white/10 bg-white/5 p-6">
             <Skeleton className="mb-2 h-4 w-20" />
             <Skeleton className="h-8 w-16" />
           </div>
@@ -304,7 +304,7 @@ function UserStatsCards({
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: index * 0.05 }}
-          className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl dark:bg-slate-900/30"
+          className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl dark:bg-stone-900/30"
         >
           <div className="flex items-center justify-between">
             <div>
@@ -315,7 +315,7 @@ function UserStatsCards({
                 {stat.value}
               </p>
             </div>
-            <div className={cn("rounded-lg p-2", stat.bg)}>
+            <div className={cn("rounded-none p-2", stat.bg)}>
               <stat.icon className={cn("h-5 w-5", stat.color)} />
             </div>
           </div>
@@ -339,7 +339,7 @@ function RepoCard({ repo, username, index }: { repo: GitHubRepo; username: strin
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: index * 0.05 }}
-      className="group rounded-xl border border-white/5 bg-white/2 p-4 shadow-sm transition-all duration-200 hover:border-white/10 hover:bg-white/5 hover:shadow-md dark:shadow-md dark:hover:shadow-lg"
+      className="group rounded-none border border-white/5 bg-white/2 p-4 shadow-sm transition-all duration-200 hover:border-white/10 hover:bg-white/5 hover:shadow-md dark:shadow-md dark:hover:shadow-lg"
     >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
@@ -420,26 +420,26 @@ function RepositoryGrid({ repos, loading, username }: { repos: GitHubRepo[]; loa
     return (
       <div className="space-y-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <Skeleton key={i} className="h-24 w-full rounded-xl" />
+          <Skeleton key={i} className="h-24 w-full rounded-none" />
         ))}
       </div>
     );
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl dark:bg-slate-900/30">
+    <div className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md transition-all duration-300 hover:border-white/20 hover:shadow-lg dark:shadow-lg dark:hover:shadow-xl dark:bg-stone-900/30">
       <div className="mb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <h3 className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase">
           Repositories ({filteredRepos.length})
         </h3>
         <div className="flex items-center gap-2">
-          <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
+          <div className="flex rounded-none border border-white/10 bg-white/5 p-0.5">
             {(["all", "sources", "forks"] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => { setFilter(f); setShowAll(false); }}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[10px] font-medium transition-all capitalize",
+                  "rounded-none px-2 py-1 text-[10px] font-medium transition-all capitalize",
                   filter === f
                     ? "bg-white/10 text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -449,13 +449,13 @@ function RepositoryGrid({ repos, loading, username }: { repos: GitHubRepo[]; loa
               </button>
             ))}
           </div>
-          <div className="flex rounded-lg border border-white/10 bg-white/5 p-0.5">
+          <div className="flex rounded-none border border-white/10 bg-white/5 p-0.5">
             {(["stars", "updated", "forks"] as const).map((s) => (
               <button
                 key={s}
                 onClick={() => setSortBy(s)}
                 className={cn(
-                  "rounded-md px-2 py-1 text-[10px] font-medium transition-all capitalize",
+                  "rounded-none px-2 py-1 text-[10px] font-medium transition-all capitalize",
                   sortBy === s
                     ? "bg-white/10 text-foreground"
                     : "text-muted-foreground hover:text-foreground"
@@ -495,8 +495,8 @@ function UserInfoSidebar({ user, loading }: { user: GitHubUser | null; loading: 
   if (loading || !user) {
     return (
       <div className="space-y-4">
-        <Skeleton className="h-32 w-full rounded-2xl" />
-        <Skeleton className="h-48 w-full rounded-2xl" />
+        <Skeleton className="h-32 w-full rounded-none" />
+        <Skeleton className="h-48 w-full rounded-none" />
       </div>
     );
   }
@@ -511,7 +511,7 @@ function UserInfoSidebar({ user, loading }: { user: GitHubUser | null; loading: 
 
   return (
     <div className="space-y-4">
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md dark:shadow-lg dark:bg-slate-900/30">
+      <div className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md dark:shadow-lg dark:bg-stone-900/30">
         <h4 className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-4">
           Contact & Links
         </h4>
@@ -536,7 +536,7 @@ function UserInfoSidebar({ user, loading }: { user: GitHubUser | null; loading: 
         </div>
       </div>
 
-      <div className="rounded-2xl border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md dark:shadow-lg dark:bg-slate-900/30">
+      <div className="rounded-none border border-white/10 bg-white/5 p-6 backdrop-blur-xl shadow-md dark:shadow-lg dark:bg-stone-900/30">
         <h4 className="font-mono text-[10px] font-bold tracking-widest text-muted-foreground uppercase mb-4">
           Account Info
         </h4>
@@ -589,7 +589,7 @@ export function UserProfile({ username }: { username: string }) {
 
   if (err) {
     return (
-      <div className="border-destructive/40 bg-destructive/5 rounded-xl border p-6">
+      <div className="border-destructive/40 bg-destructive/5 rounded-none border p-6">
         <h2 className="text-lg font-semibold">Could not load user profile</h2>
         <p className="text-muted-foreground mt-2 text-sm">{err.message}</p>
         <p className="text-muted-foreground mt-3 text-sm">
@@ -614,14 +614,14 @@ export function UserProfile({ username }: { username: string }) {
       className="flex flex-col gap-6"
     >
       {/* ── Header Card ── */}
-      <div className="rounded-2xl border border-white/10 bg-linear-to-br from-white/10 to-white/5 p-6 backdrop-blur-xl shadow-lg dark:shadow-xl dark:bg-slate-900/30">
+      <div className="rounded-none border border-white/10 bg-linear-to-br from-white/10 to-white/5 p-6 backdrop-blur-xl shadow-lg dark:shadow-xl dark:bg-stone-900/30">
         <div className="flex flex-col md:flex-row md:items-start gap-6">
           <motion.img
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             src={user?.avatar_url ?? `https://github.com/${username}.png`}
             alt={username}
-            className="h-28 w-28 rounded-2xl border-2 border-white/20 shadow-xl"
+            className="h-28 w-28 rounded-none border-2 border-white/20 shadow-xl"
           />
           <div className="flex-1 min-w-0">
             <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
@@ -640,7 +640,7 @@ export function UserProfile({ username }: { username: string }) {
                   rel="noreferrer"
                   className={cn(
                     buttonVariants({ size: "sm" }),
-                    "btn-gitscope-primary inline-flex items-center rounded-md font-bold shrink-0"
+                    "btn-gitscope-primary inline-flex items-center rounded-none font-bold shrink-0"
                   )}
                 >
                   <ExternalLink className="mr-2 size-4" />

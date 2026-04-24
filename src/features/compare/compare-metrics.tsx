@@ -152,8 +152,8 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
       .slice(0, 6);
   };
 
-  const colors = ["#818cf8", "#f472b6", "#fbbf24", "#34d399", "#f87171", "#a78bfa"];
-  const metricColors = ["#6366f1", "#ec4899", "#f59e0b"];
+  const colors = ["#fbbf24", "#fbbf24", "#fbbf24", "#34d399", "#f87171", "#fbbf24"];
+  const metricColors = ["#f59e0b", "#f59e0b", "#f59e0b"];
 
   const metricTabs = [
     { id: "overview", label: "Overview", icon: "dashboard" },
@@ -169,8 +169,8 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
     return (
       <div className="flex items-center justify-center py-20">
         <div className="flex flex-col items-center gap-4">
-          <div className="size-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center animate-pulse">
-            <MaterialIcon name="analytics" size={24} className="text-indigo-500" />
+          <div className="size-12 rounded-none bg-amber-500/10 flex items-center justify-center animate-pulse">
+            <MaterialIcon name="analytics" size={24} className="text-amber-500" />
           </div>
           <p className="text-sm text-muted-foreground">Gathering comprehensive metrics...</p>
         </div>
@@ -193,22 +193,22 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
       {/* Header with Tabs */}
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-3">
-          <MaterialIcon name="analytics" size={24} className="text-indigo-500" />
+          <MaterialIcon name="analytics" size={24} className="text-amber-500" />
           <div>
             <h3 className="text-lg font-bold">Deep Metrics Analysis</h3>
             <p className="text-xs text-muted-foreground">Comprehensive repository intelligence</p>
           </div>
         </div>
         
-        <div className="flex flex-wrap items-center gap-1 bg-surface-container/50 p-1 rounded-xl">
+        <div className="flex flex-wrap items-center gap-1 bg-surface-container/50 p-1 rounded-none">
           {metricTabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setSelectedMetric(tab.id as any)}
               className={cn(
-                "flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-bold transition-all",
+                "flex items-center gap-2 px-3 py-2 rounded-none text-xs font-bold transition-all",
                 selectedMetric === tab.id
-                  ? "bg-indigo-500 text-white shadow-lg"
+                  ? "bg-amber-500 text-white shadow-lg"
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -228,7 +228,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
               <motion.div key={result.repoMeta.repo} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}>
                 <Card className={cn("p-5 relative overflow-hidden", idx === 0 && "border-amber-500/30")}>
                   <div className="flex items-center gap-3 mb-4">
-                    <Image src={result.repoMeta.avatar} width={40} height={40} className="size-10 rounded-xl" alt="" />
+                    <Image src={result.repoMeta.avatar} width={40} height={40} className="size-10 rounded-none" alt="" />
                     <div>
                       <div className="font-bold">{result.repoMeta.repo}</div>
                       <div className="text-xs text-muted-foreground">{result.repoMeta.owner}</div>
@@ -236,20 +236,20 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                     <div className={cn("ml-auto px-2 py-1 rounded text-xs font-black", 
                       result.tier === "S" && "bg-yellow-500/20 text-yellow-600",
                       result.tier === "A" && "bg-emerald-500/20 text-emerald-600",
-                      result.tier === "B" && "bg-blue-500/20 text-blue-600",
-                      result.tier === "C" && "bg-slate-500/20 text-slate-600",
+                      result.tier === "B" && "bg-amber-500/20 text-amber-600",
+                      result.tier === "C" && "bg-stone-500/20 text-stone-600",
                       result.tier === "D" && "bg-rose-500/20 text-rose-600"
                     )}>
                       {result.tier}
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <div className="text-4xl font-black text-indigo-500">{Math.round(result.composite.overall)}</div>
+                    <div className="text-4xl font-black text-amber-500">{Math.round(result.composite.overall)}</div>
                     <div className="text-xs text-muted-foreground">Overall Score<br/>Percentile: {Math.round(result.percentiles.overall)}%</div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-1">
                     {result.badges.slice(0, 3).map((badge, i) => (
-                      <span key={i} className="px-2 py-0.5 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold">{badge}</span>
+                      <span key={i} className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold">{badge}</span>
                     ))}
                   </div>
                 </Card>
@@ -269,9 +269,9 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                   </div>
                   {[
                     { label: "Influence", value: result.composite.influence, color: "text-amber-500" },
-                    { label: "Velocity", value: result.composite.velocity, color: "text-blue-500" },
+                    { label: "Velocity", value: result.composite.velocity, color: "text-amber-500" },
                     { label: "Quality", value: result.composite.quality, color: "text-emerald-500" },
-                    { label: "Community", value: result.composite.communityHealth, color: "text-purple-500" },
+                    { label: "Community", value: result.composite.communityHealth, color: "text-amber-500" },
                     { label: "Sustainability", value: result.composite.sustainability, color: "text-green-500" },
                     { label: "Momentum", value: result.composite.momentum, color: "text-rose-500" },
                   ].map((item) => (
@@ -296,7 +296,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
               <motion.div key={result.repoMeta.repo} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: idx * 0.1 }}>
                 <Card className="p-6">
                   <div className="flex items-center gap-3 mb-6">
-                    <Image src={result.repoMeta.avatar} width={40} height={40} className="size-10 rounded-xl" alt="" />
+                    <Image src={result.repoMeta.avatar} width={40} height={40} className="size-10 rounded-none" alt="" />
                     <div>
                       <div className="font-bold">{result.repoMeta.repo}</div>
                       <div className="text-xs text-muted-foreground">{result.repo.language} · {Object.keys(result.repo.languages).length} languages detected</div>
@@ -346,7 +346,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                   <XAxis type="number" hide />
                   <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11, fontWeight: 700 }} />
                   <Tooltip contentStyle={{ backgroundColor: "var(--surface-container-highest)", border: "1px solid var(--outline-variant)", borderRadius: "12px", fontSize: "12px" }} />
-                  <Bar dataKey="contributors" fill="#818cf8" radius={[0, 4, 4, 0]} barSize={24} />
+                  <Bar dataKey="contributors" fill="#fbbf24" radius={[0, 4, 4, 0]} barSize={24} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -356,7 +356,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
             {comparisonResults.map((result, idx) => (
               <Card key={result.repoMeta.repo} className="p-5">
                 <div className="flex items-center gap-3 mb-4">
-                  <Image src={result.repoMeta.avatar} width={32} height={32} className="size-8 rounded-lg" alt="" />
+                  <Image src={result.repoMeta.avatar} width={32} height={32} className="size-8 rounded-none" alt="" />
                   <div>
                     <div className="font-bold text-sm">{result.repoMeta.repo}</div>
                     <div className="text-[10px] text-muted-foreground">{result.repo.contributors} contributors (real)</div>
@@ -364,10 +364,10 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                 </div>
                 <div className="space-y-2">
                   {result.repo.topContributors.slice(0, 3).map((contrib) => (
-                    <div key={contrib.login} className="flex items-center gap-2 p-2 rounded-lg bg-surface-container-highest/50">
+                    <div key={contrib.login} className="flex items-center gap-2 p-2 rounded-none bg-surface-container-highest/50">
                       <img src={contrib.avatar} alt="" className="size-6 rounded-full" />
                       <span className="text-xs font-medium flex-1">{contrib.login}</span>
-                      <span className="text-xs font-bold text-indigo-500">{formatNumber(contrib.contributions)}</span>
+                      <span className="text-xs font-bold text-amber-500">{formatNumber(contrib.contributions)}</span>
                     </div>
                   ))}
                 </div>
@@ -385,7 +385,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
               <motion.div key={result.repoMeta.repo} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.1 }}>
                 <Card className="p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <Image src={result.repoMeta.avatar} width={32} height={32} className="size-8 rounded-lg" alt="" />
+                    <Image src={result.repoMeta.avatar} width={32} height={32} className="size-8 rounded-none" alt="" />
                     <div>
                       <div className="font-bold text-sm">{result.repoMeta.repo}</div>
                       <div className="text-[10px] text-muted-foreground">Issues (Real Data)</div>
@@ -446,7 +446,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
               <motion.div key={result.repoMeta.repo} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.1 }}>
                 <Card className="p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <Image src={result.repoMeta.avatar} width={32} height={32} className="size-8 rounded-lg" alt="" />
+                    <Image src={result.repoMeta.avatar} width={32} height={32} className="size-8 rounded-none" alt="" />
                     <div>
                       <div className="font-bold text-sm">{result.repoMeta.repo}</div>
                       <div className="text-[10px] text-muted-foreground">Pull Requests (Real Data)</div>
@@ -454,15 +454,15 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                   </div>
                   
                   <div className="grid grid-cols-3 gap-2 text-center mb-4">
-                    <div className="bg-blue-500/10 rounded-lg p-2">
-                      <div className="text-lg font-bold text-blue-500">{result.repo.pullRequests.filter((p: any) => p.state === "open").length}</div>
+                    <div className="bg-amber-500/10 rounded-none p-2">
+                      <div className="text-lg font-bold text-amber-500">{result.repo.pullRequests.filter((p: any) => p.state === "open").length}</div>
                       <div className="text-[8px] uppercase text-muted-foreground">Open</div>
                     </div>
-                    <div className="bg-purple-500/10 rounded-lg p-2">
-                      <div className="text-lg font-bold text-purple-500">{result.repo.pullRequests.filter((p: any) => p.merged_at).length}</div>
+                    <div className="bg-amber-500/10 rounded-none p-2">
+                      <div className="text-lg font-bold text-amber-500">{result.repo.pullRequests.filter((p: any) => p.merged_at).length}</div>
                       <div className="text-[8px] uppercase text-muted-foreground">Merged</div>
                     </div>
-                    <div className="bg-rose-500/10 rounded-lg p-2">
+                    <div className="bg-rose-500/10 rounded-none p-2">
                       <div className="text-lg font-bold text-rose-500">{result.repo.pullRequests.filter((p: any) => p.state === "closed" && !p.merged_at).length}</div>
                       <div className="text-[8px] uppercase text-muted-foreground">Closed</div>
                     </div>
@@ -497,7 +497,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip contentStyle={{ backgroundColor: "var(--surface-container-highest)", border: "1px solid var(--outline-variant)", borderRadius: "12px", fontSize: "12px" }} />
                   <Legend />
-                  <Bar dataKey="open" fill="#3b82f6" name="Open" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="open" fill="#f59e0b" name="Open" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="merged" fill="#a855f7" name="Merged" radius={[4, 4, 0, 0]} />
                   <Bar dataKey="closed" fill="#f43f5e" name="Closed" radius={[4, 4, 0, 0]} />
                 </BarChart>
@@ -515,7 +515,7 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
               <motion.div key={result.repoMeta.repo} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: idx * 0.1 }}>
                 <Card className="p-5">
                   <div className="flex items-center gap-3 mb-4">
-                    <Image src={result.repoMeta.avatar} width={40} height={40} className="size-10 rounded-xl" alt="" />
+                    <Image src={result.repoMeta.avatar} width={40} height={40} className="size-10 rounded-none" alt="" />
                     <div className="flex-1">
                       <div className="font-bold">{result.repoMeta.repo}</div>
                       <div className="flex items-center gap-2">
@@ -530,9 +530,9 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                   <div className="space-y-3">
                     {[
                       { label: "Bug Score", value: result.breakdowns.quality.bugScore, color: "bg-rose-500", icon: "bug_report" },
-                      { label: "PR Quality", value: result.breakdowns.quality.prQuality, color: "bg-blue-500", icon: "merge_type" },
+                      { label: "PR Quality", value: result.breakdowns.quality.prQuality, color: "bg-amber-500", icon: "merge_type" },
                       { label: "Maintenance", value: result.breakdowns.quality.maintenanceScore, color: "bg-emerald-500", icon: "build" },
-                      { label: "Language Diversity", value: result.breakdowns.quality.langDiversity, color: "bg-purple-500", icon: "code" },
+                      { label: "Language Diversity", value: result.breakdowns.quality.langDiversity, color: "bg-amber-500", icon: "code" },
                       { label: "License", value: result.breakdowns.quality.licenseScore, color: "bg-amber-500", icon: "verified" },
                     ].map((item) => (
                       <div key={item.label} className="space-y-1">
@@ -597,9 +597,9 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                 transition={{ delay: idx * 0.1 }}
                 className="relative pl-8 pb-6 last:pb-0 border-l-2 border-outline-variant/20 last:border-l-0"
               >
-                <div className="absolute left-0 top-0 -translate-x-[5px] size-3 rounded-full bg-indigo-500" />
+                <div className="absolute left-0 top-0 -translate-x-[5px] size-3 rounded-full bg-amber-500" />
                 <div className="flex items-start gap-4">
-                  <Image src={result.repoMeta.avatar} width={48} height={48} className="size-12 rounded-xl" alt="" />
+                  <Image src={result.repoMeta.avatar} width={48} height={48} className="size-12 rounded-none" alt="" />
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="font-bold">{result.repoMeta.repo}</span>
@@ -607,9 +607,9 @@ export function CompareMetrics({ repositories }: CompareMetricsProps) {
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                       <TimelineItem icon="add_circle" label="Created" value={formatDistanceToNow(new Date(result.repo.createdAt))} color="text-emerald-500" />
-                      <TimelineItem icon="update" label="Last Push" value={formatDistanceToNow(new Date(result.repo.updatedAt))} color="text-blue-500" />
+                      <TimelineItem icon="update" label="Last Push" value={formatDistanceToNow(new Date(result.repo.updatedAt))} color="text-amber-500" />
                       <TimelineItem icon="schedule" label="Age" value={`${Math.floor((Date.now() - new Date(result.repo.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 365))} years`} color="text-amber-500" />
-                      <TimelineItem icon="folder" label="Size" value={`${(result.repo.size / 1024).toFixed(1)} MB`} color="text-purple-500" />
+                      <TimelineItem icon="folder" label="Size" value={`${(result.repo.size / 1024).toFixed(1)} MB`} color="text-amber-500" />
                     </div>
                     
                     <div className="flex flex-wrap gap-2 mt-3">
@@ -644,7 +644,7 @@ function TimelineItem({ icon, label, value, color }: { icon: string; label: stri
 
 function FeatureTag({ icon, label }: { icon: string; label: string }) {
   return (
-    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-indigo-500/10 text-indigo-500 text-[10px] font-bold">
+    <div className="flex items-center gap-1 px-2 py-1 rounded-full bg-amber-500/10 text-amber-500 text-[10px] font-bold">
       <MaterialIcon name={icon} size={12} />
       {label}
     </div>

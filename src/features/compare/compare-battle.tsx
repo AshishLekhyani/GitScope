@@ -136,13 +136,13 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
             <motion.div
               animate={{ rotate: 360 }}
               transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              className="size-16 rounded-full border-4 border-indigo-500/20 border-t-indigo-500"
+              className="size-16 rounded-full border-4 border-amber-500/20 border-t-amber-500"
             />
             <div className="absolute inset-0 flex items-center justify-center">
-              <MaterialIcon name="psychology" size={24} className="text-indigo-500" />
+              <MaterialIcon name="psychology" size={24} className="text-amber-500" />
             </div>
           </div>
-          <p className="text-sm font-bold text-indigo-500">Running Complex Analysis...</p>
+          <p className="text-sm font-bold text-amber-500">Running Complex Analysis...</p>
           <p className="text-xs text-muted-foreground">Calculating 7 composite indices</p>
         </div>
       </div>
@@ -152,8 +152,8 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
   if (comparisonResults.length < 2) {
     return (
       <Card className="p-8 text-center">
-        <div className="size-20 rounded-2xl bg-linear-to-br from-indigo-500/20 to-purple-500/20 flex items-center justify-center mx-auto mb-4">
-          <MaterialIcon name="sports_martial_arts" size={40} className="text-indigo-500" />
+        <div className="size-20 rounded-none bg-linear-to-br from-amber-500/20 to-amber-500/20 flex items-center justify-center mx-auto mb-4">
+          <MaterialIcon name="sports_martial_arts" size={40} className="text-amber-500" />
         </div>
         <h3 className="text-xl font-bold mb-2">Battle Mode Requires 2+ Repositories</h3>
         <p className="text-sm text-muted-foreground">Add more repositories for advanced comparison</p>
@@ -168,7 +168,7 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
     <div className="space-y-6">
       {/* Battle Header with Tier Badges */}
       <Card className="p-6 relative overflow-hidden">
-        <div className="absolute inset-0 bg-linear-to-r from-indigo-500/5 via-purple-500/5 to-pink-500/5" />
+        <div className="absolute inset-0 bg-linear-to-r from-amber-500/5 via-amber-500/5 to-amber-500/5" />
         <div className="relative z-10">
           <div className="flex justify-center gap-2 mb-4">
             {comparisonResults.map((result, idx) => (
@@ -181,8 +181,8 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
                   "px-3 py-1 rounded-full text-xs font-black",
                   result.tier === "S" && "bg-yellow-500/20 text-yellow-600 border border-yellow-500/30",
                   result.tier === "A" && "bg-emerald-500/20 text-emerald-600 border border-emerald-500/30",
-                  result.tier === "B" && "bg-blue-500/20 text-blue-600 border border-blue-500/30",
-                  result.tier === "C" && "bg-slate-500/20 text-slate-600 border border-slate-500/30",
+                  result.tier === "B" && "bg-amber-500/20 text-amber-600 border border-amber-500/30",
+                  result.tier === "C" && "bg-stone-500/20 text-stone-600 border border-stone-500/30",
                   result.tier === "D" && "bg-rose-500/20 text-rose-600 border border-rose-500/30"
                 )}
               >
@@ -205,10 +205,10 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
                     src={repositories[idx]?.avatar || ""} 
                     width={56} 
                     height={56} 
-                    className="size-14 rounded-2xl shadow-xl border-2 border-border dark:border-white/40"
+                    className="size-14 rounded-none shadow-xl border-2 border-border dark:border-white/40"
                     alt="" 
                   />
-                  <div className="absolute -bottom-2 -right-2 size-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs font-bold shadow-lg">
+                  <div className="absolute -bottom-2 -right-2 size-6 rounded-full bg-amber-500 text-white flex items-center justify-center text-xs font-bold shadow-lg">
                     #{result.rank}
                   </div>
                 </div>
@@ -223,7 +223,7 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
                   <motion.div
                     animate={{ scale: [1, 1.2, 1] }}
                     transition={{ duration: 0.5, repeat: Infinity }}
-                    className="mx-6 px-4 py-2 rounded-xl bg-linear-to-r from-indigo-500 to-purple-500 text-white text-sm font-black shadow-lg"
+                    className="mx-6 px-4 py-2 rounded-none bg-linear-to-r from-amber-500 to-amber-500 text-white text-sm font-black shadow-lg"
                   >
                     VS
                   </motion.div>
@@ -238,7 +238,7 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
                 key={round.id}
                 onClick={() => setActiveRound(idx)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all",
+                  "flex items-center gap-2 px-4 py-2 rounded-none text-xs font-bold transition-all",
                   activeRound === idx
                     ? `bg-linear-to-r ${round.color} text-white shadow-lg scale-105`
                     : "bg-surface-container/50 text-muted-foreground hover:text-foreground"
@@ -265,7 +265,7 @@ export function CompareBattle({ repositories }: CompareBattleProps) {
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,white,transparent)] opacity-20" />
               <div className="relative z-10 flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="size-16 rounded-2xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                  <div className="size-16 rounded-none bg-white/20 flex items-center justify-center backdrop-blur-sm">
                     <MaterialIcon name="emoji_events" size={32} className="text-white" />
                   </div>
                   <div>
@@ -351,12 +351,12 @@ function InfluenceRound({ results, repos }: { results: AdvancedComparisonResult[
           <motion.div key={idx} initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} transition={{ delay: idx * 0.1 }}>
             <Card className="p-4">
               <div className="flex items-center gap-4">
-                <div className="size-12 rounded-xl bg-linear-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
+                <div className="size-12 rounded-none bg-linear-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center">
                   <span className="text-xl font-black text-amber-500">#{idx + 1}</span>
                 </div>
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <Image src={repos[idx]?.avatar || ""} width={24} height={24} className="size-6 rounded-lg" alt="" />
+                    <Image src={repos[idx]?.avatar || ""} width={24} height={24} className="size-6 rounded-none" alt="" />
                     <span className="font-bold">{repos[idx]?.repo}</span>
                   </div>
                   <div className="space-y-2">
@@ -407,7 +407,7 @@ function VelocityRound({ results, repos }: { results: AdvancedComparisonResult[]
             )}>
               <div className="relative z-10">
                 <div className="flex items-center gap-3 mb-4">
-                  <Image src={repos[idx]?.avatar || ""} width={40} height={40} className="size-10 rounded-xl" alt="" />
+                  <Image src={repos[idx]?.avatar || ""} width={40} height={40} className="size-10 rounded-none" alt="" />
                   <div>
                     <div className="font-bold">{repos[idx]?.repo}</div>
                     <div className="text-xs text-muted-foreground">Development Velocity</div>
@@ -420,7 +420,7 @@ function VelocityRound({ results, repos }: { results: AdvancedComparisonResult[]
                     size={32} 
                     className={cn(
                       result.velocity.trend === "accelerating" && "text-emerald-500",
-                      result.velocity.trend === "stable" && "text-blue-500",
+                      result.velocity.trend === "stable" && "text-amber-500",
                       result.velocity.trend === "decelerating" && "text-rose-500"
                     )} 
                   />
@@ -458,7 +458,7 @@ function VelocityRound({ results, repos }: { results: AdvancedComparisonResult[]
                 contentStyle={{ backgroundColor: "var(--surface-container-highest)", border: "1px solid var(--outline-variant)", borderRadius: "12px" }}
                 formatter={(value) => [`${Math.round(Number(value) || 0)}`, ""]}
               />
-              <Bar dataKey="score" fill="#3b82f6" name="Overall" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="score" fill="#f59e0b" name="Overall" radius={[4, 4, 0, 0]} />
               <Bar dataKey="consistency" fill="#10b981" name="Consistency" radius={[4, 4, 0, 0]} />
               <Bar dataKey="acceleration" fill="#f59e0b" name="Acceleration" radius={[4, 4, 0, 0]} />
             </BarChart>
@@ -490,14 +490,14 @@ function QualityRound({ results, repos }: { results: AdvancedComparisonResult[];
               <div className="grid grid-cols-5 gap-1">
                 {[
                   { label: "Bug", value: result.breakdowns.quality.bugScore, color: "bg-rose-500" },
-                  { label: "PR", value: result.breakdowns.quality.prQuality, color: "bg-blue-500" },
+                  { label: "PR", value: result.breakdowns.quality.prQuality, color: "bg-amber-500" },
                   { label: "Maint", value: result.breakdowns.quality.maintenanceScore, color: "bg-emerald-500" },
-                  { label: "Lang", value: result.breakdowns.quality.langDiversity, color: "bg-purple-500" },
+                  { label: "Lang", value: result.breakdowns.quality.langDiversity, color: "bg-amber-500" },
                   { label: "Lic", value: result.breakdowns.quality.licenseScore, color: "bg-amber-500" },
                 ].map((item, i) => (
                   <div key={i} className="space-y-1">
                     <div className="text-[8px] text-center text-muted-foreground truncate">{item.label}</div>
-                    <div className="h-16 bg-surface-container-highest rounded-md relative overflow-hidden">
+                    <div className="h-16 bg-surface-container-highest rounded-none relative overflow-hidden">
                       <motion.div 
                         initial={{ height: 0 }}
                         animate={{ height: `${item.value}%` }}
@@ -528,12 +528,12 @@ function QualityRound({ results, repos }: { results: AdvancedComparisonResult[];
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
-              <div className="p-2 rounded-lg bg-emerald-500/10 text-center">
+              <div className="p-2 rounded-none bg-emerald-500/10 text-center">
                 <div className="text-lg font-bold text-emerald-500">{result.repo.prMergeRate.toFixed(0)}%</div>
                 <div className="text-[9px] text-muted-foreground uppercase">PR Merge Rate</div>
               </div>
-              <div className="p-2 rounded-lg bg-blue-500/10 text-center">
-                <div className="text-lg font-bold text-blue-500">{result.repo.issueResolutionRate.toFixed(0)}%</div>
+              <div className="p-2 rounded-none bg-amber-500/10 text-center">
+                <div className="text-lg font-bold text-amber-500">{result.repo.issueResolutionRate.toFixed(0)}%</div>
                 <div className="text-[9px] text-muted-foreground uppercase">Issue Resolution</div>
               </div>
             </div>
@@ -560,8 +560,8 @@ function CommunityRound({ results, repos }: { results: AdvancedComparisonResult[
           <motion.div key={idx} initial={{ y: 20, opacity: 0 }} animate={{ y: 0, opacity: 1 }} transition={{ delay: idx * 0.1 }}>
             <Card className="p-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="size-12 rounded-xl bg-linear-to-br from-purple-500/20 to-pink-500/20 flex items-center justify-center">
-                  <MaterialIcon name="groups" size={24} className="text-purple-500" />
+                <div className="size-12 rounded-none bg-linear-to-br from-amber-500/20 to-amber-500/20 flex items-center justify-center">
+                  <MaterialIcon name="groups" size={24} className="text-amber-500" />
                 </div>
                 <div>
                   <div className="font-bold">{repos[idx]?.repo}</div>
@@ -585,7 +585,7 @@ function CommunityRound({ results, repos }: { results: AdvancedComparisonResult[
                 <div className="pt-3 border-t border-outline-variant/10">
                   <div className="flex justify-between items-center">
                     <span className="text-sm font-medium">Overall Score</span>
-                    <span className="text-2xl font-black text-purple-500">{Math.round(result.composite.communityHealth)}</span>
+                    <span className="text-2xl font-black text-amber-500">{Math.round(result.composite.communityHealth)}</span>
                   </div>
                 </div>
               </div>
@@ -615,8 +615,8 @@ function CommunityRound({ results, repos }: { results: AdvancedComparisonResult[
               <YAxis type="category" dataKey="name" width={80} tick={{ fontSize: 11 }} />
               <Tooltip contentStyle={{ backgroundColor: "var(--surface-container-highest)", border: "1px solid var(--outline-variant)", borderRadius: "12px" }} />
               <Bar dataKey="contributors" fill="#a855f7" name="Contributors" radius={[0, 4, 4, 0]} stackId="a" />
-              <Bar dataKey="distribution" fill="#ec4899" name="Distribution" radius={[0, 4, 4, 0]} stackId="a" />
-              <Bar dataKey="onboarding" fill="#3b82f6" name="Onboarding" radius={[0, 4, 4, 0]} stackId="a" />
+              <Bar dataKey="distribution" fill="#f59e0b" name="Distribution" radius={[0, 4, 4, 0]} stackId="a" />
+              <Bar dataKey="onboarding" fill="#f59e0b" name="Onboarding" radius={[0, 4, 4, 0]} stackId="a" />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -650,8 +650,8 @@ function SustainabilityRound({ results, repos }: { results: AdvancedComparisonRe
                   <div className="text-emerald-500 font-bold">{Math.round(result.breakdowns.sustainability.issueHealth)}%</div>
                   <div className="text-muted-foreground">Issue Health</div>
                 </div>
-                <div className="p-2 rounded bg-blue-500/10">
-                  <div className="text-blue-500 font-bold">{Math.round(result.breakdowns.sustainability.prEfficiency)}%</div>
+                <div className="p-2 rounded bg-amber-500/10">
+                  <div className="text-amber-500 font-bold">{Math.round(result.breakdowns.sustainability.prEfficiency)}%</div>
                   <div className="text-muted-foreground">PR Efficiency</div>
                 </div>
                 <div className="p-2 rounded bg-amber-500/10">
@@ -668,7 +668,7 @@ function SustainabilityRound({ results, repos }: { results: AdvancedComparisonRe
         <h4 className="text-sm font-bold mb-4">Project Features</h4>
         <div className="space-y-3">
           {results.map((result, idx) => (
-            <div key={idx} className="flex items-center justify-between p-3 rounded-lg bg-surface-container-highest/50">
+            <div key={idx} className="flex items-center justify-between p-3 rounded-none bg-surface-container-highest/50">
               <div className="flex items-center gap-2">
                 <Image src={repos[idx]?.avatar || ""} width={24} height={24} className="size-6 rounded" alt="" />
                 <span className="font-medium text-sm">{repos[idx]?.repo}</span>
@@ -703,7 +703,7 @@ function OverallRound({ results, repos }: { results: AdvancedComparisonResult[];
           </div>
           <div className="flex items-center justify-center gap-6 mb-6">
             <div className="relative">
-              <Image src={winnerRepo?.avatar || ""} width={80} height={80} className="size-20 rounded-2xl shadow-2xl ring-4 ring-white/60" alt="" />
+              <Image src={winnerRepo?.avatar || ""} width={80} height={80} className="size-20 rounded-none shadow-2xl ring-4 ring-white/60" alt="" />
               <motion.div animate={{ rotate: [0, 10, -10, 0] }} transition={{ duration: 2, repeat: Infinity }} className="absolute -top-4 -right-4 size-10 rounded-full bg-white text-amber-500 flex items-center justify-center shadow-lg">
                 <MaterialIcon name="crown" size={24} />
               </motion.div>
@@ -752,8 +752,8 @@ function OverallRound({ results, repos }: { results: AdvancedComparisonResult[];
                     key={i}
                     name={repos[i]?.repo}
                     dataKey={repos[i]?.repo}
-                    stroke={["#6366f1", "#ec4899", "#f59e0b"][i % 3]}
-                    fill={["#6366f1", "#ec4899", "#f59e0b"][i % 3]}
+                    stroke={["#f59e0b", "#f59e0b", "#f59e0b"][i % 3]}
+                    fill={["#f59e0b", "#f59e0b", "#f59e0b"][i % 3]}
                     fillOpacity={0.3}
                   />
                 ))}
@@ -769,21 +769,21 @@ function OverallRound({ results, repos }: { results: AdvancedComparisonResult[];
               <Card className={cn("p-4 relative overflow-hidden", idx === 0 ? "bg-linear-to-r from-amber-500/10 to-transparent border-amber-500/30" : "")}>
                 <div className="flex items-center gap-4">
                   <div className={cn(
-                    "size-12 rounded-xl flex items-center justify-center font-black text-xl",
+                    "size-12 rounded-none flex items-center justify-center font-black text-xl",
                     idx === 0 ? "bg-amber-500 text-white" : 
-                    idx === 1 ? "bg-slate-400 text-white" : 
+                    idx === 1 ? "bg-stone-400 text-white" : 
                     idx === 2 ? "bg-orange-600 text-white" : 
                     "bg-surface-container-highest"
                   )}>
                     #{idx + 1}
                   </div>
-                  <Image src={repos[idx]?.avatar || ""} width={48} height={48} className="size-12 rounded-xl" alt="" />
+                  <Image src={repos[idx]?.avatar || ""} width={48} height={48} className="size-12 rounded-none" alt="" />
                   <div className="flex-1">
                     <div className="font-bold">{repos[idx]?.repo}</div>
                     <div className="text-xs text-muted-foreground">{repos[idx]?.owner}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-black text-indigo-500">{Math.round(result.composite.overall)}</div>
+                    <div className="text-2xl font-black text-amber-500">{Math.round(result.composite.overall)}</div>
                     <div className="text-[10px] text-muted-foreground uppercase">{result.tier}-Tier</div>
                   </div>
                 </div>

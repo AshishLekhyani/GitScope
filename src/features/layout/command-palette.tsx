@@ -82,10 +82,10 @@ export function CommandPalette() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full max-w-2xl overflow-hidden rounded-2xl border border-border bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl shadow-2xl"
+        className="relative w-full max-w-2xl overflow-hidden rounded-none border border-border bg-white/90 dark:bg-stone-900/90 backdrop-blur-xl shadow-2xl"
       >
         <div className="flex items-center border-b border-border px-4 py-4">
-          <Terminal className="mr-3 size-5 text-indigo-500" />
+          <Terminal className="mr-3 size-5 text-amber-500" />
           <input
             autoFocus
             value={search}
@@ -98,7 +98,7 @@ export function CommandPalette() {
           </div>
         </div>
 
-        <div className="max-h-[60vh] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-indigo-500/20">
+        <div className="max-h-[60vh] overflow-y-auto p-2 scrollbar-thin scrollbar-thumb-amber-500/20">
           
           {/* Recent Navigation (History) */}
           {filteredHistory.length > 0 && (
@@ -113,13 +113,13 @@ export function CommandPalette() {
                 <button
                   key={item.id}
                   onClick={() => navTo(item.type === "repo" ? ROUTES.dashboard(item.id.split('/')[0], item.id.split('/')[1]) : `/${item.name}`)}
-                  className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold hover:bg-indigo-500/10 hover:text-indigo-500 transition-colors group"
+                  className="flex w-full items-center gap-3 rounded-none px-3 py-2.5 text-left text-sm font-semibold hover:bg-amber-500/10 hover:text-amber-500 transition-colors group"
                 >
-                  <div className="size-8 rounded-lg overflow-hidden border border-indigo-500/10">
+                  <div className="size-8 rounded-none overflow-hidden border border-amber-500/10">
                     {item.avatar && <Image src={item.avatar} width={32} height={32} alt={item.name} className="size-full object-cover" />}
                   </div>
                   <div className="flex-1">
-                    <div className="text-xs font-bold text-foreground group-hover:text-indigo-500">
+                    <div className="text-xs font-bold text-foreground group-hover:text-amber-500">
                       {item.type === "repo" && <span className="opacity-40">{item.id.split('/')[0]}/</span>}
                       {item.name}
                     </div>
@@ -140,8 +140,8 @@ export function CommandPalette() {
                  key={action.label}
                  onClick={() => action.action ? (action.action(), dispatch(setCommandPaletteOpen(false))) : navTo(action.href!)}
                  className={cn(
-                   "flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left text-sm font-semibold transition-colors group",
-                   action.danger ? "hover:bg-red-500/10 text-red-500" : "hover:bg-indigo-500/10 hover:text-indigo-500"
+                   "flex w-full items-center gap-3 rounded-none px-3 py-3 text-left text-sm font-semibold transition-colors group",
+                   action.danger ? "hover:bg-red-500/10 text-red-500" : "hover:bg-amber-500/10 hover:text-amber-500"
                  )}
                >
                  <action.icon className={cn("size-4 opacity-50 group-hover:opacity-100", action.danger && "opacity-100")} />
@@ -159,7 +159,7 @@ export function CommandPalette() {
             <span className="flex items-center gap-1">↑↓ to navigate</span>
             <span className="flex items-center gap-1">↵ to perform action</span>
           </div>
-          <div className="font-bold text-indigo-500">v1.0.0-Discovery</div>
+          <div className="font-bold text-amber-500">v1.0.0-Discovery</div>
         </div>
       </motion.div>
     </div>

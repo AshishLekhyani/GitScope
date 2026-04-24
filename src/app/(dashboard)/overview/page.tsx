@@ -59,16 +59,16 @@ export default async function OverviewPage() {
       description: "Find and analyze any public GitHub repository instantly.",
       icon: Search,
       href: ROUTES.search,
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
     },
     {
       title: "Compare Metrics",
       description: "Analyze and juxtapose multiple repositories side-by-side.",
       icon: GitMerge,
       href: ROUTES.compare,
-      color: "text-purple-500",
-      bg: "bg-purple-500/10",
+      color: "text-amber-500",
+      bg: "bg-amber-500/10",
     },
     {
       title: "Trending Projects",
@@ -103,80 +103,85 @@ export default async function OverviewPage() {
       {/* Onboarding tour: first-time users only, tracked per account in localStorage */}
       {isFirstTime && <OnboardingTour userKey={session.user.id ?? session.user.email ?? "unknown-user"} />}
       {/* Header section with radial glow */}
-      <Card className="relative rounded-2xl border border-border p-5 shadow-sm overflow-hidden sm:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(67,97,238,0.1),transparent_50%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(192,193,255,0.05),transparent_50%)]" />
-        <div className="relative z-10 flex items-center gap-3 sm:gap-4">
-          {image && (
-            <Image
-              src={image}
-              alt={displayName}
-              width={56}
-              height={56}
-              className="size-12 rounded-full border-2 border-primary/20 sm:size-14 shrink-0"
-            />
-          )}
-          <div className="min-w-0">
-            <h2 className="text-2xl font-bold tracking-tight sm:text-3xl">
-              {isFirstTime ? "Welcome, " : "Welcome back, "}
-              <span className="text-primary">{displayName}</span>
-            </h2>
-            <p className="text-muted-foreground mt-1 text-xs sm:text-sm">
-              {isFirstTime
-                ? "GitScope is ready. Start by analyzing any public GitHub repository."
-                : `You have ${recentHistory.length} repositor${recentHistory.length === 1 ? "y" : "ies"} in your history.`}
-            </p>
+      <Card className="relative border border-border overflow-hidden">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(199,122,18,0.08),transparent_50%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(251,191,36,0.05),transparent_50%)]" />
+        <div className="absolute top-0 left-0 right-0 h-px bg-linear-to-r from-primary/30 via-primary/60 to-transparent" />
+        <div className="relative z-10 p-5 sm:p-8">
+          <div className="flex items-start gap-3 sm:gap-4">
+            {image && (
+              <Image
+                src={image}
+                alt={displayName}
+                width={48}
+                height={48}
+                className="size-11 rounded-full border-2 border-primary/30 sm:size-13 shrink-0 mt-0.5"
+              />
+            )}
+            <div className="min-w-0 flex-1">
+              <p className="font-mono text-[10px] tracking-widest text-primary uppercase mb-1">
+                {isFirstTime ? "// NEW SESSION" : "// RETURNING ENGINEER"}
+              </p>
+              <h2 className="font-bold tracking-tight leading-tight" style={{ fontFamily: "var(--font-space-grotesk)", fontSize: "clamp(20px,3vw,32px)", letterSpacing: "-0.02em" }}>
+                {isFirstTime ? "Welcome, " : "Welcome back, "}
+                <span className="text-primary">{displayName}</span>
+              </h2>
+              <p className="text-muted-foreground mt-1.5 text-xs sm:text-sm font-mono">
+                {isFirstTime
+                  ? "GitScope ready — analyze any public GitHub repository to begin."
+                  : `${recentHistory.length} repositor${recentHistory.length === 1 ? "y" : "ies"} in history · Intelligence Hub live`}
+              </p>
+            </div>
           </div>
-        </div>
-        <div className="mt-5 flex flex-wrap items-center gap-3 sm:mt-6">
-          <Link
-            href={ROUTES.search}
-            className="inline-flex h-10 items-center justify-center rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
-            Analyze a Repository
-          </Link>
-          {recentHistory.length > 0 && (
+          <div className="mt-5 flex flex-wrap items-center gap-2.5">
             <Link
-              href={ROUTES.trending}
-              className="inline-flex h-10 items-center justify-center rounded-md border border-border bg-background px-6 text-sm font-medium text-foreground shadow-sm transition-colors hover:bg-muted"
+              href={ROUTES.search}
+              className="inline-flex h-9 items-center justify-center bg-foreground text-background px-5 text-[11px] font-bold font-mono uppercase tracking-widest transition-colors hover:bg-foreground/80"
             >
-              View Trending
+              Analyze Repository →
             </Link>
-          )}
+            {recentHistory.length > 0 && (
+              <Link
+                href={ROUTES.trending}
+                className="inline-flex h-9 items-center justify-center border border-border px-5 text-[11px] font-bold font-mono uppercase tracking-widest text-muted-foreground transition-colors hover:border-primary/40 hover:text-primary"
+              >
+                Stack Trending
+              </Link>
+            )}
+          </div>
         </div>
       </Card>
 
-      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 sm:gap-6 lg:grid-cols-4">
+      <div className="grid gap-px grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 border border-border bg-border">
         {quickActions.map((action) => (
           <Link key={action.title} href={action.href}>
-            <Card className="group relative overflow-hidden flex h-full flex-col justify-between p-4 transition-all duration-300 hover:shadow-lg hover:shadow-primary/10 hover:border-primary/30 hover:-translate-y-1 sm:p-6">
-              <div className="space-y-4">
-                <div className={`inline-flex rounded-lg p-3 ${action.bg}`}>
-                  <action.icon className={`h-6 w-6 ${action.color}`} />
+            <div className="group relative flex h-full flex-col justify-between p-5 bg-background transition-colors duration-200 hover:bg-surface-container sm:p-6 min-h-36">
+              <div>
+                <div className={`inline-flex p-2.5 mb-4 ${action.bg}`}>
+                  <action.icon className={`h-5 w-5 ${action.color}`} />
                 </div>
-                <div>
-                  <h3 className="font-semibold tracking-tight">{action.title}</h3>
-                  <p className="mt-2 text-sm text-muted-foreground">
-                    {action.description}
-                  </p>
-                </div>
+                <p className="font-mono text-[10px] tracking-widest text-muted-foreground uppercase mb-1.5">{action.title}</p>
+                <p className="text-sm text-foreground font-medium leading-snug">
+                  {action.description}
+                </p>
               </div>
-              <div className="mt-4 flex items-center text-sm font-medium text-primary opacity-0 transition-opacity group-hover:opacity-100">
-                Launch Tool <ArrowRight className="ml-1 h-4 w-4" />
+              <div className="mt-4 flex items-center gap-1 font-mono text-[10px] uppercase tracking-widest text-primary opacity-0 transition-opacity duration-200 group-hover:opacity-100">
+                Open <ArrowRight className="size-3" />
               </div>
-            </Card>
+            </div>
           </Link>
         ))}
       </div>
 
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
         {/* Recent Organizations */}
-        <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 rounded-lg bg-indigo-500/10">
-              <Building2 className="h-5 w-5 text-indigo-500" />
+        <Card className="overflow-hidden border border-border shadow-none">
+          <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+            <div className="flex size-7 items-center justify-center bg-amber-500/10">
+              <Building2 className="h-4 w-4 text-amber-500" />
             </div>
-            <h3 className="font-semibold">Recent Organizations</h3>
+            <p className="font-mono text-[10px] tracking-widest text-foreground uppercase font-bold">Recent Organizations</p>
           </div>
+          <div className="p-5">
           {orgHistory.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <ShieldAlert className="h-8 w-8 text-muted-foreground/50 mb-3" />
@@ -195,7 +200,7 @@ export default async function OverviewPage() {
                   href={`https://github.com/${item.query}`}
                   target="_blank"
                   rel="noreferrer"
-                  className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/60 transition-colors"
+                  className="flex items-center gap-3 rounded-none p-2 hover:bg-muted/60 transition-colors"
                 >
                   {item.avatar ? (
                     <Image
@@ -221,16 +226,18 @@ export default async function OverviewPage() {
               ))}
             </div>
           )}
+          </div>
         </Card>
 
         {/* Analyzed Repositories */}
-        <Card className="p-6 shadow-sm hover:shadow-md transition-shadow duration-300">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="p-2 rounded-lg bg-purple-500/10">
-              <GitMerge className="h-5 w-5 text-purple-500" />
+        <Card className="overflow-hidden border border-border shadow-none">
+          <div className="flex items-center gap-3 border-b border-border px-5 py-3.5">
+            <div className="flex size-7 items-center justify-center bg-amber-500/10">
+              <GitMerge className="h-4 w-4 text-amber-500" />
             </div>
-            <h3 className="font-semibold">Analyzed Repositories</h3>
+            <p className="font-mono text-[10px] tracking-widest text-foreground uppercase font-bold">Analyzed Repositories</p>
           </div>
+          <div className="p-5">
           {repoHistory.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-center">
               <Search className="h-8 w-8 text-muted-foreground/50 mb-3" />
@@ -249,7 +256,7 @@ export default async function OverviewPage() {
                   <Link
                     key={item.query}
                     href={owner && repo ? ROUTES.dashboard(owner, repo) : ROUTES.search}
-                    className="flex items-center gap-3 rounded-lg p-2 hover:bg-muted/60 transition-colors"
+                    className="flex items-center gap-3 rounded-none p-2 hover:bg-muted/60 transition-colors"
                   >
                     {item.avatar ? (
                       <Image
@@ -257,10 +264,10 @@ export default async function OverviewPage() {
                         alt={item.query}
                         width={32}
                         height={32}
-                        className="rounded-lg"
+                        className="rounded-none"
                       />
                     ) : (
-                      <div className="size-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <div className="size-8 rounded-none bg-primary/10 flex items-center justify-center">
                         <GitMerge className="h-4 w-4 text-primary" />
                       </div>
                     )}
@@ -279,6 +286,7 @@ export default async function OverviewPage() {
               })}
             </div>
           )}
+          </div>
         </Card>
       </div>
     </div>

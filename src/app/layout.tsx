@@ -1,19 +1,21 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono, Space_Grotesk } from "next/font/google";
+import { JetBrains_Mono, Space_Grotesk, Instrument_Serif } from "next/font/google";
 import { getServerSession } from "next-auth/next";
+import { unstable_rethrow } from "next/navigation";
 import { authOptions } from "@/lib/auth";
 import { AppProviders } from "@/providers/app-providers";
 import { ThemeProvider } from "@/providers/theme-provider";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-instrument-serif",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["400"],
+  style: ["normal", "italic"],
 });
 
-const inter = Inter({
-  variable: "--font-inter",
+const spaceGrotesk = Space_Grotesk({
+  variable: "--font-space-grotesk",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
 });
@@ -29,25 +31,33 @@ const APP_URL = (process.env.NEXTAUTH_URL ?? "https://git-scope-pi.vercel.app").
 export const metadata: Metadata = {
   metadataBase: new URL(APP_URL),
   title: {
-    default: "GitScope — GitHub analytics dashboard",
+    default: "GitScope — Engineering Intelligence Platform",
     template: "%s · GitScope",
   },
   description:
-    "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+    "AI-powered GitHub analytics. Commit velocity, contributor insights, code health scores, DORA metrics, and security scans — for engineering teams that ship.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "any" },
+      { url: "/icon.png", type: "image/png" },
+    ],
+    apple: "/apple-icon.png",
+    shortcut: "/icon.png",
+  },
   openGraph: {
     type: "website",
     url: APP_URL,
     siteName: "GitScope",
-    title: "GitScope — GitHub analytics dashboard",
+    title: "GitScope — Engineering Intelligence Platform",
     description:
-      "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+      "AI-powered GitHub analytics. Commit velocity, contributor insights, code health scores, DORA metrics, and security scans — for engineering teams that ship.",
     images: [{ url: "/opengraph-image", width: 1200, height: 630, alt: "GitScope" }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "GitScope — GitHub analytics dashboard",
+    title: "GitScope — Engineering Intelligence Platform",
     description:
-      "Search repositories, explore contributors, languages, and commit activity with a polished analytics UI.",
+      "AI-powered GitHub analytics. Commit velocity, contributor insights, code health scores, DORA metrics, and security scans — for engineering teams that ship.",
     images: ["/opengraph-image"],
   },
 };
@@ -61,6 +71,7 @@ export default async function RootLayout({
   try {
     session = await getServerSession(authOptions);
   } catch (error) {
+    unstable_rethrow(error);
     console.warn("Auth session check skipped during build or db connection issue:", error);
   }
 
@@ -68,7 +79,7 @@ export default async function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         suppressHydrationWarning
-        className={`${inter.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable} min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/30 selection:text-foreground`}
+        className={`${spaceGrotesk.variable} ${jetbrainsMono.variable} ${instrumentSerif.variable} min-h-screen bg-background font-mono text-foreground antialiased selection:bg-primary/30 selection:text-foreground`}
       >
         <ThemeProvider>
           <AppProviders session={session}>{children}</AppProviders>
@@ -77,5 +88,5 @@ export default async function RootLayout({
     </html>
   );
 }
-// Root layout - Space Grotesk + Inter loaded
+// Root layout - Space Grotesk + JetBrains Mono loaded
 // favicon metadata: icon.png + apple-icon.png

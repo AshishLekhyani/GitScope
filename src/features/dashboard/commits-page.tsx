@@ -154,13 +154,13 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
   if (loading || !mounted) {
     return (
       <div className="space-y-6">
-        <div className="h-[200px] w-full rounded-xl border border-outline-variant/10 overflow-hidden">
+        <div className="h-[200px] w-full rounded-none border border-outline-variant/10 overflow-hidden">
            <Skeleton className="h-full w-full" />
         </div>
-        <div className="h-24 w-full rounded-xl border border-outline-variant/10 overflow-hidden">
+        <div className="h-24 w-full rounded-none border border-outline-variant/10 overflow-hidden">
            <Skeleton className="h-full w-full" />
         </div>
-        <div className="h-96 w-full rounded-xl border border-outline-variant/10 overflow-hidden">
+        <div className="h-96 w-full rounded-none border border-outline-variant/10 overflow-hidden">
            <Skeleton className="h-full w-full" />
         </div>
       </div>
@@ -173,14 +173,14 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
         <h2 className="font-heading text-xl font-bold text-foreground">
           Commit Analytics
         </h2>
-        <div className="flex items-center gap-1 rounded-lg bg-surface-container p-1 ring-1 ring-white/10">
+        <div className="flex items-center gap-1 rounded-none bg-surface-container p-1 ring-1 ring-white/10">
           {(["7d", "30d", "90d", "6m", "1y"] as const).map((r) => (
             <button
               key={r}
               type="button"
               onClick={() => { setRange(r); setPage(0); }}
               className={cn(
-                "rounded-md px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all",
+                "rounded-none px-3 py-1 text-[10px] font-bold uppercase tracking-wider transition-all",
                 range === r
                   ? "bg-primary text-white shadow-lg"
                   : "text-muted-foreground hover:bg-white/5 hover:text-foreground"
@@ -200,7 +200,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
         ].map((s) => (
           <Card key={s.label} className="bg-surface-container border-none shadow-sm dark:shadow-none">
             <CardContent className="flex items-center gap-4 p-4">
-              <div className={cn("flex size-10 items-center justify-center rounded-xl bg-white/5", s.color)}>
+              <div className={cn("flex size-10 items-center justify-center rounded-none bg-white/5", s.color)}>
                 <s.icon className="size-5" />
               </div>
               <div>
@@ -381,7 +381,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
                 type="button"
                 onClick={() => setPage((p) => Math.max(0, p - 1))}
                 disabled={page === 0}
-                className="px-4 py-1.5 rounded-lg border border-white/8 text-xs font-bold disabled:opacity-30 hover:bg-white/5 transition-colors"
+                className="px-4 py-1.5 rounded-none border border-white/8 text-xs font-bold disabled:opacity-30 hover:bg-white/5 transition-colors"
               >
                 ← Previous
               </button>
@@ -392,7 +392,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
                 type="button"
                 onClick={() => setPage((p) => Math.min(Math.ceil(commits.length / PER_PAGE) - 1, p + 1))}
                 disabled={(page + 1) * PER_PAGE >= commits.length}
-                className="px-4 py-1.5 rounded-lg border border-white/8 text-xs font-bold disabled:opacity-30 hover:bg-white/5 transition-colors"
+                className="px-4 py-1.5 rounded-none border border-white/8 text-xs font-bold disabled:opacity-30 hover:bg-white/5 transition-colors"
               >
                 Next →
               </button>
@@ -403,7 +403,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
 
       {/* Commit Detail Modal - Responsive with Collapsible Sidebar */}
       <Dialog open={commitModalOpen} onOpenChange={(open) => !open && closeCommitModal()}>
-        <DialogContent showCloseButton={false} className="w-[98vw] h-[95vh] sm:h-[90vh] p-0 gap-0 bg-background border border-border shadow-2xl rounded-xl overflow-hidden flex flex-col">
+        <DialogContent showCloseButton={false} className="w-[98vw] h-[95vh] sm:h-[90vh] p-0 gap-0 bg-background border border-border shadow-2xl rounded-none overflow-hidden flex flex-col">
           
           {/* Header */}
           <DialogHeader className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border flex-shrink-0 bg-surface-container">
@@ -434,7 +434,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
                     href={selectedCommit.html_url}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-primary text-white hover:bg-primary/90 transition-colors"
+                    className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-none text-xs font-medium bg-primary text-white hover:bg-primary/90 transition-colors"
                   >
                     <svg className="size-3.5" fill="currentColor" viewBox="0 0 24 24">
                       <path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/>
@@ -444,7 +444,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
                 )}
                 <button
                   onClick={closeCommitModal}
-                  className="flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:text-foreground hover:bg-surface-container-high transition-colors"
+                  className="flex size-8 items-center justify-center rounded-none text-muted-foreground hover:text-foreground hover:bg-surface-container-high transition-colors"
                 >
                   <X className="size-5" />
                 </button>
@@ -541,7 +541,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
                             file.status === "added" && "bg-emerald-400",
                             file.status === "removed" && "bg-rose-400",
                             file.status === "modified" && "bg-amber-400",
-                            file.status === "renamed" && "bg-blue-400"
+                            file.status === "renamed" && "bg-amber-400"
                           )} />
                           <span className="flex-1 truncate font-mono text-[10px] sm:text-xs">{file.filename}</span>
                           <span className="flex items-center gap-1 flex-shrink-0">
@@ -605,7 +605,7 @@ export function CommitsPage({ owner, repo }: { owner: string; repo: string }) {
                           selectedFile.status === "added" && "bg-emerald-500/20 text-emerald-400",
                           selectedFile.status === "removed" && "bg-rose-500/20 text-rose-400",
                           selectedFile.status === "modified" && "bg-amber-500/20 text-amber-400",
-                          selectedFile.status === "renamed" && "bg-blue-500/20 text-blue-400"
+                          selectedFile.status === "renamed" && "bg-amber-500/20 text-amber-400"
                         )}>
                           {selectedFile.status}
                         </span>

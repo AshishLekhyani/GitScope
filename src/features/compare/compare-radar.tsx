@@ -81,8 +81,8 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
   if (repositories.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center">
-        <div className="size-16 rounded-3xl bg-indigo-500/5 flex items-center justify-center border border-indigo-500/10 mb-6">
-          <MaterialIcon name="monitoring" size={32} className="text-indigo-500/20" />
+        <div className="size-16 rounded-none bg-amber-500/5 flex items-center justify-center border border-amber-500/10 mb-6">
+          <MaterialIcon name="monitoring" size={32} className="text-amber-500/20" />
         </div>
         <h3 className="text-xl font-bold bg-linear-to-br from-foreground to-foreground/40 bg-clip-text text-transparent mb-2">
           Select Repositories to Start Comparison
@@ -142,7 +142,7 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
     return dataPoint;
   });
 
-  const colors = ["#818cf8", "#f472b6", "#fbbf24"];
+  const colors = ["#fbbf24", "#fbbf24", "#fbbf24"];
 
   // Sort metrics by a weighted Engineering Quality Score
   const sortedMetrics = [...metrics].sort((a, b) => {
@@ -166,25 +166,26 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
         <title>GitScope Intelligence Report</title>
         <style>
           @page { size: A4; margin: 20mm; }
-          body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
-          h1 { color: #6366f1; font-size: 28px; border-bottom: 3px solid #6366f1; padding-bottom: 10px; }
-          h2 { color: #4f46e5; font-size: 20px; margin-top: 30px; }
+          body { font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif; line-height: 1.6; color: #333; max-width: 800px; margin: 0 auto; padding: 40px; }
+          h1, h2, .repo-name, .score-number, .metric-value { font-family: "Space Grotesk", "Segoe UI", system-ui, sans-serif; }
+          h1 { color: #f59e0b; font-size: 28px; border-bottom: 3px solid #f59e0b; padding-bottom: 10px; }
+          h2 { color: #d97706; font-size: 20px; margin-top: 30px; }
           .header { text-align: center; margin-bottom: 40px; }
           .date { color: #666; font-size: 14px; }
-          .score-card { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: white; padding: 30px; border-radius: 16px; text-align: center; margin: 30px 0; }
+          .score-card { background: linear-gradient(135deg, #f59e0b, #f59e0b); color: white; padding: 30px; border-radius: 16px; text-align: center; margin: 30px 0; }
           .score-number { font-size: 64px; font-weight: bold; }
-          .score-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 2px; }
+          .score-label { font-size: 14px; opacity: 0.9; text-transform: uppercase; letter-spacing: 2px; font-family: "JetBrains Mono", ui-monospace, monospace; }
           .repo-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 15px 0; }
           .repo-header { display: flex; align-items: center; gap: 15px; margin-bottom: 15px; }
-          .repo-rank { background: #6366f1; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
+          .repo-rank { background: #f59e0b; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 14px; }
           .repo-name { font-size: 18px; font-weight: bold; color: #1e293b; }
           .repo-owner { color: #64748b; font-size: 14px; }
           .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-top: 15px; }
           .metric { text-align: center; padding: 15px; background: white; border-radius: 8px; }
-          .metric-value { font-size: 24px; font-weight: bold; color: #6366f1; }
-          .metric-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; }
+          .metric-value { font-size: 24px; font-weight: bold; color: #f59e0b; }
+          .metric-label { font-size: 12px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-top: 5px; font-family: "JetBrains Mono", ui-monospace, monospace; }
           table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-          th { background: #6366f1; color: white; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
+          th { background: #f59e0b; color: white; padding: 12px; text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: 1px; }
           td { padding: 12px; border-bottom: 1px solid #e2e8f0; }
           tr:nth-child(even) { background: #f8fafc; }
           .footer { text-align: center; margin-top: 50px; padding-top: 20px; border-top: 1px solid #e2e8f0; color: #94a3b8; font-size: 12px; }
@@ -289,7 +290,7 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
         </div>
         
         <div class="no-print" style="text-align: center; margin-top: 30px;">
-          <button onclick="window.print()" style="background: #6366f1; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold;">
+          <button onclick="window.print()" style="background: #f59e0b; color: white; border: none; padding: 12px 30px; border-radius: 8px; font-size: 14px; cursor: pointer; font-weight: bold;">
             🖨️ Print / Save as PDF
           </button>
         </div>
@@ -305,11 +306,11 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
     <div className="space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-500">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
         {/* Clearer Comparison Chart */}
-        <div className="relative h-[450px] w-full bg-surface-container border border-outline-variant/20 rounded-3xl p-8 shadow-2xl overflow-hidden group">
-          <div className="absolute inset-0 bg-linear-to-br from-indigo-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+        <div className="relative h-[450px] w-full bg-surface-container border border-outline-variant/20 rounded-none p-8 shadow-2xl overflow-hidden group">
+          <div className="absolute inset-0 bg-linear-to-br from-amber-500/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
           <div className="flex items-center justify-between mb-8">
             <h4 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/60 flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-indigo-500 animate-pulse" />
+              <span className="size-1.5 rounded-full bg-amber-500 animate-pulse" />
               Comparative Metric Performance
             </h4>
             <div className="flex items-center gap-4">
@@ -366,16 +367,16 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
           {sortedMetrics.map((repo, idx) => (
             <div 
               key={`${repo.owner}/${repo.repo}`}
-              className="flex items-center gap-6 p-6 rounded-3xl border border-outline-variant/10 bg-surface-container/40 backdrop-blur-sm transition-all hover:bg-surface-container-highest/60 group border-l-4 shadow-sm hover:shadow-xl"
+              className="flex items-center gap-6 p-6 rounded-none border border-outline-variant/10 bg-surface-container/40 backdrop-blur-sm transition-all hover:bg-surface-container-highest/60 group border-l-4 shadow-sm hover:shadow-xl"
               style={{ borderLeftColor: colors[idx % colors.length] }}
             >
-              <Image src={repo.avatar} width={64} height={64} className="size-16 rounded-2xl shadow-xl group-hover:scale-105 transition-transform" alt="" />
+              <Image src={repo.avatar} width={64} height={64} className="size-16 rounded-none shadow-xl group-hover:scale-105 transition-transform" alt="" />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between mb-1">
                   <h5 className="font-heading font-black text-sm truncate uppercase tracking-tight text-foreground">
                     <span className="opacity-40">{repo.owner}/</span>{repo.repo}
                   </h5>
-                  <div className="text-[10px] font-black text-indigo-500 bg-indigo-500/5 px-3 py-1 rounded-full border border-indigo-500/10 shadow-sm">
+                  <div className="text-[10px] font-black text-amber-500 bg-amber-500/5 px-3 py-1 rounded-full border border-amber-500/10 shadow-sm">
                     Ranked #{idx + 1}
                   </div>
                 </div>
@@ -385,7 +386,7 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
                   <div className="space-y-1">
                     <span className="text-[9px] font-black uppercase text-muted-foreground/50 block tracking-widest">Momentum</span>
                     <div className="flex items-center gap-1.5 font-black text-xs text-foreground">
-                      <MaterialIcon name="trending_up" size={14} className="text-indigo-500" />
+                      <MaterialIcon name="trending_up" size={14} className="text-amber-500" />
                       {Number(repo.stars).toLocaleString()}
                     </div>
                   </div>
@@ -413,21 +414,21 @@ export function CompareRadar({ repositories }: CompareRadarProps) {
         </div>
       </div>
 
-      <div className="bg-indigo-500 shadow-[0_0_40px_rgba(99,102,241,0.2)] rounded-3xl p-8 flex flex-col md:flex-row items-center justify-between gap-8 text-white relative overflow-hidden">
+      <div className="bg-amber-500 shadow-[0_0_40px_rgba(245,158,11,0.2)] rounded-none p-8 flex flex-col md:flex-row items-center justify-between gap-8 text-white relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,white,transparent)] opacity-10" />
         <div className="relative z-10">
           <h4 className="text-2xl font-black mb-2 flex items-center gap-3">
              <MaterialIcon name="auto_awesome" size={24} />
              GitScope Analysis Complete
           </h4>
-          <p className="text-indigo-100 text-sm max-w-xl leading-relaxed">
+          <p className="text-amber-100 text-sm max-w-xl leading-relaxed">
             Overall Health Score: **{Math.round(metrics.reduce((acc, r) => acc + (r.docScore + r.activityScore) / 2, 0) / metrics.length)} / 100**. 
             Our intelligence suggests {metrics.length > 1 ? `that ${metrics.sort((a, b) => b.activityScore - a.activityScore)[0].repo} is currently leading in development velocity.` : "you should compare against similar libraries to see relative engineering quality."}
           </p>
         </div>
         <button 
           onClick={handleExportPDF}
-          className="relative z-10 px-8 py-3 bg-white text-indigo-600 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-2"
+          className="relative z-10 px-8 py-3 bg-white text-amber-600 rounded-none font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl flex items-center gap-2"
         >
           <MaterialIcon name="download" size={16} />
           Export Intelligence PDF

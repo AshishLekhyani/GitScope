@@ -58,11 +58,11 @@ export function ShortcutsModal() {
       <motion.div
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full max-w-lg overflow-hidden rounded-3xl border border-border bg-background/95 backdrop-blur-2xl shadow-2xl p-6 sm:p-8"
+        className="relative w-full max-w-lg overflow-hidden border border-border bg-background/95 backdrop-blur-2xl shadow-2xl p-6 sm:p-8"
       >
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="flex size-10 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-500">
+            <div className="flex size-10 items-center justify-center bg-amber-500/10 text-amber-500">
               <KeyboardIcon className="size-5" />
             </div>
             <div>
@@ -72,7 +72,7 @@ export function ShortcutsModal() {
           </div>
           <button 
             onClick={() => dispatch(setShortcutsOpen(false))}
-            className="flex size-8 items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            className="flex size-8 items-center justify-center hover:bg-muted transition-colors"
           >
             <CornerDownLeft className="size-4 text-muted-foreground" />
           </button>
@@ -80,8 +80,8 @@ export function ShortcutsModal() {
 
         {os === "mobile" ? (
           <div className="space-y-4 py-4">
-             <div className="rounded-2xl bg-indigo-500/5 p-4 border border-indigo-500/10 flex items-start gap-4">
-               <Smartphone className="size-6 text-indigo-500" />
+             <div className="bg-amber-500/5 p-4 border border-amber-500/10 flex items-start gap-4">
+               <Smartphone className="size-6 text-amber-500" />
                <div>
                   <h3 className="text-sm font-bold text-foreground">Mobile Actions</h3>
                   <p className="text-xs text-muted-foreground">Shortcuts are disabled on touch devices. Use the Bottom Bar or Action Menu icons for navigation.</p>
@@ -94,8 +94,8 @@ export function ShortcutsModal() {
                   { label: "Palette", icon: Terminal },
                   { label: "Settings", icon: HelpCircle }
                 ].map(item => (
-                   <div key={item.label} className="p-4 rounded-xl border border-border bg-muted/40 flex flex-col items-center gap-2">
-                      <item.icon className="size-5 text-indigo-500" />
+                   <div key={item.label} className="p-4 rounded-none border border-border bg-muted/40 flex flex-col items-center gap-2">
+                      <item.icon className="size-5 text-amber-500" />
                       <span className="text-xs font-bold">{item.label}</span>
                    </div>
                 ))}
@@ -106,11 +106,11 @@ export function ShortcutsModal() {
             {shortcuts.map((s) => (
               <div 
                 key={s.action} 
-                className="group flex flex-col gap-2 rounded-2xl border border-border bg-muted/30 p-3 hover:bg-indigo-500/5 hover:border-indigo-500/20 transition-all duration-300"
+                className="group flex flex-col gap-2 border border-border bg-muted/30 p-3 hover:bg-amber-500/5 hover:border-amber-500/20 transition-all duration-200"
               >
                 <div className="flex items-center justify-between">
                    <div className="flex items-center gap-2">
-                      <s.icon className="size-3.5 text-muted-foreground group-hover:text-indigo-500 transition-colors" />
+                      <s.icon className="size-3.5 text-muted-foreground group-hover:text-amber-500 transition-colors" />
                       <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{s.action}</span>
                    </div>
                 </div>
@@ -118,7 +118,7 @@ export function ShortcutsModal() {
                   {s.keys.map((key) => (
                     <kbd 
                       key={key} 
-                      className="min-w-[28px] rounded-lg border border-border bg-muted/50 px-2 py-1 text-center text-[10px] font-mono font-bold shadow-sm"
+                      className="min-w-[28px] rounded-none border border-border bg-muted/50 px-2 py-1 text-center text-[10px] font-mono font-bold shadow-sm"
                     >
                       {key}
                     </kbd>
@@ -129,8 +129,8 @@ export function ShortcutsModal() {
           </div>
         )}
 
-        <div className="mt-8 flex items-center gap-3 rounded-2xl bg-slate-900/5 dark:bg-white/5 p-4 border border-border/50">
-           <Info className="size-4 text-indigo-500 shrink-0" />
+        <div className="mt-8 flex items-center gap-3 bg-muted/30 p-4 border border-border/50">
+           <Info className="size-4 text-amber-500 shrink-0" />
            <p className="text-[10px] font-semibold text-muted-foreground leading-relaxed">
              Pro Tip: Use <span className="font-bold text-foreground">/</span> to instantly focus the search bar from any view. Most navigation commands start with the <span className="font-bold text-foreground">G</span> (Go) prefix.
            </p>

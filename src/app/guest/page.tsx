@@ -133,21 +133,30 @@ export default function GuestPage() {
       {/* Top bar */}
       <div className="border-b border-border/50 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-6 py-3 flex items-center justify-between">
-          <Link href="/" className="flex items-center gap-2.5">
-            <NextImage 
-              src="/logo.png" 
-              width={32} 
-              height={32} 
-              alt="GitScope Logo" 
-              className="size-8 rounded-lg shadow-xl shadow-primary/20 ring-1 ring-white/10"
-            />
+          <Link href="/" className="flex items-center gap-2.5 group">
+            <span className="relative block shrink-0 overflow-hidden size-8">
+              <NextImage
+                src="/logo.png"
+                width={32}
+                height={32}
+                alt="GitScope"
+                className="hidden size-full object-contain dark:block"
+              />
+              <NextImage
+                src="/logo-light.png"
+                width={32}
+                height={32}
+                alt="GitScope"
+                className="block size-full object-contain dark:hidden"
+              />
+            </span>
             <span className="font-heading text-lg font-bold tracking-tight text-foreground uppercase">GitScope</span>
             <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] font-black text-amber-500 uppercase tracking-widest">Guest Preview</span>
           </Link>
           <div className="flex items-center gap-3">
             <Link
               href="/login"
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl btn-gitscope-primary text-xs font-bold"
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-none btn-gitscope-primary text-xs font-bold"
             >
               <Github className="size-3.5" />
               Sign in with GitHub
@@ -175,7 +184,7 @@ export default function GuestPage() {
 
         {/* Search */}
         <div className="relative max-w-2xl mx-auto" ref={searchRef}>
-          <div className={`flex items-center gap-3 p-3 rounded-2xl border bg-card transition-all ${showDropdown ? "border-primary/50 ring-4 ring-primary/10" : "border-border"}`}>
+          <div className={`flex items-center gap-3 p-3 rounded-none border bg-card transition-all ${showDropdown ? "border-primary/50 ring-4 ring-primary/10" : "border-border"}`}>
             <Search className="size-5 text-muted-foreground shrink-0 ml-1" />
             <input
               value={query}
@@ -198,7 +207,7 @@ export default function GuestPage() {
                 initial={{ opacity: 0, y: 8 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 8 }}
-                className="absolute top-full mt-2 left-0 right-0 z-50 bg-card border border-border rounded-2xl shadow-2xl overflow-hidden"
+                className="absolute top-full mt-2 left-0 right-0 z-50 bg-card border border-border rounded-none shadow-2xl overflow-hidden"
               >
                 {results.map((r) => (
                   <button
@@ -207,7 +216,7 @@ export default function GuestPage() {
                     onClick={() => loadRepo(r.full_name)}
                     className="w-full flex items-center gap-3 p-3 hover:bg-muted/60 transition-colors text-left border-b border-border/50 last:border-0"
                   >
-                    <NextImage src={r.owner.avatar_url} width={32} height={32} alt="" className="size-8 rounded-lg" />
+                    <NextImage src={r.owner.avatar_url} width={32} height={32} alt="" className="size-8 rounded-none" />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-bold truncate">{r.full_name}</p>
                       <p className="text-xs text-muted-foreground truncate">{r.description}</p>
@@ -237,7 +246,7 @@ export default function GuestPage() {
         </div>
 
         {/* How it works — walkthrough */}
-        <div className="rounded-2xl border border-border bg-card/50 p-8">
+        <div className="rounded-none border border-border bg-card/50 p-8">
           <div className="text-center mb-8">
             <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/5 border border-primary/10 text-[10px] font-black uppercase tracking-widest text-primary/60 mb-3">
               <Sparkles className="size-3" /> How GitScope Works
@@ -259,8 +268,8 @@ export default function GuestPage() {
                 icon: Search,
                 title: "Pick Any Repo",
                 desc: "Search any public or private repo you have access to. Results are instant.",
-                color: "text-blue-500",
-                bg: "bg-blue-500/5",
+                color: "text-amber-500",
+                bg: "bg-amber-500/5",
               },
               {
                 step: "03",
@@ -275,12 +284,12 @@ export default function GuestPage() {
                 icon: Sparkles,
                 title: "AI Risk Analysis",
                 desc: "Claude AI scores every open PR for risk and explains exactly why. Catch issues before merge.",
-                color: "text-indigo-500",
-                bg: "bg-indigo-500/5",
+                color: "text-amber-500",
+                bg: "bg-amber-500/5",
               },
             ].map((item) => (
               <div key={item.step} className="flex flex-col gap-3">
-                <div className={`size-12 rounded-2xl ${item.bg} flex items-center justify-center`}>
+                <div className={`size-12 rounded-none ${item.bg} flex items-center justify-center`}>
                   <item.icon className={`size-6 ${item.color}`} />
                 </div>
                 <div>
@@ -294,7 +303,7 @@ export default function GuestPage() {
         </div>
 
         {/* Feature comparison — tier table */}
-        <div className="rounded-2xl border border-border bg-card/50 p-8">
+        <div className="rounded-none border border-border bg-card/50 p-8">
           <div className="text-center mb-6">
             <h2 className="text-xl font-black tracking-tight">What you unlock with each plan</h2>
             <p className="text-sm text-muted-foreground mt-1">Start free, upgrade when you need more power.</p>
@@ -306,7 +315,7 @@ export default function GuestPage() {
                   <th className="text-left py-3 pr-6 font-bold text-muted-foreground text-xs uppercase tracking-widest">Feature</th>
                   <th className="py-3 px-4 text-center font-black text-xs">Guest</th>
                   <th className="py-3 px-4 text-center font-black text-xs text-primary">Any Account</th>
-                  <th className="py-3 px-4 text-center font-black text-xs text-indigo-500">GitHub OAuth</th>
+                  <th className="py-3 px-4 text-center font-black text-xs text-amber-500">GitHub OAuth</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50">
@@ -327,7 +336,7 @@ export default function GuestPage() {
                     {([row.guest, row.any, row.github] as const).map((has, i) => (
                       <td key={i} className="py-2.5 px-4 text-center">
                         {has
-                          ? <CheckCircle2 className={`size-4 mx-auto ${i === 2 ? "text-indigo-500" : i === 1 ? "text-primary" : "text-muted-foreground/60"}`} />
+                          ? <CheckCircle2 className={`size-4 mx-auto ${i === 2 ? "text-amber-500" : i === 1 ? "text-primary" : "text-muted-foreground/60"}`} />
                           : <span className="text-muted-foreground/20 text-lg leading-none">—</span>
                         }
                       </td>
@@ -338,10 +347,10 @@ export default function GuestPage() {
             </table>
           </div>
           <div className="mt-6 flex flex-wrap gap-3 justify-center">
-            <Link href="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold">
+            <Link href="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-none btn-gitscope-primary text-sm font-bold">
               <Github className="size-4" /> Sign in with GitHub — Full Access <ArrowRight className="size-4" />
             </Link>
-            <Link href="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-border hover:bg-muted text-sm font-bold transition-all">
+            <Link href="/login" className="inline-flex items-center gap-2 px-6 py-2.5 rounded-none border border-border hover:bg-muted text-sm font-bold transition-all">
               Create free account <ChevronRight className="size-4" />
             </Link>
           </div>
@@ -354,7 +363,7 @@ export default function GuestPage() {
             { icon: TrendingUp, title: "Real data, always live", desc: "All analytics use the GitHub API in real-time. No stale snapshots or cached estimates.", color: "text-primary" },
             { icon: Zap, title: "Uses your rate limit", desc: "GitHub OAuth users get their own 5000 req/hr limit — we never pool tokens or share rate limits.", color: "text-amber-500" },
           ].map((item) => (
-            <div key={item.title} className="rounded-2xl border border-border bg-card p-5">
+            <div key={item.title} className="rounded-none border border-border bg-card p-5">
               <item.icon className={`size-6 ${item.color} mb-3`} />
               <h3 className="font-black text-sm mb-1">{item.title}</h3>
               <p className="text-xs text-muted-foreground leading-relaxed">{item.desc}</p>
@@ -364,11 +373,11 @@ export default function GuestPage() {
 
       {/* Repo Preview */}
         {loadingRepo ? (
-          <div className="rounded-2xl border border-border bg-card p-8 space-y-4 animate-pulse">
+          <div className="rounded-none border border-border bg-card p-8 space-y-4 animate-pulse">
             <div className="h-6 bg-muted rounded w-1/3" />
             <div className="h-4 bg-muted rounded w-2/3" />
             <div className="grid grid-cols-4 gap-4">
-              {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-muted rounded-xl" />)}
+              {[...Array(4)].map((_, i) => <div key={i} className="h-16 bg-muted rounded-none" />)}
             </div>
           </div>
         ) : selectedRepo ? (
@@ -379,7 +388,7 @@ export default function GuestPage() {
             className="space-y-6"
           >
             {/* Repo header */}
-            <div className="rounded-2xl border border-border bg-card p-6">
+            <div className="rounded-none border border-border bg-card p-6">
               <div className="flex items-start justify-between gap-4 flex-wrap">
                 <div className="flex items-start gap-4">
                   <NextImage
@@ -387,7 +396,7 @@ export default function GuestPage() {
                     width={56}
                     height={56}
                     alt=""
-                    className="size-14 rounded-xl border border-border/50"
+                    className="size-14 rounded-none border border-border/50"
                   />
                   <div>
                     <h2 className="text-xl font-black tracking-tight">{selectedRepo.full_name}</h2>
@@ -403,7 +412,7 @@ export default function GuestPage() {
                   href={selectedRepo.html_url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-xl border border-border hover:bg-muted text-sm font-bold transition-all"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-none border border-border hover:bg-muted text-sm font-bold transition-all"
                 >
                   <Github className="size-4" />
                   View on GitHub
@@ -415,11 +424,11 @@ export default function GuestPage() {
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
                 {[
                   { label: "Stars", value: fmt(selectedRepo.stargazers_count), icon: Star, color: "text-yellow-500" },
-                  { label: "Forks", value: fmt(selectedRepo.forks_count), icon: GitFork, color: "text-blue-500" },
+                  { label: "Forks", value: fmt(selectedRepo.forks_count), icon: GitFork, color: "text-amber-500" },
                   { label: "Watchers", value: fmt(selectedRepo.watchers_count), icon: Eye, color: "text-emerald-500" },
                   { label: "Open Issues", value: fmt(selectedRepo.open_issues_count), icon: Code2, color: "text-rose-500" },
                 ].map((stat) => (
-                  <div key={stat.label} className="rounded-xl bg-muted/30 border border-border/50 p-4 flex items-center gap-3">
+                  <div key={stat.label} className="rounded-none bg-muted/30 border border-border/50 p-4 flex items-center gap-3">
                     <stat.icon className={`size-5 ${stat.color}`} />
                     <div>
                       <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</p>
@@ -438,7 +447,7 @@ export default function GuestPage() {
             </div>
 
             {/* Locked features gate */}
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-6">
+            <div className="rounded-none border border-primary/20 bg-primary/5 p-6">
               <div className="flex items-center gap-3 mb-4">
                 <Lock className="size-5 text-primary/60" />
                 <h3 className="text-base font-black">Full Analytics Locked</h3>
@@ -446,8 +455,8 @@ export default function GuestPage() {
               </div>
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 mb-6">
                 {LOCKED_FEATURES.map(({ icon: Icon, label, tier }) => (
-                  <div key={label} className="flex items-center gap-3 p-3 rounded-xl bg-card border border-border/50 opacity-60">
-                    <div className="size-8 rounded-lg bg-muted flex items-center justify-center">
+                  <div key={label} className="flex items-center gap-3 p-3 rounded-none bg-card border border-border/50 opacity-60">
+                    <div className="size-8 rounded-none bg-muted flex items-center justify-center">
                       <Icon className="size-4 text-muted-foreground" />
                     </div>
                     <div>
@@ -462,7 +471,7 @@ export default function GuestPage() {
               <div className="flex flex-wrap gap-3">
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-none btn-gitscope-primary text-sm font-bold"
                 >
                   <Github className="size-4" />
                   Sign in with GitHub — Full Access
@@ -470,7 +479,7 @@ export default function GuestPage() {
                 </Link>
                 <Link
                   href="/login"
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl border border-border hover:bg-muted text-sm font-bold transition-all"
+                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-none border border-border hover:bg-muted text-sm font-bold transition-all"
                 >
                   Sign up with Email
                   <ChevronRight className="size-4" />
@@ -479,11 +488,11 @@ export default function GuestPage() {
             </div>
 
             {/* Blurred fake chart teaser */}
-            <div className="rounded-2xl border border-border bg-card p-6 relative overflow-hidden">
+            <div className="rounded-none border border-border bg-card p-6 relative overflow-hidden">
               <div className="absolute inset-0 backdrop-blur-sm bg-background/60 z-10 flex flex-col items-center justify-center gap-3">
                 <Lock className="size-8 text-muted-foreground/30" />
                 <p className="text-sm font-bold text-muted-foreground">Commit Activity Chart — Sign in to view</p>
-                <Link href="/login" className="inline-flex items-center gap-2 px-5 py-2 rounded-xl btn-gitscope-primary text-xs font-bold">
+                <Link href="/login" className="inline-flex items-center gap-2 px-5 py-2 rounded-none btn-gitscope-primary text-xs font-bold">
                   Unlock Full Analytics
                 </Link>
               </div>

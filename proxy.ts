@@ -25,9 +25,10 @@ const PROTECTED_PREFIXES = [
 ];
 
 /** Routes that require GitHub OAuth (provider === "github") */
-const GITHUB_ONLY_PREFIXES = [
-  "/organizations",
-];
+const GITHUB_ONLY_PREFIXES = ["/organizations"];
+
+/** Routes that require admin email (AI_TIER_ADMIN_EMAILS env var) */
+const ADMIN_PREFIXES = ["/admin"];
 
 const AUTH_PAGES = ["/login", "/signup"];
 
@@ -37,13 +38,16 @@ function matchesPrefix(pathname: string, prefixes: string[]): boolean {
   );
 }
 
-export async function middleware(req: NextRequest) {
+export async function proxy(req: NextRequest) {
   const { pathname, search } = req.nextUrl;
   const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
   const isAuthed = Boolean(token);
 
-  // ── Redirect unauthenticated users away from all protected routes ──
-  if ((matchesPrefix(pathname, PROTECTED_PREFIXES) || matchesPrefix(pathname, GITHUB_ONLY_PREFIXES)) && !isAuthed) {
+  if (
+    (matchesPrefix(pathname, PROTECTED_PREFIXES) ||
+      matchesPrefix(pathname, GITHUB_ONLY_PREFIXES)) &&
+    !isAuthed
+  ) {
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("from", `${pathname}${search}`);
     const res = NextResponse.redirect(loginUrl);
@@ -51,46 +55,85 @@ export async function middleware(req: NextRequest) {
     return res;
   }
 
-  // ── GitHub-only routes: authenticated but wrong provider → /unauthorized ──
+  if (matchesPrefix(pathname, ADMIN_PREFIXES)) {
+    if (!isAuthed) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("from", `${pathname}${search}`);
+      return NextResponse.redirect(loginUrl);
+    }
+
+    const adminEmails = new Set(
+      (process.env.AI_TIER_ADMIN_EMAILS ?? "")
+        .split(",")
+        .map((email) => email.trim().toLowerCase())
+        .filter(Boolean)
+    );
+    const userEmail = ((token?.email as string) ?? "").toLowerCase();
+
+    if (!adminEmails.has(userEmail)) {
+      return NextResponse.redirect(new URL("/unauthorized", req.url));
+    }
+  }
+
   if (isAuthed && matchesPrefix(pathname, GITHUB_ONLY_PREFIXES)) {
     const provider = token?.provider as string | undefined;
-    const isGitHubUser = provider === "github";
-    if (!isGitHubUser) {
+
+    if (provider !== "github") {
       const res = NextResponse.redirect(new URL("/unauthorized", req.url));
       res.headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
       return res;
     }
   }
 
-  // ── Redirect already-authed users away from login/signup ──
-  // Use the `from` param so the back button goes back to where they were, not /login.
   if (isAuthed && AUTH_PAGES.includes(pathname)) {
     const from = req.nextUrl.searchParams.get("from");
-    const dest = from && from.startsWith("/") && !from.startsWith("//") && !AUTH_PAGES.includes(from)
-      ? from
-      : "/overview";
+    const dest =
+      from &&
+      from.startsWith("/") &&
+      !from.startsWith("//") &&
+      !AUTH_PAGES.includes(from)
+        ? from
+        : "/overview";
+
     return NextResponse.redirect(new URL(dest, req.url));
   }
 
-  const response = NextResponse.next();
-  // Prevent stale dashboard state from bfcache
-  if (matchesPrefix(pathname, PROTECTED_PREFIXES) || matchesPrefix(pathname, GITHUB_ONLY_PREFIXES)) {
-    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  const response = NextResponse.next({
+    request: {
+      headers: new Headers({
+        ...Object.fromEntries(req.headers),
+        "x-pathname": pathname,
+      }),
+    },
+  });
+
+  if (
+    matchesPrefix(pathname, PROTECTED_PREFIXES) ||
+    matchesPrefix(pathname, GITHUB_ONLY_PREFIXES) ||
+    AUTH_PAGES.includes(pathname)
+  ) {
+    response.headers.set(
+      "Cache-Control",
+      "no-store, no-cache, must-revalidate, proxy-revalidate"
+    );
     response.headers.set("Pragma", "no-cache");
     response.headers.set("Expires", "0");
+  }
+
+  if (
+    matchesPrefix(pathname, PROTECTED_PREFIXES) ||
+    matchesPrefix(pathname, GITHUB_ONLY_PREFIXES)
+  ) {
     response.headers.set("Vary", "Cookie");
   }
-  // Auth pages must never be served from bfcache — prevents back-button showing login
-  if (AUTH_PAGES.includes(pathname)) {
-    response.headers.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
-    response.headers.set("Pragma", "no-cache");
-    response.headers.set("Expires", "0");
-  }
+
   return response;
 }
 
 export const config = {
   matcher: [
+    "/admin/:path*",
+    "/admin",
     "/overview/:path*",
     "/activity/:path*",
     "/organizations/:path*",
@@ -122,5 +165,8 @@ export const config = {
     "/docs-reference",
     "/login",
     "/signup",
+    "/forgot-password",
+    "/reset-password",
+    "/verify-email",
   ],
 };

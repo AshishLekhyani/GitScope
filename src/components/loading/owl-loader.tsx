@@ -5,25 +5,25 @@ import { useTheme } from "next-themes";
 import gsap from "gsap";
 
 // ── Colour palettes ───────────────────────────────────────────────────────────
-// Light: coral bg + near-black owl  (same vibe as the reference bear image)
-// Dark : navy  bg + pale-lavender owl
+// Light: warm amber bg + near-black owl
+// Dark : obsidian bg + warm amber owl
 const LIGHT = {
-  bg:     "#FF5240",
-  owl:    "#1a1a1a",
-  acc:    "#2d2d2d",
-  socket: "#222222",
-  pupil:  "#FF5240",   // pupil = bg colour  →  "floating eye" look
-  iris:   "#383838",
-  lid:    "#FF5240",
+  bg:     "#d97706",
+  owl:    "#1a1510",
+  acc:    "#78350f",
+  socket: "#1a1510",
+  pupil:  "#d97706",
+  iris:   "#2d1f0a",
+  lid:    "#d97706",
 };
 const DARK = {
-  bg:     "#0b1326",
-  owl:    "#dae2fd",
-  acc:    "#a5b4fc",
-  socket: "#0a1120",
-  pupil:  "#0b1326",
-  iris:   "#8b9fd4",
-  lid:    "#0b1326",
+  bg:     "#100f0d",
+  owl:    "#fbbf24",
+  acc:    "#fde68a",
+  socket: "#0d0c0a",
+  pupil:  "#100f0d",
+  iris:   "#92400e",
+  lid:    "#100f0d",
 };
 
 export function OwlLoader() {

@@ -12,7 +12,7 @@ export default function APIPage() {
   return (
     <div className="mx-auto max-w-5xl px-6">
       <div className="mb-16">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-400">
           <Code2 className="size-3" />
           Developer API
         </div>
@@ -28,22 +28,22 @@ export default function APIPage() {
               GitScope supports two authentication methods:
             </p>
             <div className="space-y-3">
-              <div className="rounded-xl border border-white/5 bg-[#0b1326] p-4 font-mono text-xs">
-                <div className="flex items-center gap-2 text-slate-400 mb-2">
+              <div className="rounded-none border border-white/5 bg-[#100f0d] p-4 font-mono text-xs">
+                <div className="flex items-center gap-2 text-stone-400 mb-2">
                   <Shield className="size-3" />
-                  <span className="text-indigo-300">Session cookies</span>
+                  <span className="text-amber-300">Session cookies</span>
                   <span>— all dashboard endpoints (automatic with browser)</span>
                 </div>
               </div>
-              <div className="rounded-xl border border-indigo-500/20 bg-[#0b1326] p-4 font-mono text-xs">
-                <div className="flex items-center gap-2 text-slate-400 mb-2">
+              <div className="rounded-none border border-amber-500/20 bg-[#100f0d] p-4 font-mono text-xs">
+                <div className="flex items-center gap-2 text-stone-400 mb-2">
                   <Lock className="size-3" />
-                  <span className="text-indigo-300">API key</span>
+                  <span className="text-amber-300">API key</span>
                   <span>— <code>/api/v1/</code> endpoints (Professional plan+)</span>
                 </div>
-                <div className="text-slate-400 space-y-1 mt-2">
+                <div className="text-stone-400 space-y-1 mt-2">
                   <div><span className="text-emerald-400">Authorization:</span> Bearer sk_gs_your_key_here</div>
-                  <div className="text-slate-600">— or —</div>
+                  <div className="text-stone-600">— or —</div>
                   <div><span className="text-emerald-400">X-API-Key:</span> sk_gs_your_key_here</div>
                 </div>
               </div>
@@ -207,7 +207,7 @@ export default function APIPage() {
             <h2 className="mb-4 text-2xl font-bold text-foreground">Public REST API (v1)</h2>
             <p className="mb-6 text-sm text-muted-foreground leading-relaxed">
               Machine-readable endpoints for CI pipelines and third-party integrations. Authenticate with an API key — generate one in{" "}
-              <Link href="/settings?tab=api-keys" className="text-indigo-400 hover:underline">Settings → API Keys</Link>.
+              <Link href="/settings?tab=api-keys" className="text-amber-400 hover:underline">Settings → API Keys</Link>.
               Pass the key as <code className="text-xs bg-white/5 px-1 rounded">Authorization: Bearer sk_gs_...</code> or{" "}
               <code className="text-xs bg-white/5 px-1 rounded">X-API-Key</code>.
               Rate limit: 120 req/min per key. Available on Professional plan and above.
@@ -303,16 +303,16 @@ function EndpointCard({
 }) {
   const methodColors: Record<string, string> = {
     GET: "bg-emerald-500/20 text-emerald-400",
-    POST: "bg-indigo-500/20 text-indigo-400",
+    POST: "bg-amber-500/20 text-amber-400",
     PUT: "bg-amber-500/20 text-amber-400",
     PATCH: "bg-amber-500/20 text-amber-400",
     DELETE: "bg-rose-500/20 text-rose-400",
   };
 
   return (
-    <div className="rounded-xl border border-white/5 bg-surface-container p-6">
+    <div className="rounded-none border border-white/5 bg-surface-container p-6">
       <div className="mb-2 flex items-center gap-3">
-        <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${methodColors[method] || "bg-slate-500/20 text-slate-400"}`}>
+        <span className={`rounded px-2 py-0.5 text-[10px] font-bold ${methodColors[method] || "bg-stone-500/20 text-stone-400"}`}>
           {method}
         </span>
         <code className="text-sm font-bold">{path}</code>
@@ -324,7 +324,7 @@ function EndpointCard({
       </div>
       <p className="text-xs text-muted-foreground">{description}</p>
       {example && (
-        <div className="mt-3 rounded-lg bg-[#0b1326] p-2 font-mono text-[10px] text-slate-400">
+        <div className="mt-3 rounded-none bg-[#100f0d] p-2 font-mono text-[10px] text-stone-400">
           {example}
         </div>
       )}
@@ -334,9 +334,9 @@ function EndpointCard({
 
 function RateLimitCard() {
   return (
-    <div className="rounded-2xl border border-white/5 bg-[#171f33]/80 p-6 shadow-2xl backdrop-blur-xl">
+    <div className="rounded-none border border-white/5 bg-[#171512]/90 p-6 shadow-2xl backdrop-blur-xl">
       <div className="flex items-center gap-2 mb-4">
-        <Clock className="size-4 text-indigo-400" />
+        <Clock className="size-4 text-amber-400" />
         <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Rate Limits</h3>
       </div>
       <div className="space-y-4">
@@ -357,7 +357,7 @@ function RateLimitCard() {
           <span className="font-bold text-foreground">5 req/min</span>
         </div>
       </div>
-      <p className="mt-4 text-[10px] text-slate-500">
+      <p className="mt-4 text-[10px] text-stone-500">
         Rate limits are per IP for guests, per token for authenticated users.
       </p>
     </div>
@@ -366,10 +366,10 @@ function RateLimitCard() {
 
 function SecurityCard() {
   return (
-    <div className="rounded-2xl border border-indigo-500/10 bg-indigo-500/5 p-6 backdrop-blur-sm">
+    <div className="rounded-none border border-amber-500/10 bg-amber-500/5 p-6 backdrop-blur-sm">
       <div className="flex items-center gap-2 mb-4">
-        <AlertCircle className="size-4 text-indigo-400" />
-        <h3 className="text-xs font-bold uppercase tracking-widest text-indigo-400">Security</h3>
+        <AlertCircle className="size-4 text-amber-400" />
+        <h3 className="text-xs font-bold uppercase tracking-widest text-amber-400">Security</h3>
       </div>
       <ul className="space-y-2 text-xs text-muted-foreground">
         <li className="flex items-start gap-2">
@@ -400,8 +400,8 @@ function SecurityCard() {
 
 function SDKCard() {
   return (
-    <div className="rounded-2xl border border-white/5 bg-slate-900/40 p-6 backdrop-blur-xl">
-      <h3 className="text-sm font-bold text-indigo-300 mb-4">Coming Soon</h3>
+    <div className="rounded-none border border-white/5 bg-stone-900/40 p-6 backdrop-blur-xl">
+      <h3 className="text-sm font-bold text-amber-300 mb-4">Coming Soon</h3>
       <div className="space-y-3">
         <div className="flex items-center gap-2 text-xs text-muted-foreground opacity-60">
           <Code2 className="size-4" />
@@ -416,7 +416,7 @@ function SDKCard() {
           <span>gitscope-python (pip)</span>
         </div>
       </div>
-      <p className="mt-4 text-[10px] text-slate-500">
+      <p className="mt-4 text-[10px] text-stone-500">
         Official SDKs are planned for future release. For now, use the REST API directly.
       </p>
     </div>

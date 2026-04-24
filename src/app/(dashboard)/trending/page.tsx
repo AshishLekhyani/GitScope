@@ -13,8 +13,8 @@ function TrendingFallback() {
   return (
     <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
       <Card className="p-6">
-        <Skeleton className="h-8 w-48 mb-4 rounded-lg" />
-        <Skeleton className="h-64 w-full rounded-xl" />
+        <Skeleton className="h-8 w-48 mb-4 rounded-none" />
+        <Skeleton className="h-64 w-full rounded-none" />
       </Card>
       <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
         {[1, 2, 3, 4, 5, 6].map((i) => (

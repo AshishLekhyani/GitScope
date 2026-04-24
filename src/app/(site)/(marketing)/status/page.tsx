@@ -43,7 +43,7 @@ export default function StatusPage() {
   const allOperational = SYSTEMS.every((s) => s.status === "operational");
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-16 font-sans">
+    <div className="mx-auto max-w-5xl px-6 py-16 font-mono">
       {/* Header */}
       <div className="mb-14 flex flex-col md:flex-row md:items-end justify-between gap-6">
         <div>
@@ -73,10 +73,10 @@ export default function StatusPage() {
           return (
             <div
               key={s.name}
-              className="p-6 rounded-2xl border border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20 transition-all group"
+              className="p-6 rounded-none border border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20 transition-all group"
             >
               <div className="flex items-start justify-between mb-5">
-                <div className="size-10 rounded-xl bg-surface-container-highest/60 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <div className="size-10 rounded-none bg-surface-container-highest/60 flex items-center justify-center group-hover:scale-105 transition-transform">
                   <MaterialIcon name={s.icon} size={20} className="text-muted-foreground/60" />
                 </div>
                 <span className={`text-[9px] font-black px-2 py-0.5 rounded-full border ${
@@ -104,7 +104,7 @@ export default function StatusPage() {
       </div>
 
       {/* Uptime bar (visual) */}
-      <div className="mb-12 p-6 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-4">
+      <div className="mb-12 p-6 rounded-none border border-outline-variant/10 bg-surface-container/20 space-y-4">
         <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
           <MaterialIcon name="bar_chart" size={12} /> 90-day uptime — each bar represents one week
         </p>
@@ -127,11 +127,11 @@ export default function StatusPage() {
       {/* Bottom panels */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Planned maintenance */}
-        <div className="p-7 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-4">
+        <div className="p-7 rounded-none border border-outline-variant/10 bg-surface-container/20 space-y-4">
           <h4 className="text-sm font-black uppercase tracking-wider text-foreground/80 flex items-center gap-2">
-            <Clock className="size-4 text-indigo-400" /> Planned Maintenance
+            <Clock className="size-4 text-amber-400" /> Planned Maintenance
           </h4>
-          <div className="flex flex-col items-center gap-3 py-8 text-center rounded-xl bg-surface-container/40 border border-outline-variant/8">
+          <div className="flex flex-col items-center gap-3 py-8 text-center rounded-none bg-surface-container/40 border border-outline-variant/8">
             <MaterialIcon name="check_circle" size={28} className="text-emerald-400/40" />
             <div>
               <p className="text-xs font-black text-foreground/50">No maintenance scheduled</p>
@@ -143,7 +143,7 @@ export default function StatusPage() {
         </div>
 
         {/* Incident log */}
-        <div className="p-7 rounded-2xl border border-outline-variant/10 bg-surface-container/20 space-y-4">
+        <div className="p-7 rounded-none border border-outline-variant/10 bg-surface-container/20 space-y-4">
           <h4 className="text-sm font-black uppercase tracking-wider text-foreground/80 flex items-center gap-2">
             <Activity className="size-4 text-emerald-400" /> Incident History
           </h4>
@@ -175,7 +175,7 @@ export default function StatusPage() {
         <p className="text-[10px] text-muted-foreground/40 max-w-sm leading-relaxed">
           GitScope platform metrics are computed from live service telemetry.
           To report an issue, email{" "}
-          <a href="mailto:acnotros2@gmail.com" className="text-indigo-400 underline underline-offset-2">
+          <a href="mailto:acnotros2@gmail.com" className="text-amber-400 underline underline-offset-2">
             acnotros2@gmail.com
           </a>.
         </p>

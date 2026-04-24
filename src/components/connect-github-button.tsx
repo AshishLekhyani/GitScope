@@ -20,7 +20,7 @@ export function ConnectGitHubButton({
       type="button"
       onClick={() => signIn("github", { callbackUrl })}
       className={cn(
-        "inline-flex items-center gap-2 px-5 py-2.5 rounded-xl btn-gitscope-primary text-sm font-bold active:scale-[0.98] transition-all",
+        "inline-flex items-center gap-2 px-5 py-2.5 rounded-none btn-gitscope-primary text-sm font-bold active:scale-[0.98] transition-all",
         className
       )}
     >

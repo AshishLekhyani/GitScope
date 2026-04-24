@@ -25,7 +25,7 @@ interface CoachingResult {
 
 const DORA_TIERS: Record<DoraTier, { label: string; color: string; bg: string; border: string; icon: string }> = {
   elite:  { label: "Elite",  color: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/25", icon: "rocket_launch" },
-  high:   { label: "High",   color: "text-indigo-400",  bg: "bg-indigo-500/10",  border: "border-indigo-500/25",  icon: "trending_up" },
+  high:   { label: "High",   color: "text-amber-400",  bg: "bg-amber-500/10",  border: "border-amber-500/25",  icon: "trending_up" },
   medium: { label: "Medium", color: "text-amber-400",   bg: "bg-amber-500/10",   border: "border-amber-500/25",   icon: "trending_flat" },
   low:    { label: "Low",    color: "text-red-400",     bg: "bg-red-500/10",     border: "border-red-500/25",     icon: "trending_down" },
 };
@@ -149,7 +149,7 @@ function BenchmarkTable({ benchmarks, current }: {
         const t = DORA_TIERS[b.tier];
         return (
           <div key={b.tier} className={cn(
-            "flex items-center justify-between px-2.5 py-1.5 rounded-lg transition-all",
+            "flex items-center justify-between px-2.5 py-1.5 rounded-none transition-all",
             isCurrent ? `${t.bg} border ${t.border}` : "opacity-40"
           )}>
             <div className="flex items-center gap-2">
@@ -263,9 +263,9 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-48 gap-6 animate-pulse bg-surface-container/10 rounded-3xl border border-dashed border-outline-variant/10">
-        <div className="size-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-          <MaterialIcon name="speed" size={32} className="text-indigo-500/30" />
+      <div className="flex flex-col items-center justify-center py-48 gap-6 animate-pulse bg-surface-container/10 rounded-none border border-dashed border-outline-variant/10">
+        <div className="size-16 rounded-none bg-amber-500/10 flex items-center justify-center border border-amber-500/20">
+          <MaterialIcon name="speed" size={32} className="text-amber-500/30" />
         </div>
         <div className="text-center space-y-2">
           <p className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground/40">Computing DORA Metrics</p>
@@ -277,7 +277,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
 
   if (data.length === 0 || !data.some((d) => d.metrics)) {
     return (
-      <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/10 rounded-3xl border-2 border-dashed border-outline-variant/10">
+      <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/10 rounded-none border-2 border-dashed border-outline-variant/10">
         <MaterialIcon name="speed" size={48} className="text-muted-foreground/10 mb-6" />
         <h4 className="text-xl font-bold">DORA Metrics Unavailable</h4>
         <p className="text-sm text-muted-foreground/60 max-w-sm mx-auto mt-2 leading-relaxed">
@@ -302,10 +302,10 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
     <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
 
       {/* ── DORA explainer banner ── */}
-      <div className="p-5 rounded-3xl bg-linear-to-br from-indigo-500/8 to-violet-500/5 border border-indigo-500/15 space-y-2">
+      <div className="p-5 rounded-none bg-linear-to-br from-amber-500/8 to-amber-500/5 border border-amber-500/15 space-y-2">
         <div className="flex items-center gap-2.5">
-          <div className="size-8 rounded-xl bg-indigo-500/15 border border-indigo-500/25 flex items-center justify-center shrink-0">
-            <MaterialIcon name="insights" size={16} className="text-indigo-400" />
+          <div className="size-8 rounded-none bg-amber-500/15 border border-amber-500/25 flex items-center justify-center shrink-0">
+            <MaterialIcon name="insights" size={16} className="text-amber-400" />
           </div>
           <div>
             <p className="text-xs font-black text-foreground/85">DORA Four Key Metrics</p>
@@ -317,7 +317,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
           {DORA_METRICS.map((metric) => (
             <div key={metric.key} className="flex items-center gap-1.5 text-[9px] text-muted-foreground/50">
-              <MaterialIcon name={metric.icon} size={11} className="text-indigo-400/60 shrink-0" />
+              <MaterialIcon name={metric.icon} size={11} className="text-amber-400/60 shrink-0" />
               <span className="font-bold">{metric.label.split(" ").slice(0, 2).join(" ")}</span>
             </div>
           ))}
@@ -330,10 +330,10 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
           {data.map((d) => (
             <button key={d.name} type="button" onClick={() => setActiveRepo(d.name)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl border text-[10px] font-black transition-all",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-none border text-[10px] font-black transition-all",
                 activeRepo === d.name
-                  ? "bg-indigo-500 text-white border-indigo-500 shadow-md shadow-indigo-500/20"
-                  : "bg-surface-container/30 border-outline-variant/10 text-muted-foreground/60 hover:border-indigo-500/25 hover:text-foreground"
+                  ? "bg-amber-500 text-white border-amber-500 shadow-md shadow-amber-500/20"
+                  : "bg-surface-container/30 border-outline-variant/10 text-muted-foreground/60 hover:border-amber-500/25 hover:text-foreground"
               )}>
               <MaterialIcon name="folder" size={11} />
               {d.name.split("/")[1]}
@@ -346,10 +346,10 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
       {/* ── Overall tier hero ── */}
       {m && (
         <div className={cn(
-          "flex items-center gap-5 p-5 rounded-3xl border",
+          "flex items-center gap-5 p-5 rounded-none border",
           DORA_TIERS[m.overallTier].bg, DORA_TIERS[m.overallTier].border
         )}>
-          <div className={cn("size-14 rounded-2xl border flex items-center justify-center shrink-0", DORA_TIERS[m.overallTier].bg, DORA_TIERS[m.overallTier].border)}>
+          <div className={cn("size-14 rounded-none border flex items-center justify-center shrink-0", DORA_TIERS[m.overallTier].bg, DORA_TIERS[m.overallTier].border)}>
             <MaterialIcon name={DORA_TIERS[m.overallTier].icon} size={28} className={DORA_TIERS[m.overallTier].color} />
           </div>
           <div className="flex-1 min-w-0">
@@ -407,13 +407,13 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
 
             return (
               <div key={def.key} className={cn(
-                "rounded-2xl border overflow-hidden transition-all",
+                "rounded-none border overflow-hidden transition-all",
                 t.bg, t.border
               )}>
                 {/* Card header */}
                 <button type="button" className="w-full flex items-center gap-3 px-4 py-4 text-left"
                   onClick={() => setExpandedMetric(isExpanded ? null : String(def.key))}>
-                  <div className={cn("size-9 rounded-xl border flex items-center justify-center shrink-0", t.bg, t.border)}>
+                  <div className={cn("size-9 rounded-none border flex items-center justify-center shrink-0", t.bg, t.border)}>
                     <MaterialIcon name={def.icon} size={18} className={t.color} />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -448,7 +448,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
                     </div>
 
                     {/* How to improve */}
-                    <div className={cn("p-3 rounded-xl border", t.bg, t.border)}>
+                    <div className={cn("p-3 rounded-none border", t.bg, t.border)}>
                       <p className={cn("text-[9px] font-black uppercase tracking-widest mb-1.5", t.color)}>
                         How to reach {tier === "elite" ? "stay at" : "next tier"}
                         {tier !== "elite" ? ` (${DORA_TIERS[tier === "low" ? "medium" : tier === "medium" ? "high" : "elite"].label})` : ""}
@@ -490,7 +490,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
 
       {/* ── Fleet comparison (multi-repo) ── */}
       {valid.length > 1 && (
-        <div className="p-5 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-4">
+        <div className="p-5 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-4">
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
             <MaterialIcon name="compare" size={12} /> Fleet Comparison
           </p>
@@ -510,7 +510,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
                     ].map(({ tier, val }, i) => {
                       const ct = DORA_TIERS[tier];
                       return (
-                        <div key={i} className={cn("text-center px-1.5 py-1 rounded-lg border text-[9px] font-black", ct.bg, ct.border, ct.color)}>
+                        <div key={i} className={cn("text-center px-1.5 py-1 rounded-none border text-[9px] font-black", ct.bg, ct.border, ct.color)}>
                           {val}
                         </div>
                       );
@@ -537,13 +537,13 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
       {/* ── Fleet aggregate stats ── */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
         {[
-          { label: "Avg Lead Time",   value: DORA_METRICS[0].format(fleetLeadTime),  icon: "timer",         color: "text-indigo-400" },
-          { label: "Avg Deploy Freq", value: DORA_METRICS[1].format(fleetFreq),      icon: "rocket_launch", color: "text-violet-400" },
+          { label: "Avg Lead Time",   value: DORA_METRICS[0].format(fleetLeadTime),  icon: "timer",         color: "text-amber-400" },
+          { label: "Avg Deploy Freq", value: DORA_METRICS[1].format(fleetFreq),      icon: "rocket_launch", color: "text-amber-400" },
           { label: "Avg Failure Rate",value: DORA_METRICS[2].format(fleetCFR),       icon: "bug_report",    color: fleetCFR > 0.10 ? "text-red-400" : "text-emerald-400" },
           { label: "Avg MTTR",        value: DORA_METRICS[3].format(fleetMTTR),      icon: "healing",       color: "text-amber-400" },
           { label: "Mean Bus Factor", value: fleetBusFactor.toFixed(1),               icon: "groups",        color: fleetBusFactor <= 2 ? "text-red-400" : "text-emerald-400" },
         ].map((stat) => (
-          <div key={stat.label} className="p-4 rounded-2xl bg-surface-container/30 border border-outline-variant/10 text-center space-y-1">
+          <div key={stat.label} className="p-4 rounded-none bg-surface-container/30 border border-outline-variant/10 text-center space-y-1">
             <MaterialIcon name={stat.icon} size={18} className={cn("mx-auto", stat.color)} />
             <p className={cn("text-lg font-black", stat.color)}>{stat.value}</p>
             <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">{stat.label}</p>
@@ -552,14 +552,14 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
       </div>
 
       {/* ── AI DORA Coach ── */}
-      <div className="rounded-3xl border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
+      <div className="rounded-none border border-outline-variant/10 bg-surface-container/20 overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-outline-variant/8">
           <div className="flex items-center gap-2.5">
-            <div className="size-8 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-              <MaterialIcon name="psychology" size={16} className="text-indigo-400" />
+            <div className="size-8 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+              <MaterialIcon name="psychology" size={16} className="text-amber-400" />
             </div>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-widest text-indigo-400/80">AI DORA Coach</p>
+              <p className="text-[10px] font-black uppercase tracking-widest text-amber-400/80">AI DORA Coach</p>
               <p className="text-[9px] text-muted-foreground/40">Bottleneck analysis + concrete improvement actions per metric</p>
             </div>
           </div>
@@ -567,10 +567,10 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
             <button type="button" onClick={fetchAICoaching}
               disabled={aiState === "loading" || valid.length === 0}
               className={cn(
-                "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all",
+                "flex items-center gap-2 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
                 aiState === "loading"
-                  ? "bg-indigo-500/10 text-indigo-400/50 cursor-not-allowed"
-                  : "bg-indigo-500 text-white hover:bg-indigo-600 shadow-lg shadow-indigo-500/20"
+                  ? "bg-amber-500/10 text-amber-400/50 cursor-not-allowed"
+                  : "bg-amber-500 text-white hover:bg-amber-600 shadow-lg shadow-amber-500/20"
               )}>
               <MaterialIcon name={aiState === "loading" ? "hourglass_top" : "auto_awesome"} size={12}
                 className={aiState === "loading" ? "animate-spin" : ""} />
@@ -588,7 +588,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
 
           {aiState === "loading" && (
             <div className="flex items-center gap-3 py-4 animate-pulse">
-              <div className="size-4 rounded-full border-2 border-indigo-500 border-t-transparent animate-spin shrink-0" />
+              <div className="size-4 rounded-full border-2 border-amber-500 border-t-transparent animate-spin shrink-0" />
               <span className="text-xs text-muted-foreground/50">Benchmarking against DORA standards and generating improvement plan…</span>
             </div>
           )}
@@ -596,10 +596,10 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
           {aiState === "done" && coaching && (
             <div className="space-y-4 animate-in fade-in duration-400">
               {/* Summary + class */}
-              <div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
-                <MaterialIcon name="summarize" size={16} className="text-indigo-400 shrink-0 mt-0.5" />
+              <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/5 border border-amber-500/10">
+                <MaterialIcon name="summarize" size={16} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400/70 mb-1">
+                  <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/70 mb-1">
                     Assessment · {coaching.doraClass} Performer
                   </p>
                   <p className="text-xs text-foreground/75 leading-relaxed">{coaching.summary}</p>
@@ -607,7 +607,7 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
               </div>
 
               {/* Bottleneck */}
-              <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-500/5 border border-amber-500/15">
+              <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/5 border border-amber-500/15">
                 <MaterialIcon name="warning" size={16} className="text-amber-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/70 mb-1">#1 Bottleneck</p>
@@ -621,10 +621,10 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
                 {(coaching.actions ?? []).map((a, i) => {
                   const metricDef = DORA_METRICS.find((d) => d.label.toLowerCase().includes(a.metric.toLowerCase().split(" ")[0]));
                   return (
-                    <div key={i} className="p-4 rounded-2xl bg-surface-container/30 border border-outline-variant/8 space-y-2">
+                    <div key={i} className="p-4 rounded-none bg-surface-container/30 border border-outline-variant/8 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        {metricDef && <MaterialIcon name={metricDef.icon} size={13} className="text-indigo-400/70" />}
-                        <span className="text-[9px] font-black uppercase tracking-widest text-indigo-400/70">{a.metric}</span>
+                        {metricDef && <MaterialIcon name={metricDef.icon} size={13} className="text-amber-400/70" />}
+                        <span className="text-[9px] font-black uppercase tracking-widest text-amber-400/70">{a.metric}</span>
                         <span className={cn(
                           "ml-auto text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded border",
                           a.effort === "low"    ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" :
@@ -643,14 +643,14 @@ Return 4 actions, one per DORA metric. Prioritize by impact. Be concrete and tec
               </div>
 
               <button type="button" onClick={fetchAICoaching}
-                className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground/40 hover:text-indigo-400 transition-colors">
+                className="flex items-center gap-1.5 text-[10px] font-black text-muted-foreground/40 hover:text-amber-400 transition-colors">
                 <MaterialIcon name="refresh" size={12} /> Refresh coaching
               </button>
             </div>
           )}
 
           {aiState === "error" && (
-            <div className="flex items-center gap-2 p-3 rounded-xl bg-red-500/5 border border-red-500/10">
+            <div className="flex items-center gap-2 p-3 rounded-none bg-red-500/5 border border-red-500/10">
               <MaterialIcon name="error" size={14} className="shrink-0 text-red-400" />
               <p className="text-[11px] text-red-400">{aiError ?? "AI coaching unavailable — check your AI provider settings."}</p>
             </div>

@@ -45,14 +45,14 @@ const FLAG_META: Record<string, { label: string; color: string }> = {
   security:        { label: "Security",       color: "bg-red-500/10 text-red-400 border-red-500/20" },
   "breaking-change":{ label: "Breaking",      color: "bg-orange-500/10 text-orange-400 border-orange-500/20" },
   performance:     { label: "Performance",    color: "bg-yellow-500/10 text-yellow-400 border-yellow-500/20" },
-  deps:            { label: "Dependencies",   color: "bg-purple-500/10 text-purple-400 border-purple-500/20" },
-  "high-churn":    { label: "High Churn",     color: "bg-pink-500/10 text-pink-400 border-pink-500/20" },
+  deps:            { label: "Dependencies",   color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  "high-churn":    { label: "High Churn",     color: "bg-amber-500/10 text-amber-400 border-pink-500/20" },
   auth:            { label: "Auth",           color: "bg-red-500/10 text-red-400 border-red-500/20" },
-  database:        { label: "Database",       color: "bg-blue-500/10 text-blue-400 border-blue-500/20" },
-  "api-contract":  { label: "API Contract",   color: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20" },
+  database:        { label: "Database",       color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
+  "api-contract":  { label: "API Contract",   color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
   "large-diff":    { label: "Large Diff",     color: "bg-amber-500/10 text-amber-400 border-amber-500/20" },
   "test-coverage": { label: "Test Coverage",  color: "bg-teal-500/10 text-teal-400 border-teal-500/20" },
-  config:          { label: "Config",         color: "bg-slate-500/10 text-slate-400 border-slate-500/20" },
+  config:          { label: "Config",         color: "bg-stone-500/10 text-stone-400 border-stone-500/20" },
 };
 
 const SEVERITY_STYLE: Record<string, string> = {
@@ -191,7 +191,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
 
   if (prs.length === 0) {
     return (
-      <div className="py-24 text-center bg-surface-container/20 rounded-3xl border border-dashed border-outline-variant/20">
+      <div className="py-24 text-center bg-surface-container/20 rounded-none border border-dashed border-outline-variant/20">
         <MaterialIcon name="verified" size={48} className="text-emerald-500/10 mb-4" />
         <h4 className="text-xl font-bold">No Open Pull Requests</h4>
         <p className="text-sm text-muted-foreground/60 mt-2">
@@ -210,7 +210,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
         </h4>
         <div className="flex items-center gap-2">
           {meta?.aiMode && (
-            <span className="text-[10px] font-black text-indigo-500 uppercase px-3 py-1 rounded-full bg-indigo-500/5 border border-indigo-500/10">
+            <span className="text-[10px] font-black text-amber-500 uppercase px-3 py-1 rounded-full bg-amber-500/5 border border-amber-500/10">
               {meta.aiMode === "multi-agent" ? "Multi-Agent" : meta.aiMode === "single-pass" ? "Single Agent" : "Heuristic"}
             </span>
           )}
@@ -238,16 +238,16 @@ export function RiskPredictor({ repo }: { repo: string }) {
                 : "text-emerald-500";
 
           return (
-            <div key={pr.id} className={cn("rounded-3xl border transition-all", borderColor)}>
+            <div key={pr.id} className={cn("rounded-none border transition-all", borderColor)}>
               {/* ── Card header ── */}
               <div className="p-6 space-y-5">
                 {/* Author + score row */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                   <div className="flex items-center gap-3 min-w-0">
                     <div className="relative shrink-0">
-                      <Image src={pr.avatar} width={40} height={40} className="size-10 sm:size-11 rounded-2xl shadow-xl" alt="" />
+                      <Image src={pr.avatar} width={40} height={40} className="size-10 sm:size-11 rounded-none shadow-xl" alt="" />
                       <div className={cn(
-                        "absolute -bottom-1 -right-1 size-5 rounded-lg flex items-center justify-center border-2 border-background",
+                        "absolute -bottom-1 -right-1 size-5 rounded-none flex items-center justify-center border-2 border-background",
                         pr.riskLevel === "CRITICAL" || pr.riskLevel === "HIGH" ? "bg-red-500" :
                         pr.riskLevel === "MODERATE" ? "bg-amber-500" : "bg-emerald-500"
                       )}>
@@ -286,7 +286,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                     <div className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Removed</div>
                   </div>
                   <div className="text-center">
-                    <div className="text-sm font-black text-indigo-500">{pr.changedFiles}</div>
+                    <div className="text-sm font-black text-amber-500">{pr.changedFiles}</div>
                     <div className="text-[7px] sm:text-[8px] font-black text-muted-foreground uppercase tracking-widest mt-0.5">Files</div>
                   </div>
                 </div>
@@ -308,7 +308,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                 {/* AI analysis */}
                 <div className="space-y-2">
                   <div className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
-                    <MaterialIcon name="psychology" size={13} className="text-indigo-400" />
+                    <MaterialIcon name="psychology" size={13} className="text-amber-400" />
                     AI Takeaway
                   </div>
                   <p className="text-xs font-medium leading-relaxed text-foreground/80">
@@ -320,7 +320,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                 {pr.hotFiles.length > 0 && (
                   <div className="flex flex-wrap gap-1.5">
                     {pr.hotFiles.map((f) => (
-                      <span key={f} className="text-[8px] sm:text-[9px] font-mono font-bold px-2 py-1 rounded-lg bg-surface-container-highest border border-outline-variant/10 text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
+                      <span key={f} className="text-[8px] sm:text-[9px] font-mono font-bold px-2 py-1 rounded-none bg-surface-container-highest border border-outline-variant/10 text-muted-foreground truncate max-w-[150px] sm:max-w-[200px]">
                         {f.split("/").slice(-2).join("/")}
                       </span>
                     ))}
@@ -339,12 +339,12 @@ export function RiskPredictor({ repo }: { repo: string }) {
                   }}
                   disabled={scan?.state === "scanning"}
                   className={cn(
-                    "w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border",
+                    "w-full py-3 rounded-none text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 border",
                     scan?.state === "done"
-                      ? "bg-indigo-500 text-white border-indigo-500 hover:bg-indigo-600"
+                      ? "bg-amber-500 text-white border-amber-500 hover:bg-amber-600"
                       : scan?.state === "scanning"
                         ? "bg-surface-container-highest border-outline-variant/10 text-muted-foreground cursor-not-allowed"
-                        : "bg-surface-container-highest border-outline-variant/10 hover:bg-indigo-500 hover:text-white hover:border-indigo-500"
+                        : "bg-surface-container-highest border-outline-variant/10 hover:bg-amber-500 hover:text-white hover:border-amber-500"
                   )}
                 >
                   {scan?.state === "scanning" ? (
@@ -366,7 +366,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                   <div className="border-t border-outline-variant/10 px-6 pb-8 pt-6 space-y-7 animate-in fade-in slide-in-from-top-2 duration-300">
                     {/* Provider badge */}
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500 flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-amber-500 flex items-center gap-2">
                         <MaterialIcon name="auto_awesome" size={13} />
                         Deep Impact Report
                       </span>
@@ -377,7 +377,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
 
                     {r.meta?.plan && (
                       <div className="flex flex-wrap gap-2">
-                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-indigo-500/5 border border-indigo-500/10 text-indigo-500">
+                        <span className="text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-full bg-amber-500/5 border border-amber-500/10 text-amber-500">
                           {r.meta.plan} tier
                         </span>
                         {typeof r.meta.rateRemaining === "number" && (
@@ -389,7 +389,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                     )}
 
                     {/* Headline + summary */}
-                    <div className="space-y-3 p-5 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
+                    <div className="space-y-3 p-5 rounded-none bg-amber-500/5 border border-amber-500/10">
                       <p className="text-sm font-black text-foreground">{r.headline}</p>
                       <p className="text-xs leading-relaxed text-foreground/80">{r.summary}</p>
                     </div>
@@ -400,10 +400,10 @@ export function RiskPredictor({ repo }: { repo: string }) {
                         <MaterialIcon name="bar_chart" size={13} />
                         Risk Dimensions
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 p-4 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-3 p-4 rounded-none bg-surface-container/50 border border-outline-variant/10">
                         <DimensionBar label="Security"        score={r.dimensions.security}        color="text-red-400" />
                         <DimensionBar label="Performance"     score={r.dimensions.performance}     color="text-yellow-400" />
-                        <DimensionBar label="Maintainability" score={r.dimensions.maintainability} color="text-blue-400" />
+                        <DimensionBar label="Maintainability" score={r.dimensions.maintainability} color="text-amber-400" />
                         <DimensionBar label="Testability"     score={r.dimensions.testability}     color="text-teal-400" />
                         <DimensionBar label="Breaking Change" score={r.dimensions.breakingChange}  color="text-orange-400" />
                       </div>
@@ -436,7 +436,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                         </div>
                         <div className="space-y-2">
                           {r.concerns.map((c, i) => (
-                            <div key={i} className={cn("rounded-2xl border p-4 space-y-2", SEVERITY_STYLE[c.severity])}>
+                            <div key={i} className={cn("rounded-none border p-4 space-y-2", SEVERITY_STYLE[c.severity])}>
                               <div className="flex items-center gap-2">
                                 <MaterialIcon name={SEVERITY_ICON[c.severity] ?? "info"} size={14} className="shrink-0" />
                                 <span className="text-[9px] font-black uppercase tracking-widest opacity-70">{c.severity}</span>
@@ -477,7 +477,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                           <div className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Affected Systems</div>
                           <div className="flex flex-wrap gap-1.5">
                             {r.affectedSystems.map((s) => (
-                              <span key={s} className="text-[9px] font-bold px-2 py-1 rounded-full bg-indigo-500/5 border border-indigo-500/10 text-indigo-400">{s}</span>
+                              <span key={s} className="text-[9px] font-bold px-2 py-1 rounded-full bg-amber-500/5 border border-amber-500/10 text-amber-400">{s}</span>
                             ))}
                           </div>
                         </div>
@@ -485,7 +485,7 @@ export function RiskPredictor({ repo }: { repo: string }) {
                     </div>
 
                     {/* Recommendation */}
-                    <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 space-y-1.5">
+                    <div className="p-4 rounded-none bg-emerald-500/5 border border-emerald-500/10 space-y-1.5">
                       <div className="text-[9px] font-black uppercase tracking-widest text-emerald-500 flex items-center gap-1.5">
                         <MaterialIcon name="recommend" size={12} />
                         Recommendation
@@ -513,11 +513,11 @@ export function RiskPredictor({ repo }: { repo: string }) {
 
                     {/* Stats footer */}
                     <div className="grid grid-cols-2 gap-3 sm:gap-4 pt-2 border-t border-outline-variant/10">
-                      <div className="text-center p-2 sm:p-3 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
+                      <div className="text-center p-2 sm:p-3 rounded-none bg-surface-container/50 border border-outline-variant/10">
                         <div className="text-xl sm:text-2xl font-black">{r.suggestedReviewers}</div>
                         <div className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">Suggested Reviewers</div>
                       </div>
-                      <div className="text-center p-2 sm:p-3 rounded-2xl bg-surface-container/50 border border-outline-variant/10">
+                      <div className="text-center p-2 sm:p-3 rounded-none bg-surface-container/50 border border-outline-variant/10">
                         <div className="text-base sm:text-lg font-black">{r.estimatedReviewTime}</div>
                         <div className="text-[8px] sm:text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 mt-0.5">Est. Review Time</div>
                       </div>

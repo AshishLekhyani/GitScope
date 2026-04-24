@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import { performLogout } from "@/lib/client-auth";
 import { buttonVariants } from "@/components/ui/button";
 import Link from "next/link";
-import NextImage from "next/image";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { ThemeToggle } from "./theme-toggle";
@@ -61,7 +60,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
       className={cn(
         "fixed top-0 left-0 right-0 z-50 transition-all duration-300",
         scrolled
-          ? "border-b border-outline-variant/10 bg-background/85 backdrop-blur-xl shadow-[0_1px_0_0_rgba(124,140,248,0.06)]"
+          ? "border-b border-outline-variant/10 bg-background/85 backdrop-blur-xl shadow-[0_1px_0_0_rgba(199,122,18,0.08)]"
           : "border-b border-transparent bg-transparent"
       )}
     >
@@ -71,18 +70,26 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3.5 sm:px-6">
         {/* Logo */}
         <Link href="/" className="flex items-center gap-2.5 group">
-          <div className="relative">
-            <div className="absolute -inset-1 rounded-xl bg-primary/20 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
-            <NextImage
+          <div className="relative shrink-0">
+            <div className="absolute -inset-1 bg-primary/15 opacity-0 group-hover:opacity-100 blur-sm transition-opacity duration-300" />
+            <img
               src="/logo.png"
-              width={36}
-              height={36}
-              alt="GitScope Logo"
-              className="relative size-9 rounded-lg shadow-lg shadow-primary/20 ring-1 ring-white/10"
+              alt="GitScope"
+              width={32}
+              height={32}
+              className="relative size-8 hidden dark:block object-contain"
+            />
+            <img
+              src="/logo-light.png"
+              alt="GitScope"
+              width={32}
+              height={32}
+              className="relative size-8 block dark:hidden object-contain"
+              onError={(e) => { (e.target as HTMLImageElement).src = "/logo.png"; }}
             />
           </div>
-          <span className="font-heading text-lg font-bold tracking-tight text-foreground">
-            Git<span className="text-primary">Scope</span>
+          <span className="font-mono text-[13px] font-bold tracking-[0.06em] text-foreground">
+            GIT<span className="text-primary">SCOPE</span><span className="text-primary">.</span>
           </span>
         </Link>
 
@@ -92,7 +99,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
             <Link
               key={l.href}
               href={l.href}
-              className="relative rounded-lg px-3.5 py-2 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-white/5 group"
+              className="relative border-b-2 border-transparent px-3.5 py-2 font-mono text-[11px] font-bold uppercase tracking-[0.08em] text-muted-foreground transition-colors hover:border-primary hover:text-foreground group"
             >
               {l.label}
               <span className="absolute bottom-1 left-1/2 -translate-x-1/2 h-px w-0 bg-primary transition-all duration-200 group-hover:w-4" />
@@ -108,7 +115,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
           <button
             type="button"
             aria-label="Toggle navigation menu"
-            className="flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-accent md:hidden"
+            className="flex items-center justify-center border border-border p-2 text-muted-foreground hover:bg-accent md:hidden"
             onClick={() => setMobileMenuOpen((v) => !v)}
           >
             <MaterialIcon name={mobileMenuOpen ? "close" : "menu"} size={22} />
@@ -126,7 +133,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                 href={`${ROUTES.login}?mode=signup`}
                 className={cn(
                   buttonVariants({ size: "sm" }),
-                  "btn-gitscope-primary rounded-full px-5 font-bold tracking-tight shadow-lg shadow-primary/20 flex items-center gap-1"
+                  "btn-gitscope-primary px-5 font-bold tracking-tight shadow-lg shadow-primary/20 flex items-center gap-1"
                 )}
               >
                 Get Started
@@ -139,7 +146,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                 href={ROUTES.overview}
                 className={cn(
                   buttonVariants({ size: "sm", variant: "default" }),
-                  "hidden sm:flex rounded-full bg-primary hover:bg-primary/90 font-bold px-4 shadow-lg shadow-primary/20"
+                  "hidden sm:flex bg-primary hover:bg-primary/90 font-bold px-4 shadow-lg shadow-primary/20"
                 )}
               >
                 Dashboard
@@ -151,15 +158,15 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                     <button
                       type="button"
                       aria-label="User menu"
-                      className="flex size-9 items-center justify-center rounded-full bg-primary/10 text-[11px] font-black text-primary border border-primary/20 hover:bg-primary/20 transition-all uppercase tracking-tighter outline-none ring-0"
+                      className="flex size-9 items-center justify-center border border-primary/20 bg-primary/10 text-[11px] font-black text-primary hover:bg-primary/20 transition-all uppercase tracking-tighter outline-none ring-0"
                     >
                       {session?.user?.image ? (
-                        <NextImage
+                        <img
                           src={session.user.image}
                           width={32}
                           height={32}
                           alt="Avatar"
-                          className="size-full rounded-full object-cover"
+                          className="size-full object-cover"
                         />
                       ) : (
                         userInitials
@@ -214,7 +221,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                   key={l.href}
                   href={l.href}
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                  className="flex items-center rounded-none px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                 >
                   {l.label}
                 </Link>
@@ -225,7 +232,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                     <Link
                       href={ROUTES.login}
                       onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center rounded-lg px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                      className="flex items-center rounded-none px-3 py-2.5 text-sm font-medium text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
                     >
                       Log In
                     </Link>
@@ -234,7 +241,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                       onClick={() => setMobileMenuOpen(false)}
                       className={cn(
                         buttonVariants({ size: "sm" }),
-                        "btn-gitscope-primary rounded-xl font-bold justify-center"
+                        "btn-gitscope-primary rounded-none font-bold justify-center"
                       )}
                     >
                       Get Started Free
@@ -246,7 +253,7 @@ export function MarketingHeader({ session: serverSession }: { session?: Session 
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
                       buttonVariants({ size: "sm" }),
-                      "rounded-xl bg-primary hover:bg-primary/90 font-bold justify-center"
+                      "rounded-none bg-primary hover:bg-primary/90 font-bold justify-center"
                     )}
                   >
                     Go to Dashboard

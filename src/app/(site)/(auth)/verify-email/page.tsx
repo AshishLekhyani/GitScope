@@ -141,7 +141,7 @@ function VerifyEmailContent() {
   return (
     <div className="relative mx-auto flex w-full max-w-md flex-col items-center justify-center py-12">
       <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="w-full max-w-md">
-        <div className="glass-panel rounded-2xl p-10 shadow-2xl text-center space-y-6">
+        <div className="glass-panel rounded-none p-10 shadow-2xl text-center space-y-6">
           {state === "signing-in" && (
             <>
               <div className="size-16 mx-auto animate-spin rounded-full border-4 border-primary border-t-transparent" />
@@ -167,7 +167,7 @@ function VerifyEmailContent() {
               </div>
               <Link
                 href={`/login?verified=1${email ? `&email=${encodeURIComponent(email)}` : ""}`}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-none bg-primary text-primary-foreground text-sm font-bold hover:bg-primary/90 transition-colors"
               >
                 Sign In
                 <MaterialIcon name="arrow_forward" size={16} />
@@ -239,14 +239,14 @@ function VerifyEmailContent() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
-                  className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                  className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
                 />
                 {resendError && <p className="text-destructive text-xs">{resendError}</p>}
                 <button
                   type="button"
                   disabled={state === "resending" || !email.trim()}
                   onClick={handleResend}
-                  className="w-full rounded-xl bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  className="w-full rounded-none bg-primary px-4 py-2.5 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {state === "resending" ? "Sending..." : "Resend Verification Email"}
                 </button>

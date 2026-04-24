@@ -67,14 +67,14 @@ const TYPE_META: Record<
   Commit: {
     label: "Commit",
     icon: "commit",
-    color: "text-indigo-500",
-    bg: "bg-indigo-500/10",
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
   },
   Discussion: {
     label: "Discussion",
     icon: "forum",
-    color: "text-purple-500",
-    bg: "bg-purple-500/10",
+    color: "text-amber-500",
+    bg: "bg-amber-500/10",
   },
 };
 
@@ -154,10 +154,10 @@ export default async function NotificationsPage() {
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="flex items-center gap-3 text-3xl font-black tracking-tight">
-            <span className="inline-flex size-10 items-center justify-center rounded-2xl bg-indigo-500/10">
-              <MaterialIcon name="notifications_active" size={22} className="text-indigo-500" />
+            <span className="inline-flex size-10 items-center justify-center rounded-none bg-amber-500/10">
+              <MaterialIcon name="notifications_active" size={22} className="text-amber-500" />
             </span>
-            <span className="bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-500">
+            <span className="bg-clip-text text-transparent bg-linear-to-r from-amber-500 to-amber-500">
               Notification Center
             </span>
           </h1>
@@ -168,7 +168,7 @@ export default async function NotificationsPage() {
           </p>
         </div>
         {isGitHubUser && (
-          <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2">
+          <div className="flex items-center gap-2 rounded-none border border-border bg-card px-4 py-2">
             <MaterialIcon name="notifications_active" size={16} className="text-muted-foreground" />
             <span className="text-xs font-bold text-muted-foreground">
               {notifications.length} total
@@ -176,7 +176,7 @@ export default async function NotificationsPage() {
             {unreadCount > 0 && (
               <>
                 <span className="text-muted-foreground/30">·</span>
-                <span className="text-xs font-bold text-indigo-500">
+                <span className="text-xs font-bold text-amber-500">
                   {unreadCount} unread
                 </span>
               </>
@@ -187,9 +187,9 @@ export default async function NotificationsPage() {
 
       {/* ── No GitHub Token CTA ─────────────────────────────────────────────── */}
       {!isGitHubUser && (
-        <div className="flex flex-col items-center justify-center gap-6 rounded-3xl border-2 border-dashed border-border/50 py-24 text-center">
-          <div className="flex size-16 items-center justify-center rounded-2xl bg-indigo-500/10">
-            <MaterialIcon name="notifications_active" size={32} className="text-indigo-500" />
+        <div className="flex flex-col items-center justify-center gap-6 rounded-none border-2 border-dashed border-border/50 py-24 text-center">
+          <div className="flex size-16 items-center justify-center rounded-none bg-amber-500/10">
+            <MaterialIcon name="notifications_active" size={32} className="text-amber-500" />
           </div>
           <div className="max-w-sm space-y-2">
             <h3 className="text-xl font-black">Connect GitHub Account</h3>
@@ -200,7 +200,7 @@ export default async function NotificationsPage() {
           </div>
           <Link
             href="/api/auth/signin/github"
-            className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-indigo-500/20 transition-all hover:bg-indigo-500"
+            className="inline-flex items-center gap-2 rounded-none bg-amber-600 px-6 py-3 text-sm font-bold text-white shadow-lg shadow-amber-500/20 transition-all hover:bg-amber-500"
           >
             <MaterialIcon name="link" size={16} className="text-white" />
             Connect GitHub Account
@@ -210,7 +210,7 @@ export default async function NotificationsPage() {
 
       {/* ── Error state ─────────────────────────────────────────────────────── */}
       {isGitHubUser && fetchError && (
-        <div className="flex items-center gap-3 rounded-2xl border border-amber-500/20 bg-amber-500/5 p-4">
+        <div className="flex items-center gap-3 rounded-none border border-amber-500/20 bg-amber-500/5 p-4">
           <MaterialIcon name="warning" size={20} className="text-amber-500 shrink-0" />
           <p className="text-sm text-amber-700 dark:text-amber-400">{fetchError}</p>
         </div>
@@ -222,7 +222,7 @@ export default async function NotificationsPage() {
           {/* Left: notification feed */}
           <div className="lg:col-span-2 space-y-4">
             {notifications.length === 0 ? (
-              <div className="flex flex-col items-center justify-center gap-4 rounded-3xl border-2 border-dashed border-border/50 py-20 text-center">
+              <div className="flex flex-col items-center justify-center gap-4 rounded-none border-2 border-dashed border-border/50 py-20 text-center">
                 <MaterialIcon name="done_all" size={40} className="text-emerald-500/40" />
                 <div>
                   <h3 className="text-lg font-black">All caught up!</h3>
@@ -236,7 +236,7 @@ export default async function NotificationsPage() {
                 {groupedEntries.map(([repoName, group]) => (
                   <div
                     key={repoName}
-                    className="overflow-hidden rounded-3xl border border-border bg-card shadow-sm"
+                    className="overflow-hidden rounded-none border border-border bg-card shadow-sm"
                   >
                     {/* Repo header */}
                     <div className="flex items-center gap-3 border-b border-border/60 bg-muted/30 px-5 py-3">
@@ -246,17 +246,17 @@ export default async function NotificationsPage() {
                         alt={group.repoMeta.owner.login}
                         width={22}
                         height={22}
-                        className="size-[22px] rounded-md border border-border/50"
+                        className="size-[22px] rounded-none border border-border/50"
                       />
                       <a
                         href={group.repoMeta.html_url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="flex-1 font-mono text-sm font-bold hover:text-indigo-500 transition-colors truncate"
+                        className="flex-1 font-mono text-sm font-bold hover:text-amber-500 transition-colors truncate"
                       >
                         {repoName}
                       </a>
-                      <span className="shrink-0 rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-indigo-500">
+                      <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-500">
                         {group.items.length}
                       </span>
                     </div>
@@ -275,13 +275,13 @@ export default async function NotificationsPage() {
                             "group flex items-start gap-4 px-5 py-4 transition-colors hover:bg-muted/40",
                             idx !== group.items.length - 1 &&
                               "border-b border-border/40",
-                            n.unread && "bg-indigo-500/[0.03]"
+                            n.unread && "bg-amber-500/[0.03]"
                           )}
                         >
                           {/* Type icon */}
                           <div
                             className={cn(
-                              "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-xl transition-transform group-hover:scale-110",
+                              "mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-none transition-transform group-hover:scale-110",
                               meta.bg
                             )}
                           >
@@ -299,7 +299,7 @@ export default async function NotificationsPage() {
                                 {n.subject.title}
                               </p>
                               {n.unread && (
-                                <span className="inline-block size-2 shrink-0 rounded-full bg-indigo-500 mt-1.5" />
+                                <span className="inline-block size-2 shrink-0 rounded-full bg-amber-500 mt-1.5" />
                               )}
                             </div>
                             <div className="flex items-center gap-3 flex-wrap">
@@ -332,7 +332,7 @@ export default async function NotificationsPage() {
           {/* Right: sidebar cards */}
           <div className="space-y-4">
             {/* Summary stats */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <div className="rounded-none border border-border bg-card p-5 shadow-sm">
               <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
                 Summary
               </h3>
@@ -348,14 +348,14 @@ export default async function NotificationsPage() {
                     label: "Unread",
                     value: unreadCount,
                     icon: "mark_email_unread",
-                    color: "text-indigo-500",
+                    color: "text-amber-500",
                     highlight: unreadCount > 0,
                   },
                   {
                     label: "Repositories",
                     value: groupedEntries.length,
                     icon: "source",
-                    color: "text-purple-500",
+                    color: "text-amber-500",
                   },
                 ].map(({ label, value, icon, color, highlight }) => (
                   <div key={label} className="flex items-center justify-between gap-2">
@@ -366,7 +366,7 @@ export default async function NotificationsPage() {
                     <span
                       className={cn(
                         "text-sm font-black",
-                        highlight ? "text-indigo-500" : "text-foreground"
+                        highlight ? "text-amber-500" : "text-foreground"
                       )}
                     >
                       {value}
@@ -378,7 +378,7 @@ export default async function NotificationsPage() {
 
             {/* Type breakdown */}
             {Object.keys(typeCounts).length > 0 && (
-              <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+              <div className="rounded-none border border-border bg-card p-5 shadow-sm">
                 <h3 className="mb-4 text-xs font-black uppercase tracking-widest text-muted-foreground">
                   By Type
                 </h3>
@@ -422,7 +422,7 @@ export default async function NotificationsPage() {
             )}
 
             {/* Quick link */}
-            <div className="rounded-3xl border border-border bg-card p-5 shadow-sm">
+            <div className="rounded-none border border-border bg-card p-5 shadow-sm">
               <h3 className="mb-2 text-xs font-black uppercase tracking-widest text-muted-foreground">
                 Manage on GitHub
               </h3>
@@ -434,21 +434,21 @@ export default async function NotificationsPage() {
                 href="https://github.com/notifications"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-xs font-bold text-indigo-500 hover:underline"
+                className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-500 hover:underline"
               >
                 Open GitHub Notifications
-                <MaterialIcon name="open_in_new" size={12} className="text-indigo-500" />
+                <MaterialIcon name="open_in_new" size={12} className="text-amber-500" />
               </a>
             </div>
 
             {/* Link to Activity feed */}
             <Link
               href={ROUTES.activity}
-              className="flex items-center justify-between gap-3 rounded-3xl border border-border bg-card p-5 shadow-sm transition-colors hover:border-indigo-500/30 hover:bg-muted/40"
+              className="flex items-center justify-between gap-3 rounded-none border border-border bg-card p-5 shadow-sm transition-colors hover:border-amber-500/30 hover:bg-muted/40"
             >
               <div className="flex items-center gap-3">
-                <div className="flex size-9 items-center justify-center rounded-xl bg-indigo-500/10">
-                  <MaterialIcon name="bolt" size={18} className="text-indigo-500" />
+                <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10">
+                  <MaterialIcon name="bolt" size={18} className="text-amber-500" />
                 </div>
                 <div>
                   <p className="text-sm font-bold">Activity Pulse</p>

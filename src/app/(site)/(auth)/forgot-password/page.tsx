@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           </p>
         </div>
 
-        <div className="glass-panel rounded-2xl p-8 shadow-2xl">
+        <div className="glass-panel rounded-none p-8 shadow-2xl">
           <AnimatePresence mode="wait">
             {sent ? (
               <motion.div
@@ -91,7 +91,7 @@ export default function ForgotPasswordPage() {
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@example.com"
                     required
-                    className="w-full rounded-lg border border-outline-variant/20 bg-surface-container-lowest px-3 py-2.5 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2.5 text-sm text-foreground focus:border-primary/50 focus:outline-none"
                   />
                 </div>
 
@@ -102,7 +102,7 @@ export default function ForgotPasswordPage() {
                 <button
                   type="submit"
                   disabled={loading || !email.trim()}
-                  className="w-full rounded-xl bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  className="w-full rounded-none bg-primary px-4 py-3 text-sm font-bold text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {loading ? "Sending…" : "Send Reset Link"}
                 </button>

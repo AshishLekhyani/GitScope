@@ -146,7 +146,7 @@ export default function FeatureDetailPage() {
           className="space-y-6"
         >
           <div className="flex items-center gap-4">
-            <div className="flex size-14 items-center justify-center rounded-2xl border border-border bg-surface-container shadow-sm">
+            <div className="flex size-14 items-center justify-center rounded-none border border-border bg-surface-container shadow-sm">
               <content.icon className="size-7 text-primary" />
             </div>
             <h1 className="font-heading text-4xl font-bold tracking-tight text-foreground">
@@ -180,13 +180,13 @@ export default function FeatureDetailPage() {
           transition={{ duration: 0.5, delay: 0.1 }}
           className="space-y-8"
         >
-          <div className="overflow-hidden rounded-2xl border border-border bg-card p-8 shadow-sm backdrop-blur-xl">
+          <div className="overflow-hidden rounded-none border border-border bg-card p-8 shadow-sm backdrop-blur-xl">
             <h3 className="mb-6 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
               {content.exampleLabel}
             </h3>
             <div className="grid gap-4">
               {content.exampleData.map((item, i) => (
-                <div key={i} className="flex items-center justify-between rounded-lg border border-border bg-surface-container p-4">
+                <div key={i} className="flex items-center justify-between rounded-none border border-border bg-surface-container p-4">
                   <span className="text-xs font-medium text-muted-foreground">{item.label}</span>
                   <span className="font-mono text-sm font-bold text-primary">{item.value}</span>
                 </div>
@@ -197,7 +197,7 @@ export default function FeatureDetailPage() {
               <Link
                 href={content.demoTarget}
                 className={cn(
-                  "flex w-full items-center justify-center gap-2 rounded-xl py-4 font-black uppercase tracking-tight transition-all",
+                  "flex w-full items-center justify-center gap-2 rounded-none py-4 font-black uppercase tracking-tight transition-all",
                   "bg-primary text-white shadow-lg hover:shadow-primary/20"
                 )}
               >
@@ -207,7 +207,7 @@ export default function FeatureDetailPage() {
             </div>
           </div>
 
-          <div className="rounded-2xl border border-primary/10 bg-primary/5 p-6 backdrop-blur-sm">
+          <div className="rounded-none border border-primary/10 bg-primary/5 p-6 backdrop-blur-sm">
             <p className="text-xs font-medium italic text-muted-foreground leading-relaxed">
               &quot;The ability to synchronize our engineering metadata across four disparate 
               business units has fundamentally changed how we manage architectural risk.&quot;

@@ -21,7 +21,7 @@ export function OrgSearchBar({ suggestions }: OrgSearchBarProps) {
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 p-1.5 rounded-xl bg-background/50 border border-border focus-within:ring-2 ring-primary/20 transition-all">
+      <div className="flex gap-2 p-1.5 rounded-none bg-background/50 border border-border focus-within:ring-2 ring-primary/20 transition-all">
         <div className="flex-1 flex items-center px-3">
           <Search className="size-5 text-muted-foreground mr-2 shrink-0" />
           <input
@@ -35,7 +35,7 @@ export function OrgSearchBar({ suggestions }: OrgSearchBarProps) {
         <Button
           type="button"
           onClick={analyze}
-          className="btn-gitscope-primary rounded-lg px-6 font-bold shadow-lg"
+          className="btn-gitscope-primary rounded-none px-6 font-bold shadow-lg"
         >
           Analyze
         </Button>

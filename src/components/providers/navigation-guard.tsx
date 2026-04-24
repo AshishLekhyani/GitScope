@@ -68,7 +68,11 @@ export function NavigationGuard() {
       }
     };
 
-    const handlePageShow = () => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        window.location.reload();
+        return;
+      }
       // Always verify auth on any pageshow — bfcache restores included.
       // If the user logged out on another tab/device, this redirects them.
       void verifyAccess();

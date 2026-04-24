@@ -12,11 +12,11 @@ import type { MyRepo } from "@/app/api/github/my-repos/route";
 // ── Language colors (GitHub's palette) ───────────────────────────────────────
 
 const LANG_COLORS: Record<string, string> = {
-  TypeScript: "#3178c6", JavaScript: "#f1e05a", Python: "#3572A5",
+  TypeScript: "#c77a12", JavaScript: "#f1e05a", Python: "#0e9966",
   Rust: "#dea584", Go: "#00ADD8", Java: "#b07219", "C++": "#f34b7d",
-  C: "#555555", "C#": "#178600", Ruby: "#701516", PHP: "#4F5D95",
-  Swift: "#F05138", Kotlin: "#A97BFF", Dart: "#00B4AB", Vue: "#41b883",
-  Svelte: "#ff3e00", Shell: "#89e051", HTML: "#e34c26", CSS: "#563d7c",
+  C: "#555555", "C#": "#178600", Ruby: "#701516", PHP: "#a16207",
+  Swift: "#F05138", Kotlin: "#f59e0b", Dart: "#10b981", Vue: "#41b883",
+  Svelte: "#ff3e00", Shell: "#89e051", HTML: "#e34c26", CSS: "#92400e",
   SCSS: "#c6538c", Dockerfile: "#384d54", Lua: "#000080",
   Haskell: "#5e5086", Elixir: "#6e4a7e", Clojure: "#db5855",
   Scala: "#c22d40", "F#": "#b845fc", R: "#198CE7", MATLAB: "#e16737",
@@ -87,10 +87,10 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
     return (
       <div
         onClick={handleInsights}
-        className="group flex items-center gap-4 px-5 py-4 rounded-2xl border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/40 hover:border-indigo-500/20 transition-all cursor-pointer"
+        className="group flex items-center gap-4 px-5 py-4 rounded-none border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/40 hover:border-amber-500/20 transition-all cursor-pointer"
       >
         {/* Owner avatar */}
-        <div className="size-10 rounded-xl overflow-hidden shrink-0 bg-surface-container-highest border border-outline-variant/10">
+        <div className="size-10 rounded-none overflow-hidden shrink-0 bg-surface-container-highest border border-outline-variant/10">
           {!imgError ? (
             <Image
               src={repo.owner.avatar_url}
@@ -158,7 +158,7 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
             type="button"
             title={isHidden ? "Show in list" : "Hide from list"}
             onClick={(e) => { e.preventDefault(); e.stopPropagation(); isHidden ? onUnhide(repo.full_name) : onHide(repo.full_name); }}
-            className="size-8 rounded-xl bg-surface-container-highest hover:bg-amber-500/10 flex items-center justify-center transition-colors"
+            className="size-8 rounded-none bg-surface-container-highest hover:bg-amber-500/10 flex items-center justify-center transition-colors"
           >
             <MaterialIcon name={isHidden ? "visibility" : "visibility_off"} size={14} className="text-muted-foreground/40 hover:text-amber-400" />
           </button>
@@ -166,17 +166,17 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
             type="button"
             title="View insights"
             onClick={handleInsights}
-            className="size-8 rounded-xl bg-surface-container-highest hover:bg-indigo-500/10 flex items-center justify-center transition-colors"
+            className="size-8 rounded-none bg-surface-container-highest hover:bg-amber-500/10 flex items-center justify-center transition-colors"
           >
-            <MaterialIcon name="dashboard" size={14} className="text-muted-foreground/60 hover:text-indigo-400" />
+            <MaterialIcon name="dashboard" size={14} className="text-muted-foreground/60 hover:text-amber-400" />
           </button>
           <button
             type="button"
             title="AI analyze"
             onClick={handleAnalyze}
-            className="size-8 rounded-xl bg-indigo-500/10 hover:bg-indigo-500 flex items-center justify-center transition-colors group/btn"
+            className="size-8 rounded-none bg-amber-500/10 hover:bg-amber-500 flex items-center justify-center transition-colors group/btn"
           >
-            <MaterialIcon name="auto_awesome" size={14} className="text-indigo-400 group-hover/btn:text-white" />
+            <MaterialIcon name="auto_awesome" size={14} className="text-amber-400 group-hover/btn:text-white" />
           </button>
         </div>
       </div>
@@ -185,7 +185,7 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
 
   // Grid card
   return (
-    <div className="group relative flex flex-col rounded-3xl border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/35 hover:border-indigo-500/20 transition-all overflow-hidden cursor-pointer"
+    <div className="group relative flex flex-col rounded-none border border-outline-variant/10 bg-surface-container/15 hover:bg-surface-container/35 hover:border-amber-500/20 transition-all overflow-hidden cursor-pointer"
       onClick={() => {
         const [owner, name] = repo.full_name.split("/");
         router.push(`/dashboard/${owner}/${name}`);
@@ -199,7 +199,7 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
 
         {/* Owner + name row */}
         <div className="flex items-start gap-2.5">
-          <div className="size-9 rounded-xl overflow-hidden shrink-0 bg-surface-container-highest border border-outline-variant/10">
+          <div className="size-9 rounded-none overflow-hidden shrink-0 bg-surface-container-highest border border-outline-variant/10">
             {!imgError ? (
               <Image
                 src={repo.owner.avatar_url}
@@ -221,7 +221,7 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
                 <MaterialIcon name="lock" size={10} className="text-amber-400 shrink-0" />
               )}
               {repo.owner.type === "Organization" && (
-                <MaterialIcon name="corporate_fare" size={10} className="text-indigo-400 shrink-0" />
+                <MaterialIcon name="corporate_fare" size={10} className="text-amber-400 shrink-0" />
               )}
             </div>
             <p className="text-sm font-black text-foreground/90 truncate leading-tight">{repo.name}</p>
@@ -240,7 +240,7 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
         {repo.topics.length > 0 && (
           <div className="flex flex-wrap gap-1">
             {repo.topics.slice(0, 3).map((t) => (
-              <span key={t} className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-indigo-500/8 border border-indigo-500/12 text-indigo-400">
+              <span key={t} className="text-[8px] font-bold px-1.5 py-0.5 rounded-full bg-amber-500/8 border border-amber-500/12 text-amber-400">
                 {t}
               </span>
             ))}
@@ -284,12 +284,12 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
       </div>
 
       {/* Hover action overlay */}
-      <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-3xl flex items-end justify-between p-3">
+      <div className="absolute inset-0 bg-linear-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-all rounded-none flex items-end justify-between p-3">
         <button
           type="button"
           title={isHidden ? "Show in list" : "Hide from list"}
           onClick={(e) => { e.preventDefault(); e.stopPropagation(); isHidden ? onUnhide(repo.full_name) : onHide(repo.full_name); }}
-          className="flex items-center gap-1 px-2.5 py-2 rounded-xl bg-black/30 backdrop-blur-md border border-white/10 text-white/60 hover:bg-amber-500/30 hover:text-white hover:border-amber-400/30 transition-colors"
+          className="flex items-center gap-1 px-2.5 py-2 rounded-none bg-black/30 backdrop-blur-md border border-white/10 text-white/60 hover:bg-amber-500/30 hover:text-white hover:border-amber-400/30 transition-colors"
         >
           <MaterialIcon name={isHidden ? "visibility" : "visibility_off"} size={12} />
         </button>
@@ -297,14 +297,14 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
           <button
             type="button"
             onClick={handleInsights}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/20 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-none bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-black uppercase tracking-wider hover:bg-white/20 transition-colors"
           >
             <MaterialIcon name="dashboard" size={12} /> Insights
           </button>
           <button
             type="button"
             onClick={handleAnalyze}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-500 border border-indigo-400 text-white text-[10px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-500/30"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 border border-amber-400 text-white text-[10px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-lg shadow-amber-500/30"
           >
             <MaterialIcon name="auto_awesome" size={12} /> AI Analyze
           </button>
@@ -313,8 +313,8 @@ function RepoCard({ repo, viewMode, isHidden, onHide, onUnhide }: {
 
       {/* Access level badge */}
       {repo.accessLevel === "admin" && (
-        <div className="absolute top-3 right-3 size-5 rounded-full bg-indigo-500/15 border border-indigo-500/20 flex items-center justify-center">
-          <MaterialIcon name="admin_panel_settings" size={12} className="text-indigo-400" />
+        <div className="absolute top-3 right-3 size-5 rounded-full bg-amber-500/15 border border-amber-500/20 flex items-center justify-center">
+          <MaterialIcon name="admin_panel_settings" size={12} className="text-amber-400" />
         </div>
       )}
     </div>
@@ -490,14 +490,14 @@ export function ReposClient() {
   ];
 
   return (
-    <div className="space-y-8 p-1 md:p-8 animate-in fade-in duration-700 font-sans">
+    <div className="space-y-8 p-1 md:p-8 animate-in fade-in duration-700 font-mono">
 
       {/* ── Header ── */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pb-8 border-b border-outline-variant/10">
         <div className="space-y-3">
-          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-indigo-500/5 border border-indigo-500/10">
-            <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[9px] font-black uppercase tracking-widest text-indigo-500/70">
+          <div className="inline-flex items-center gap-2.5 px-3 py-1.5 rounded-full bg-amber-500/5 border border-amber-500/10">
+            <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-[9px] font-black uppercase tracking-widest text-amber-500/70">
               {loading ? "Loading…" : meta?.githubUser ? `@${meta.githubUser}` : "Your Repositories"}
             </span>
           </div>
@@ -516,7 +516,7 @@ export function ReposClient() {
             onClick={loadRepos}
             disabled={loading}
             title="Refresh repositories"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-2xl border border-outline-variant/15 bg-surface-container/30 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-indigo-500/30 transition-all disabled:opacity-40"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-none border border-outline-variant/15 bg-surface-container/30 text-[10px] font-black uppercase tracking-widest text-muted-foreground hover:text-foreground hover:border-amber-500/30 transition-all disabled:opacity-40"
           >
             <MaterialIcon name="refresh" size={14} className={loading ? "animate-spin" : ""} />
             Refresh
@@ -525,12 +525,12 @@ export function ReposClient() {
           {meta && !loading && (
             <>
               {[
-                { label: "Total", value: meta.total, icon: "folder", color: "text-indigo-400" },
+                { label: "Total", value: meta.total, icon: "folder", color: "text-amber-400" },
                 { label: "Private", value: meta.private, icon: "lock", color: "text-amber-400" },
                 { label: "Public", value: meta.public, icon: "public", color: "text-emerald-400" },
-                { label: "Owned", value: meta.owned, icon: "person", color: "text-violet-400" },
+                { label: "Owned", value: meta.owned, icon: "person", color: "text-amber-400" },
               ].map((s) => (
-                <div key={s.label} className="flex flex-col items-center px-4 py-2.5 rounded-2xl bg-surface-container/30 border border-outline-variant/10 min-w-17">
+                <div key={s.label} className="flex flex-col items-center px-4 py-2.5 rounded-none bg-surface-container/30 border border-outline-variant/10 min-w-17">
                   <span className={cn("text-xl font-black", s.color)}>{s.value}</span>
                   <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 mt-0.5">{s.label}</span>
                 </div>
@@ -551,7 +551,7 @@ export function ReposClient() {
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Search repos, topics, languages… (press / to focus)"
-              className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-11 pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+              className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none pl-11 pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 transition-all"
             />
             {search && (
               <button type="button" onClick={() => setSearch("")} title="Clear search"
@@ -562,12 +562,12 @@ export function ReposClient() {
           </div>
 
           {/* View mode toggle */}
-          <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-xl border border-outline-variant/10">
+          <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10">
             {(["grid", "list"] as const).map((mode) => (
               <button key={mode} type="button" onClick={() => setViewMode(mode)}
                 title={mode === "grid" ? "Grid view" : "List view"}
-                className={cn("p-2 rounded-lg transition-all",
-                  viewMode === mode ? "bg-indigo-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
+                className={cn("p-2 rounded-none transition-all",
+                  viewMode === mode ? "bg-amber-500 text-white shadow-sm" : "text-muted-foreground hover:text-foreground"
                 )}>
                 <MaterialIcon name={mode === "grid" ? "grid_view" : "format_list_bulleted"} size={16} />
               </button>
@@ -579,7 +579,7 @@ export function ReposClient() {
             value={sortBy}
             onChange={(e) => setSortBy(e.target.value as SortType)}
             aria-label="Sort repositories"
-            className="bg-surface-container/40 border border-outline-variant/15 rounded-2xl px-4 py-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground focus:outline-none focus:ring-2 focus:ring-indigo-500/30 cursor-pointer"
+            className="bg-surface-container/40 border border-outline-variant/15 rounded-none px-4 py-3 text-[11px] font-black uppercase tracking-wider text-muted-foreground focus:outline-none focus:ring-2 focus:ring-amber-500/30 cursor-pointer"
           >
             {[
               { value: "updated", label: "Last Updated" },
@@ -598,10 +598,10 @@ export function ReposClient() {
           {FILTER_TABS.map((tab) => (
             <button key={tab.id} type="button" onClick={() => setFilter(tab.id)}
               className={cn(
-                "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border",
+                "flex items-center gap-1.5 px-3 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border",
                 filter === tab.id
-                  ? "bg-indigo-500 text-white border-indigo-500 shadow-md"
-                  : "bg-surface-container/25 border-outline-variant/10 text-muted-foreground hover:border-indigo-500/20 hover:text-foreground"
+                  ? "bg-amber-500 text-white border-amber-500 shadow-md"
+                  : "bg-surface-container/25 border-outline-variant/10 text-muted-foreground hover:border-amber-500/20 hover:text-foreground"
               )}>
               <MaterialIcon name={tab.icon} size={11} />
               {tab.label}
@@ -618,7 +618,7 @@ export function ReposClient() {
           {/* Hidden repos toggle */}
           {hiddenRepos.size > 0 && (
             <div className={cn(
-              "flex items-center gap-1 rounded-xl border transition-all",
+              "flex items-center gap-1 rounded-none border transition-all",
               showHidden
                 ? "bg-amber-500/15 text-amber-400 border-amber-500/25"
                 : "bg-surface-container/25 border-outline-variant/10 text-muted-foreground/50"
@@ -644,9 +644,9 @@ export function ReposClient() {
                 <button key={lang} type="button"
                   onClick={() => setLangFilter(langFilter === lang ? null : lang)}
                   className={cn(
-                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[9px] font-black uppercase tracking-wider transition-all border",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-none text-[9px] font-black uppercase tracking-wider transition-all border",
                     langFilter === lang
-                      ? "bg-surface-container-highest border-indigo-500/30 text-foreground"
+                      ? "bg-surface-container-highest border-amber-500/30 text-foreground"
                       : "bg-surface-container/20 border-outline-variant/10 text-muted-foreground/60 hover:text-foreground"
                   )}>
                   <span className="size-2 rounded-full shrink-0"
@@ -663,14 +663,14 @@ export function ReposClient() {
       {loading && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="h-44 rounded-3xl bg-surface-container/30 border border-outline-variant/8 animate-pulse" />
+            <div key={i} className="h-44 rounded-none bg-surface-container/30 border border-outline-variant/8 animate-pulse" />
           ))}
         </div>
       )}
 
       {!loading && error && (
         <div className="flex flex-col items-center justify-center py-24 text-center space-y-6">
-          <div className="size-20 rounded-3xl bg-amber-500/5 border border-amber-500/10 flex items-center justify-center">
+          <div className="size-20 rounded-none bg-amber-500/5 border border-amber-500/10 flex items-center justify-center">
             <MaterialIcon name="link_off" size={32} className="text-amber-500/40" />
           </div>
           <div>
@@ -678,7 +678,7 @@ export function ReposClient() {
             <p className="text-sm text-muted-foreground/60 max-w-sm leading-relaxed">{error}</p>
           </div>
           <Link href="/settings"
-            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 text-white text-[11px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors shadow-xl shadow-indigo-500/20">
+            className="flex items-center gap-2 px-6 py-3 rounded-none bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors shadow-xl shadow-amber-500/20">
             <MaterialIcon name="settings" size={14} /> Go to Settings
           </Link>
         </div>
@@ -687,14 +687,14 @@ export function ReposClient() {
       {/* ── Scope-limited: empty because token lacks repo/public_repo scope ── */}
       {!loading && !error && meta?.scopeLimited && repos.length === 0 && (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-8 animate-in fade-in duration-500">
-          <div className="size-20 rounded-3xl bg-amber-500/8 border border-amber-500/20 flex items-center justify-center">
+          <div className="size-20 rounded-none bg-amber-500/8 border border-amber-500/20 flex items-center justify-center">
             <MaterialIcon name="key_off" size={36} className="text-amber-400/70" />
           </div>
 
           <div className="space-y-2 max-w-sm">
             <h3 className="text-xl font-black">GitScope needs repo access</h3>
             <p className="text-sm text-muted-foreground/60 leading-relaxed">
-              Your GitHub session doesn't have permission to list repositories.
+              Your GitHub session doesn&apos;t have permission to list repositories.
               Choose how much access to grant — you can always change this later.
             </p>
           </div>
@@ -702,9 +702,9 @@ export function ReposClient() {
           {/* Access level choice */}
           <div className="w-full max-w-md space-y-3 text-left">
             {/* Option A: public only */}
-            <div className="rounded-2xl border border-outline-variant/20 bg-surface-container/30 p-4 space-y-3">
+            <div className="rounded-none border border-outline-variant/20 bg-surface-container/30 p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <div className="size-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                <div className="size-9 rounded-none bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 mt-0.5">
                   <MaterialIcon name="public" size={16} className="text-emerald-400" />
                 </div>
                 <div className="flex-1">
@@ -721,17 +721,17 @@ export function ReposClient() {
                   await signOut({ redirect: false });
                   signIn("github", { callbackUrl: "/repos" }, { scope: "read:user user:email notifications public_repo" });
                 }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-none bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-black uppercase tracking-widest text-emerald-400 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 transition-all"
               >
                 <MaterialIcon name="lock_open" size={13} /> Connect — Public only
               </button>
             </div>
 
             {/* Option B: all repos */}
-            <div className="rounded-2xl border border-indigo-500/25 bg-indigo-500/5 p-4 space-y-3">
+            <div className="rounded-none border border-amber-500/25 bg-amber-500/5 p-4 space-y-3">
               <div className="flex items-start gap-3">
-                <div className="size-9 rounded-xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                  <MaterialIcon name="lock" size={16} className="text-indigo-400" />
+                <div className="size-9 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                  <MaterialIcon name="lock" size={16} className="text-amber-400" />
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-black text-foreground/90">Public + Private repos</p>
@@ -748,7 +748,7 @@ export function ReposClient() {
                   await signOut({ redirect: false });
                   signIn("github", { callbackUrl: "/repos" }, { scope: "read:user user:email notifications repo" });
                 }}
-                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-indigo-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-indigo-600 transition-all shadow-lg shadow-indigo-500/20"
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-none bg-amber-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-amber-600 transition-all shadow-lg shadow-amber-500/20"
               >
                 <MaterialIcon name="sync" size={13} /> Connect — All repos
               </button>
@@ -756,7 +756,7 @@ export function ReposClient() {
 
             <p className="text-[9px] text-muted-foreground/30 text-center px-4 leading-relaxed">
               GitHub OAuth Apps require all-or-nothing repo access — you cannot choose individual repos.
-              Use the hide feature to control which repos appear in GitScope's UI.
+              Use the hide feature to control which repos appear in GitScope&apos;s UI.
             </p>
           </div>
         </div>
@@ -764,11 +764,11 @@ export function ReposClient() {
 
       {/* ── Scope-limited banner (shown above repos when some repos did load) ── */}
       {!loading && !error && meta?.scopeLimited && repos.length > 0 && (
-        <div className="rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
+        <div className="rounded-none border border-amber-500/30 bg-amber-500/5 p-4 flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <MaterialIcon name="lock" size={18} className="text-amber-400 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-sm font-black text-amber-300">Showing public repos only</p>
-            <p className="text-xs text-amber-400/60">Reconnect with "All repos" access to see private repos too.</p>
+            <p className="text-xs text-amber-400/60">Reconnect with &quot;All repos&quot; access to see private repos too.</p>
           </div>
           <button
             type="button"
@@ -776,7 +776,7 @@ export function ReposClient() {
               await signOut({ redirect: false });
               signIn("github", { callbackUrl: "/repos" }, { scope: "read:user user:email notifications repo" });
             }}
-            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-black uppercase tracking-widest text-indigo-400 hover:bg-indigo-500 hover:text-white hover:border-indigo-500 transition-all whitespace-nowrap"
+            className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-none bg-amber-500/10 border border-amber-500/20 text-[10px] font-black uppercase tracking-widest text-amber-400 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all whitespace-nowrap"
           >
             <MaterialIcon name="sync" size={13} /> Upgrade access
           </button>
@@ -786,8 +786,8 @@ export function ReposClient() {
       {/* ── No GitHub connected / repos empty ── */}
       {!loading && !error && repos.length === 0 && !meta?.scopeLimited && (
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-6">
-          <div className="size-20 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center">
-            <MaterialIcon name="folder_open" size={32} className="text-indigo-500/30" />
+          <div className="size-20 rounded-none bg-amber-500/5 border border-amber-500/10 flex items-center justify-center">
+            <MaterialIcon name="folder_open" size={32} className="text-amber-500/30" />
           </div>
           <div>
             <h3 className="text-xl font-black mb-2">
@@ -799,11 +799,11 @@ export function ReposClient() {
           </div>
           <div className="flex gap-3">
             <button type="button" onClick={loadRepos}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-2xl border border-outline-variant/20 text-[10px] font-black uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
+              className="flex items-center gap-2 px-5 py-2.5 rounded-none border border-outline-variant/20 text-[10px] font-black uppercase tracking-wider text-muted-foreground hover:text-foreground transition-colors">
               <MaterialIcon name="refresh" size={13} /> Retry
             </button>
             <Link href="/settings"
-              className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-indigo-500 text-white text-[11px] font-black uppercase tracking-wider hover:bg-indigo-600 transition-colors">
+              className="flex items-center gap-2 px-6 py-3 rounded-none bg-amber-500 text-white text-[11px] font-black uppercase tracking-wider hover:bg-amber-600 transition-colors">
               <MaterialIcon name="link" size={14} /> Go to Settings
             </Link>
           </div>
@@ -814,7 +814,7 @@ export function ReposClient() {
               <summary className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/30 cursor-pointer hover:text-muted-foreground/60 transition-colors">
                 Debug info
               </summary>
-              <div className="mt-3 rounded-2xl border border-outline-variant/15 bg-surface-container/20 p-4 space-y-1.5 text-[11px] font-mono text-muted-foreground/60">
+              <div className="mt-3 rounded-none border border-outline-variant/15 bg-surface-container/20 p-4 space-y-1.5 text-[11px] font-mono text-muted-foreground/60">
                 <div><span className="text-foreground/40">source:</span> {meta.source}</div>
                 <div><span className="text-foreground/40">githubUser:</span> {meta.githubUser || "(empty)"}</div>
                 <div><span className="text-foreground/40">scopeLimited:</span> {String(meta.scopeLimited)}</div>
@@ -835,11 +835,11 @@ export function ReposClient() {
         <div className="flex flex-col items-center justify-center py-16 text-center space-y-4">
           <MaterialIcon name="search_off" size={40} className="text-muted-foreground/20" />
           <div>
-            <p className="text-sm font-black text-foreground/60">No results for "{search}"</p>
+            <p className="text-sm font-black text-foreground/60">No results for &quot;{search}&quot;</p>
             <p className="text-[11px] text-muted-foreground/40 mt-1">Try a different keyword or clear the filters</p>
           </div>
           <button type="button" onClick={() => { setSearch(""); setFilter("all"); setLangFilter(null); }}
-            className="text-[10px] font-black uppercase tracking-wider text-indigo-400 hover:text-indigo-300 transition-colors">
+            className="text-[10px] font-black uppercase tracking-wider text-amber-400 hover:text-amber-300 transition-colors">
             Clear all filters
           </button>
         </div>

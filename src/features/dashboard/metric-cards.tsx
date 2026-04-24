@@ -8,21 +8,21 @@ import { motion } from "framer-motion";
 
 const gradients = [
   "from-amber-500/20 via-orange-500/10 to-transparent",
-  "from-blue-500/20 via-cyan-500/10 to-transparent",
+  "from-amber-500/20 via-stone-500/10 to-transparent",
   "from-red-500/20 via-rose-500/10 to-transparent",
   "from-emerald-500/20 via-teal-500/10 to-transparent",
 ];
 
 const iconColors = [
   "text-amber-500",
-  "text-blue-500",
+  "text-amber-500",
   "text-red-500",
   "text-emerald-500",
 ];
 
 const glowColors = [
   "shadow-amber-500/10",
-  "shadow-blue-500/10",
+  "shadow-amber-500/10",
   "shadow-red-500/10",
   "shadow-emerald-500/10",
 ];
@@ -54,10 +54,10 @@ export function MetricCards({
       label: "Forks",
       value: forks,
       mat: "fork_right" as const,
-      border: "border-slate-600",
+      border: "border-stone-600",
       hint: "Network forks",
       hintIcon: "sync" as const,
-      hintClass: "text-slate-500",
+      hintClass: "text-stone-500",
     },
     {
       label: "Open issues",
@@ -85,9 +85,9 @@ export function MetricCards({
         {items.map((i, idx) => (
           <div
             key={i.label}
-            className="relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-md backdrop-blur-xl dark:bg-slate-900/30 dark:shadow-none"
+            className="relative overflow-hidden border border-border bg-card p-6 shadow-md backdrop-blur-xl dark:shadow-none"
           >
-            <div className="absolute inset-0 bg-linear-to-br from-slate-500/5 to-transparent" />
+            <div className="absolute inset-0 bg-linear-to-br from-stone-500/5 to-transparent" />
             <Skeleton className="relative mb-2 h-3 w-20" />
             <Skeleton className="relative h-9 w-24" />
             <Skeleton className="relative mt-2 h-3 w-32" />
@@ -110,8 +110,8 @@ export function MetricCards({
             transition: { duration: 0.2 },
           }}
           className={cn(
-            "group relative overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-6 shadow-md backdrop-blur-xl transition-all duration-300",
-            "hover:border-white/20 hover:shadow-lg hover:shadow-indigo-500/10 dark:bg-slate-900/30 dark:shadow-none",
+            "group relative overflow-hidden border border-border bg-card p-6 shadow-md backdrop-blur-xl transition-all duration-300",
+            "hover:border-primary/30 hover:shadow-lg hover:shadow-amber-500/10 dark:shadow-none",
             glowColors[idx]
           )}
         >
@@ -126,14 +126,14 @@ export function MetricCards({
           </div>
           <div
             className={cn(
-              "mb-3 inline-flex rounded-xl p-2.5 transition-colors duration-300",
+              "mb-3 inline-flex border border-border p-2.5 transition-colors duration-300",
               "bg-white/10 group-hover:bg-white/20",
               iconColors[idx]
             )}
           >
             <MaterialIcon name={item.mat} className="text-xl!" />
           </div>
-          <p className="relative mb-1 font-mono text-xs tracking-widest uppercase text-slate-500">
+          <p className="relative mb-1 font-mono text-xs tracking-widest uppercase text-muted-foreground">
             {item.label}
           </p>
           <h3 className="relative font-heading text-3xl font-bold tracking-tight tabular-nums text-foreground">

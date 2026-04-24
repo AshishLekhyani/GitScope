@@ -59,7 +59,7 @@ function processPRData(prs: GitHubPull[]) {
 
   return {
     statusChart: [
-      { name: "Open", value: open, color: "#6366f1" },
+      { name: "Open", value: open, color: "#f59e0b" },
       { name: "Merged", value: merged, color: "#10b981" },
       { name: "Closed (unmerged)", value: closed, color: "#f43f5e" },
     ],
@@ -94,12 +94,12 @@ export function AnalyticsRepoPanel({ owner, repo }: { owner: string; repo: strin
     return (
       <div className="grid gap-6 md:grid-cols-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <Skeleton key={i} className="h-32 w-full rounded-xl" />
+          <Skeleton key={i} className="h-32 w-full rounded-none" />
         ))}
-        <div className="col-span-1 h-[340px] rounded-xl md:col-span-2 overflow-hidden border border-outline-variant/10">
+        <div className="col-span-1 h-[340px] rounded-none md:col-span-2 overflow-hidden border border-outline-variant/10">
            <Skeleton className="h-full w-full" />
         </div>
-        <div className="h-[340px] w-full rounded-xl overflow-hidden border border-outline-variant/10">
+        <div className="h-[340px] w-full rounded-none overflow-hidden border border-outline-variant/10">
            <Skeleton className="h-full w-full" />
         </div>
       </div>
@@ -202,7 +202,7 @@ export function AnalyticsRepoPanel({ owner, repo }: { owner: string; repo: strin
                   itemStyle={{ color: "var(--foreground)" }}
                 />
                 <Legend iconType="circle" wrapperStyle={{ fontSize: "11px" }} />
-                <Bar dataKey="count" name="Merged PRs" fill="#8b5cf6" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="count" name="Merged PRs" fill="#f59e0b" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

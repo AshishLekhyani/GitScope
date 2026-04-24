@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useEffect, useState, useCallback } from "react";
 import {
@@ -88,7 +88,7 @@ export function IntelligenceDemoModal({ onStateRestore, onStateSave }: DemoModal
               
               <DialogHeader className={"relative"}>
                 <div className={"flex items-center gap-3 sm:gap-4 mb-4"}>
-                  <div className={"size-12 sm:size-14 rounded-2xl bg-linear-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30 shrink-0"}>
+                  <div className={"size-12 sm:size-14 rounded-none bg-linear-to-br from-amber-500/20 to-orange-500/20 flex items-center justify-center border border-amber-500/30 shrink-0"}>
                     <MaterialIcon name={"warning"} className={"text-amber-500"} size={24} />
                   </div>
                   <div className={"min-w-0"}>
@@ -103,12 +103,12 @@ export function IntelligenceDemoModal({ onStateRestore, onStateSave }: DemoModal
               </DialogHeader>
 
               <div className={"space-y-3 sm:space-y-4 relative"}>
-                <div className={"rounded-xl border border-amber-500/10 bg-amber-500/5 p-3 sm:p-4"}>
+                <div className={"rounded-none border border-amber-500/10 bg-amber-500/5 p-3 sm:p-4"}>
                   <p className={"text-xs sm:text-sm text-muted-foreground leading-relaxed"}>
                     <span className={"text-amber-500 font-semibold"}>Heads up:</span>{" "}
                     The AI-powered features in this hub are currently running on 
                     <span className={"font-semibold text-foreground"}> pre-written logic and demo data</span>. 
-                    No real API keys are being used — this is purely a preview of what&apos;s possible.
+                    No real API keys are being used � this is purely a preview of what&apos;s possible.
                   </p>
                 </div>
 

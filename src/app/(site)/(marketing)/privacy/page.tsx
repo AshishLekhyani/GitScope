@@ -37,8 +37,8 @@ export default function PrivacyPage() {
               "Session identifiers stored in a secure, HTTP-only cookie for authentication purposes.",
               "Billing information (name, payment method type, last-four digits) processed and stored by Stripe — we never see or store raw card numbers.",
             ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-400" />
+              <li key={i} className="flex items-start gap-2 text-sm text-stone-400">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400" />
                 {item}
               </li>
             ))}
@@ -68,8 +68,8 @@ export default function PrivacyPage() {
               "Detecting abuse and enforcing our Terms of Service.",
               "Improving GitScope through aggregated, anonymised product analytics.",
             ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-400" />
+              <li key={i} className="flex items-start gap-2 text-sm text-stone-400">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400" />
                 {item}
               </li>
             ))}
@@ -128,13 +128,13 @@ export default function PrivacyPage() {
                   "GitScope is hosted on Vercel. Edge logs may temporarily contain IP addresses for abuse detection, subject to Vercel's data processing agreement.",
               },
             ].map((tp) => (
-              <div key={tp.name} className="rounded-xl border border-white/5 bg-slate-900/40 p-4">
+              <div key={tp.name} className="rounded-none border border-white/5 bg-stone-900/40 p-4">
                 <p className="mb-1 text-sm font-semibold text-white">{tp.name}</p>
-                <p className="text-sm text-slate-400">{tp.detail}</p>
+                <p className="text-sm text-stone-400">{tp.detail}</p>
               </div>
             ))}
           </div>
-          <p className="mt-4 text-sm text-slate-400">
+          <p className="mt-4 text-sm text-stone-400">
             We do not sell your data to third parties, and we do not use your data for advertising.
           </p>
         </>
@@ -177,13 +177,13 @@ export default function PrivacyPage() {
               "Export: request a JSON export of your account data and search history by emailing acnotros2@gmail.com.",
               "Objection: opt out of aggregated product analytics by emailing acnotros2@gmail.com.",
             ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-slate-400">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-indigo-400" />
+              <li key={i} className="flex items-start gap-2 text-sm text-stone-400">
+                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400" />
                 {item}
               </li>
             ))}
           </ul>
-          <p className="mt-3 text-sm text-slate-400">
+          <p className="mt-3 text-sm text-stone-400">
             We will respond to verified requests within 30 days. If you are in the EU or UK you
             also have the right to lodge a complaint with your local supervisory authority.
           </p>
@@ -215,7 +215,7 @@ export default function PrivacyPage() {
           For privacy questions, data requests, or concerns, email us at{" "}
           <Link
             href="mailto:acnotros2@gmail.com"
-            className="font-semibold text-indigo-400 hover:text-indigo-300 hover:underline"
+            className="font-semibold text-amber-400 hover:text-amber-300 hover:underline"
           >
             acnotros2@gmail.com
           </Link>
@@ -229,15 +229,15 @@ export default function PrivacyPage() {
     <div className="mx-auto max-w-6xl px-4 sm:px-6 py-12">
       {/* Header */}
       <div className="mb-12">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-500/20 bg-indigo-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-indigo-400">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/5 px-4 py-1.5 text-xs font-semibold uppercase tracking-widest text-amber-400">
           <ShieldCheck className="size-3" />
           Legal
         </div>
         <h1 className="font-heading text-4xl font-black tracking-tight text-white sm:text-5xl">
           Privacy Policy
         </h1>
-        <p className="mt-3 text-sm text-slate-500">Last updated: April 1, 2026</p>
-        <p className="mt-4 max-w-2xl text-base text-slate-400">
+        <p className="mt-3 text-sm text-stone-500">Last updated: April 1, 2026</p>
+        <p className="mt-4 max-w-2xl text-base text-stone-400">
           GitScope is built on the principle that your data exists to serve you — not our
           ad network, not third-party data brokers. This policy explains plainly what we
           collect, why, and what you can do about it.
@@ -247,15 +247,15 @@ export default function PrivacyPage() {
       <div className="grid gap-8 lg:grid-cols-[220px_1fr]">
         {/* Sticky sidebar nav */}
         <nav className="hidden lg:block">
-          <div className="sticky top-24 space-y-1 rounded-2xl border border-white/5 bg-[#171f33]/80 p-4 backdrop-blur-xl">
-            <p className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          <div className="sticky top-24 space-y-1 rounded-none border border-white/5 bg-[#171512]/90 p-4 backdrop-blur-xl">
+            <p className="mb-3 px-2 text-[10px] font-bold uppercase tracking-widest text-stone-500">
               Sections
             </p>
             {sections.map((s) => (
               <a
                 key={s.id}
                 href={`#${s.id}`}
-                className="block rounded-lg px-3 py-2 text-xs text-slate-400 transition hover:bg-white/5 hover:text-white"
+                className="block rounded-none px-3 py-2 text-xs text-stone-400 transition hover:bg-white/5 hover:text-white"
               >
                 {s.heading}
               </a>
@@ -269,10 +269,10 @@ export default function PrivacyPage() {
             <section
               key={s.id}
               id={s.id}
-              className="scroll-mt-24 rounded-2xl border border-white/5 bg-[#171f33]/80 p-7 backdrop-blur-xl"
+              className="scroll-mt-24 rounded-none border border-white/5 bg-[#171512]/90 p-7 backdrop-blur-xl"
             >
               <h2 className="mb-4 font-heading text-lg font-black text-white">{s.heading}</h2>
-              <div className="text-sm leading-relaxed text-slate-400">{s.content}</div>
+              <div className="text-sm leading-relaxed text-stone-400">{s.content}</div>
             </section>
           ))}
         </div>

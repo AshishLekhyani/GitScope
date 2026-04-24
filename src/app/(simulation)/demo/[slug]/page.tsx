@@ -31,7 +31,7 @@ function ComparisonMock() {
           Fleet Standard Benchmarking
         </h2>
         <div className="flex gap-4">
-          <div className="bg-surface-container px-3 py-1.5 rounded-lg border border-primary/20 text-[10px] font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+          <div className="bg-surface-container px-3 py-1.5 rounded-none border border-primary/20 text-[10px] font-mono font-bold uppercase tracking-widest text-primary flex items-center gap-2">
             <span className="size-1.5 animate-pulse rounded-full bg-primary" />
             Live Benchmarking
           </div>
@@ -39,7 +39,7 @@ function ComparisonMock() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="rounded-none border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
             <div className="size-2 rounded-full bg-primary" />
             Primary Repo: architecture-core-v3
@@ -61,7 +61,7 @@ function ComparisonMock() {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-border bg-card p-6 shadow-sm">
+        <div className="rounded-none border border-border bg-card p-6 shadow-sm">
           <div className="mb-4 flex items-center gap-2 font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
             <div className="size-2 rounded-full bg-emerald-400" />
             Comparison: legacy-monolith-backup
@@ -109,11 +109,11 @@ function ClustersMock() {
           {[0, 45, 90, 135, 180, 225, 270, 315].map((angle, i) => (
             <motion.div
               key={i}
-              className="absolute left-1/2 top-1/2 size-12 rounded-2xl border border-primary/20 bg-primary/10 backdrop-blur-md shadow-lg flex items-center justify-center"
+              className="absolute left-1/2 top-1/2 size-12 rounded-none border border-primary/20 bg-primary/10 backdrop-blur-md shadow-lg flex items-center justify-center"
               style={{
                 transform: `rotate(${angle}deg) translate(200px) rotate(-${angle}deg)`,
               }}
-              whileHover={{ scale: 1.2, backgroundColor: "rgba(192, 193, 255, 0.3)" }}
+              whileHover={{ scale: 1.2, backgroundColor: "rgba(245, 158, 11, 0.22)" }}
             >
               <Users className="size-5 text-primary" />
             </motion.div>
@@ -126,7 +126,7 @@ function ClustersMock() {
           </svg>
         </motion.div>
 
-        <div className="absolute size-24 rounded-full border border-primary/40 bg-primary/20 backdrop-blur-xl shadow-[0_0_40px_rgba(75,77,216,0.3)] flex items-center justify-center z-10">
+        <div className="absolute size-24 rounded-full border border-primary/40 bg-primary/20 backdrop-blur-xl shadow-[0_0_40px_rgba(245,158,11,0.3)] flex items-center justify-center z-10">
           <Network className="size-10 text-primary animate-pulse" />
         </div>
       </div>
@@ -166,7 +166,7 @@ function HeatmapMock() {
               animate={{ scale: 1, opacity: 1 }}
               transition={{ delay: i * 0.005 }}
               className={cn(
-                "rounded-sm border border-border shadow-inner transition-colors hover:border-primary/50 cursor-default",
+                "rounded-none border border-border shadow-inner transition-colors hover:border-primary/50 cursor-default",
                 cls
               )}
             />
@@ -180,7 +180,7 @@ function HeatmapMock() {
           { label: "Temporal Gaps", value: "Zero Identified", icon: ShieldCheck },
           { label: "Active Nodes", value: "14.2k", icon: Code2 },
         ].map((stat, i) => (
-          <div key={i} className="rounded-xl border border-border bg-card p-4 transition-all hover:bg-muted/50">
+          <div key={i} className="rounded-none border border-border bg-card p-4 transition-all hover:bg-muted/50">
             <div className="flex items-center gap-3 mb-2">
               <stat.icon className="size-4 text-primary" />
               <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">{stat.label}</span>
@@ -222,7 +222,7 @@ function HealthMock() {
                 transition={{ duration: 1.5, delay: i * 0.1, ease: "circOut" }}
                 className={cn(
                   "h-full rounded-full transition-all",
-                  item.score > 80 ? "bg-primary shadow-[0_0_10px_rgba(75,77,216,0.5)]" : "bg-amber-500 shadow-[0_0_10px_rgba(251,191,36,0.3)]"
+                  item.score > 80 ? "bg-primary shadow-[0_0_10px_rgba(245,158,11,0.5)]" : "bg-amber-500 shadow-[0_0_10px_rgba(251,191,36,0.3)]"
                 )}
               />
             </div>
@@ -245,7 +245,7 @@ function ForecastingMock() {
         </p>
       </div>
 
-      <div className="relative rounded-2xl border border-border bg-card p-8 overflow-hidden shadow-sm">
+      <div className="relative rounded-none border border-border bg-card p-8 overflow-hidden shadow-sm">
          <div className="absolute inset-x-0 bottom-0 top-1/2 bg-linear-to-t from-primary/5 to-transparent" />
          
          <div className="relative z-10 flex items-end gap-1 h-[240px] border-b border-border">

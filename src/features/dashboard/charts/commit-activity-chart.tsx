@@ -52,7 +52,7 @@ export function CommitActivityChart({
           <Skeleton className="h-5 w-40" />
         </CardHeader>
         <CardContent className="h-[240px]">
-          <Skeleton className="h-full w-full rounded-lg" />
+          <Skeleton className="h-full w-full rounded-none" />
         </CardContent>
       </Card>
     );

@@ -146,12 +146,12 @@ export function IntelligenceClient() {
   };
 
   return (
-    <div className="flex flex-col gap-10 p-1 md:p-8 animate-in fade-in duration-700 font-sans">
+    <div className="flex flex-col gap-10 p-1 md:p-8 animate-in fade-in duration-700 font-mono">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-outline-variant/10 pb-10">
         <div className="space-y-4">
-          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-indigo-500/5 border border-indigo-500/10 mb-2">
-            <span className="size-2 rounded-full bg-indigo-500 animate-pulse" />
-            <span className="text-[10px] font-black uppercase tracking-widest text-indigo-500/80">
+          <div className="inline-flex items-center gap-3 px-4 py-1.5 rounded-full bg-amber-500/5 border border-amber-500/10 mb-2">
+            <span className="size-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-[10px] font-black uppercase tracking-widest text-amber-500/80">
               {capsLoading ? "Loading AI Tier" : `${tierLabel} AI Hub`}
             </span>
           </div>
@@ -163,7 +163,7 @@ export function IntelligenceClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-2xl border border-outline-variant/10 shadow-sm overflow-x-auto scrollbar-none">
+        <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-none border border-outline-variant/10 shadow-sm overflow-x-auto scrollbar-none">
           {[
             { id: "codelens",  icon: "rate_review",    label: "Code Lens"  },
             { id: "orghealth", icon: "corporate_fare", label: "Org Health" },
@@ -178,9 +178,9 @@ export function IntelligenceClient() {
                type="button"
                onClick={() => setActiveTab(tab.id as PageState["activeTab"])}
                className={cn(
-                 "flex items-center gap-2 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                 "flex items-center gap-2 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-widest transition-all",
                  activeTab === tab.id
-                 ? "bg-indigo-500 text-white shadow-xl scale-105"
+                 ? "bg-amber-500 text-white shadow-xl scale-105"
                  : "text-muted-foreground hover:bg-surface-container-highest"
                )}
             >
@@ -192,22 +192,22 @@ export function IntelligenceClient() {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-3">
-        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
+        <div className="rounded-none border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">AI Tier</p>
           <p className="text-sm font-black mt-1">{tierLabel}</p>
         </div>
-        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
+        <div className="rounded-none border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Agent Depth</p>
           <p className="text-sm font-black mt-1">{caps?.capabilities.aiAgentDepth ?? 1} specialist layer{(caps?.capabilities.aiAgentDepth ?? 1) > 1 ? "s" : ""}</p>
         </div>
-        <div className="rounded-2xl border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
+        <div className="rounded-none border border-outline-variant/10 bg-surface-container/30 px-4 py-3">
           <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/60">Hourly AI Budget</p>
           <p className="text-sm font-black mt-1">{usedThisHour} / {caps?.capabilities.aiRequestsPerHour ?? 20} calls used</p>
         </div>
       </div>
 
       {limitNotice && (
-        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs font-bold text-amber-500">
+        <div className="rounded-none border border-amber-500/20 bg-amber-500/5 px-4 py-3 text-xs font-bold text-amber-500">
           {limitNotice}
         </div>
       )}
@@ -224,7 +224,7 @@ export function IntelligenceClient() {
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-[9px] font-black uppercase tracking-widest text-indigo-400/80 flex items-center gap-1.5">
+              <p className="text-[9px] font-black uppercase tracking-widest text-amber-400/80 flex items-center gap-1.5">
                 <MaterialIcon name="corporate_fare" size={12} /> Org Health Dashboard
               </p>
               <p className="text-xs text-muted-foreground/50 mt-0.5">
@@ -232,7 +232,7 @@ export function IntelligenceClient() {
               </p>
             </div>
             {caps && (caps.plan === "free") && (
-              <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
+              <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
                 History requires Pro — scores shown from current session only
               </span>
             )}
@@ -244,9 +244,9 @@ export function IntelligenceClient() {
               <span className="text-sm">Loading org health…</span>
             </div>
           ) : orgHealth.length === 0 ? (
-            <div className="flex flex-col items-center gap-4 py-16 text-center rounded-3xl border-2 border-dashed border-outline-variant/15 bg-surface-container/10">
-              <div className="size-16 rounded-3xl bg-indigo-500/5 border border-indigo-500/10 flex items-center justify-center">
-                <MaterialIcon name="corporate_fare" size={28} className="text-indigo-500/30" />
+            <div className="flex flex-col items-center gap-4 py-16 text-center rounded-none border-2 border-dashed border-outline-variant/15 bg-surface-container/10">
+              <div className="size-16 rounded-none bg-amber-500/5 border border-amber-500/10 flex items-center justify-center">
+                <MaterialIcon name="corporate_fare" size={28} className="text-amber-500/30" />
               </div>
               <div>
                 <p className="text-sm font-black text-foreground/70">No repos scanned yet</p>
@@ -270,7 +270,7 @@ export function IntelligenceClient() {
                     { label: "Healthy", value: `${healthy} / ${sorted.length}`, color: "text-emerald-400" },
                     { label: "At Risk", value: atRisk, color: atRisk > 0 ? "text-red-400" : "text-muted-foreground/40" },
                   ].map((m) => (
-                    <div key={m.label} className="px-4 py-3 rounded-2xl bg-surface-container/30 border border-outline-variant/10 text-center space-y-0.5">
+                    <div key={m.label} className="px-4 py-3 rounded-none bg-surface-container/30 border border-outline-variant/10 text-center space-y-0.5">
                       <p className={cn("text-xl font-black", m.color)}>{m.value}</p>
                       <p className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40">{m.label}</p>
                     </div>
@@ -278,7 +278,7 @@ export function IntelligenceClient() {
                 </div>
 
                 {/* Fleet score bar chart */}
-                <div className="p-4 rounded-2xl bg-surface-container/20 border border-outline-variant/10 space-y-2.5">
+                <div className="p-4 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-2.5">
                   <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
                     <MaterialIcon name="bar_chart" size={12} /> Score Distribution
                   </p>
@@ -326,7 +326,7 @@ export function IntelligenceClient() {
 
                     return (
                       <div key={entry.repo}
-                        className="flex items-center gap-3 px-4 py-3.5 rounded-2xl bg-surface-container/20 border border-outline-variant/8 hover:border-indigo-500/20 hover:bg-surface-container/40 transition-all group">
+                        className="flex items-center gap-3 px-4 py-3.5 rounded-none bg-surface-container/20 border border-outline-variant/8 hover:border-amber-500/20 hover:bg-surface-container/40 transition-all group">
                         {/* Rank */}
                         <span className="text-[10px] font-black text-muted-foreground/25 w-4 text-center shrink-0">{i + 1}</span>
 
@@ -359,7 +359,7 @@ export function IntelligenceClient() {
                             if (!selectedRepos.includes(entry.repo)) handleSelect(entry.repo);
                             setActiveTab("codelens");
                           }}
-                          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-500/8 border border-indigo-500/15 text-indigo-400/50 hover:bg-indigo-500/20 hover:text-indigo-400 hover:border-indigo-500/30 transition-all text-[9px] font-black opacity-0 group-hover:opacity-100">
+                          className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-amber-500/8 border border-amber-500/15 text-amber-400/50 hover:bg-amber-500/20 hover:text-amber-400 hover:border-amber-500/30 transition-all text-[9px] font-black opacity-0 group-hover:opacity-100">
                           <MaterialIcon name="open_in_new" size={11} /> Inspect
                         </button>
                       </div>
@@ -374,9 +374,9 @@ export function IntelligenceClient() {
 
       <div className="space-y-12 min-h-150 relative">
         {selectedRepos.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/20 rounded-3xl border-2 border-dashed border-outline-variant/20">
-             <div className="size-20 rounded-3xl bg-indigo-500/5 flex items-center justify-center border border-indigo-500/10 mb-8">
-                <MaterialIcon name="explore" size={32} className="text-indigo-500/20" />
+          <div className="flex flex-col items-center justify-center py-48 text-center bg-surface-container/20 rounded-none border-2 border-dashed border-outline-variant/20">
+             <div className="size-20 rounded-none bg-amber-500/5 flex items-center justify-center border border-amber-500/10 mb-8">
+                <MaterialIcon name="explore" size={32} className="text-amber-500/20" />
              </div>
              <h3 className="text-2xl font-black mb-3">No Active Targets</h3>
              <p className="text-sm text-muted-foreground max-w-sm mx-auto leading-relaxed mb-8">
@@ -431,8 +431,8 @@ export function IntelligenceClient() {
                  <div className="grid grid-cols-1 gap-12">
                    {selectedRepos.map(repo => (
                       <div key={repo} className="space-y-6">
-                        <div className="flex items-center gap-3 px-4 py-2 rounded-2xl bg-surface-container/50 border border-outline-variant/10 w-fit">
-                           <MaterialIcon name="folder" size={18} className="text-indigo-500" />
+                        <div className="flex items-center gap-3 px-4 py-2 rounded-none bg-surface-container/50 border border-outline-variant/10 w-fit">
+                           <MaterialIcon name="folder" size={18} className="text-amber-500" />
                            <span className="text-xs font-black tracking-tight">{repo}</span>
                         </div>
                         <RiskPredictor repo={repo} />

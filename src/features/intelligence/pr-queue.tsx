@@ -153,15 +153,15 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
 
   if (!isPro) {
     return (
-      <div className="flex flex-col items-center gap-4 py-16 text-center rounded-3xl border-2 border-dashed border-indigo-500/15 bg-indigo-500/3">
-        <div className="size-14 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 flex items-center justify-center">
-          <MaterialIcon name="lock" size={24} className="text-indigo-400" />
+      <div className="flex flex-col items-center gap-4 py-16 text-center rounded-none border-2 border-dashed border-amber-500/15 bg-amber-500/3">
+        <div className="size-14 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+          <MaterialIcon name="lock" size={24} className="text-amber-400" />
         </div>
         <div>
           <p className="font-black text-foreground/70">Professional plan required</p>
           <p className="text-xs text-muted-foreground/50 mt-1">PR Queue bulk review requires a Professional plan or higher.</p>
         </div>
-        <a href="/pricing-settings" className="text-[10px] font-black px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white transition-colors">
+        <a href="/pricing-settings" className="text-[10px] font-black px-4 py-2 rounded-none bg-amber-600 hover:bg-amber-500 text-white transition-colors">
           Upgrade Plan
         </a>
       </div>
@@ -179,14 +179,14 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
             onChange={(e) => setRepo(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && fetchPRs()}
             placeholder="owner/repo"
-            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-2xl pl-9 sm:pl-10 pr-3 sm:pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-indigo-500/30 focus:border-indigo-500/40 transition-all"
+            className="w-full bg-surface-container/40 border border-outline-variant/15 rounded-none pl-9 sm:pl-10 pr-3 sm:pr-4 py-3 text-sm placeholder:text-muted-foreground/30 focus:outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/40 transition-all"
           />
         </div>
         <button
           type="button"
           onClick={fetchPRs}
           disabled={loading || !repo.trim()}
-          className="flex items-center gap-1.5 px-3 sm:px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
+          className="flex items-center gap-1.5 px-3 sm:px-5 py-3 rounded-none bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] sm:text-[11px] font-black uppercase tracking-wider transition-colors shrink-0"
         >
           {loading ? <MaterialIcon name="sync" size={14} className="animate-spin" /> : <MaterialIcon name="refresh" size={14} />}
           <span className="hidden sm:inline">{loading ? "Loading…" : "Load PRs"}</span>
@@ -195,14 +195,14 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+        <div className="flex items-center gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
           <MaterialIcon name="error" size={16} className="shrink-0" />{error}
         </div>
       )}
 
       {prs.length === 0 && !loading && !error && (
-        <div className="flex items-start gap-3 p-4 rounded-2xl bg-indigo-500/5 border border-indigo-500/10">
-          <MaterialIcon name="info" size={15} className="text-indigo-400 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-3 p-4 rounded-none bg-amber-500/5 border border-amber-500/10">
+          <MaterialIcon name="info" size={15} className="text-amber-400 shrink-0 mt-0.5" />
           <p className="text-[11px] text-muted-foreground/70 leading-relaxed">
             Load open PRs from any public repo, then select any combination and run AI reviews in bulk. Results appear inline — no page reloads.
           </p>
@@ -217,7 +217,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
               <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground/50">
                 {prs.length} open PR{prs.length !== 1 ? "s" : ""} · {selected.size} selected
               </span>
-              <button type="button" onClick={selectAll} className="text-[9px] font-black text-indigo-400 hover:underline">All</button>
+              <button type="button" onClick={selectAll} className="text-[9px] font-black text-amber-400 hover:underline">All</button>
               <span className="text-muted-foreground/30">·</span>
               <button type="button" onClick={clearAll} className="text-[9px] font-black text-muted-foreground/50 hover:underline">None</button>
             </div>
@@ -225,7 +225,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
               type="button"
               onClick={reviewSelected}
               disabled={selected.size === 0 || reviewing}
-              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-wider transition-colors"
+              className="flex items-center gap-2 px-4 py-2 rounded-none bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-[10px] font-black uppercase tracking-wider transition-colors"
             >
               {reviewing
                 ? <><MaterialIcon name="sync" size={13} className="animate-spin" /> Reviewing…</>
@@ -243,8 +243,8 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
 
               return (
                 <div key={pr.number} className={cn(
-                  "rounded-2xl border transition-all overflow-hidden",
-                  isSelected ? "border-indigo-500/30 bg-indigo-500/3" : "border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20"
+                  "rounded-none border transition-all overflow-hidden",
+                  isSelected ? "border-amber-500/30 bg-amber-500/3" : "border-outline-variant/10 bg-surface-container/20 hover:border-outline-variant/20"
                 )}>
                   {/* PR row */}
                   <div className="flex items-start gap-2 sm:gap-3 p-3 sm:p-4">
@@ -252,12 +252,12 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                       type="checkbox"
                       checked={isSelected}
                       onChange={() => toggleSelect(pr.number)}
-                      className="mt-1 shrink-0 accent-indigo-500"
+                      className="mt-1 shrink-0 accent-amber-500"
                     />
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-start gap-2 flex-wrap">
                         <a href={pr.url} target="_blank" rel="noopener noreferrer"
-                          className="text-xs font-black text-foreground/90 hover:text-indigo-400 transition-colors leading-tight">
+                          className="text-xs font-black text-foreground/90 hover:text-amber-400 transition-colors leading-tight">
                           #{pr.number} {pr.title}
                         </a>
                         {pr.draft && (
@@ -297,7 +297,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                     <div className="border-t border-outline-variant/10 px-4 pb-4 pt-3 space-y-3">
                       {review.loading ? (
                         <div className="flex items-center gap-2 text-xs text-muted-foreground/60">
-                          <MaterialIcon name="sync" size={14} className="animate-spin text-indigo-400" />
+                          <MaterialIcon name="sync" size={14} className="animate-spin text-amber-400" />
                           Reviewing PR #{pr.number}…
                         </div>
                       ) : review.error ? (
@@ -310,7 +310,7 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
                         return (
                           <div className="space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
-                              <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-lg border text-[9px] font-black", vs.text, vs.bg, vs.border)}>
+                              <div className={cn("flex items-center gap-1.5 px-2.5 py-1 rounded-none border text-[9px] font-black", vs.text, vs.bg, vs.border)}>
                                 <MaterialIcon name={vs.icon} size={12} />
                                 {vs.label}
                               </div>
