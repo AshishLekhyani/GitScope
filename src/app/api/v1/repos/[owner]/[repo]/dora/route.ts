@@ -51,7 +51,7 @@ export async function GET(
       `https://api.github.com/repos/${fullName}/deployments?per_page=30`
     ),
     ghGet<{ workflow_runs: { head_branch: string; conclusion: string | null; event: string; created_at: string; run_started_at: string; updated_at: string }[] }>(
-      `https://api.github.com/repos/${fullName}/actions/runs?per_page=60&created=>=${since30d}`
+      `https://api.github.com/repos/${fullName}/actions/runs?per_page=60&created=>${since30d}`
     ),
     ghGet<{ created_at: string; closed_at: string | null; pull_request?: object }[]>(
       `https://api.github.com/repos/${fullName}/issues?state=closed&labels=bug&per_page=20&sort=updated&direction=desc`

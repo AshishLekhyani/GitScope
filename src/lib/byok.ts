@@ -76,7 +76,7 @@ export function resolveActiveProvider(keys: UserBYOKKeys): string {
   if (process.env.ANTHROPIC_API_KEY) return "Claude (GitScope)";
   if (process.env.OPENAI_API_KEY)    return "GPT (GitScope)";
   if (process.env.GEMINI_API_KEY)    return "Gemini (GitScope)";
-  if (process.env.GROQ_API_KEY)      return "Llama 3.1 70B (free)";
+  if (process.env.GROQ_API_KEY)      return "Groq / Llama (GitScope)";
   if (process.env.DEEPSEEK_API_KEY)  return "DeepSeek (community)";
   if (process.env.CEREBRAS_API_KEY)  return "Cerebras (free)";
   return "GitScope Static Analysis";

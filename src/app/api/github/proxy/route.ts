@@ -14,8 +14,10 @@ async function getHandler(req: NextRequest) {
     return NextResponse.json({ error: "Missing path parameter" }, { status: 400 });
   }
 
-  // Prevent SSRF — only allow github.com API paths
-  if (path.startsWith("http") || path.includes("..")) {
+  // Keep this public proxy narrow: repo metadata only. Other GitHub data has
+  // dedicated API routes with their own auth/rate-limit behavior.
+  const apiPath = path.startsWith("/") ? path : `/${path}`;
+  if (path.startsWith("http") || path.includes("..") || !/^\/repos\/[\w.-]+\/[\w.-]+$/.test(apiPath)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
@@ -24,7 +26,6 @@ async function getHandler(req: NextRequest) {
       allowEnvFallback: false,
     });
 
-    const apiPath = path.startsWith("/") ? path : `/${path}`;
     const { data } = await githubFetch<unknown>(apiPath, {
       userToken,
       allowEnvFallback: false,

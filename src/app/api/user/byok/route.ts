@@ -18,6 +18,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { encrypt, safeDecrypt } from "@/lib/encrypt";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 type CoreProvider = "anthropic" | "openai" | "gemini";
 type ExtProvider = "groq" | "deepseek" | "mistral" | "moonshot" | "cerebras" | "ollama";
@@ -58,7 +59,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   ollama:    "Ollama",
 };
 
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -145,6 +146,8 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({ ok: true, saved: key !== null && key !== "" });
 }
+
+export const POST = withRouteSecurity(postHandler, SecurityPresets.sensitive);
 
 /** GET /api/user/byok — return which providers have keys set (never returns the actual keys) */
 export async function GET(_req: NextRequest) {

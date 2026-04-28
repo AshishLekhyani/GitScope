@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 import crypto from "crypto";
 
 function hashKey(raw: string): string {
@@ -38,7 +39,7 @@ export async function GET() {
 }
 
 // POST /api/user/api-keys — create a new key (returns raw key ONCE)
-export async function POST(req: NextRequest) {
+async function postHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -84,7 +85,7 @@ export async function POST(req: NextRequest) {
 }
 
 // DELETE /api/user/api-keys?id=xxx
-export async function DELETE(req: NextRequest) {
+async function deleteHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
@@ -99,3 +100,6 @@ export async function DELETE(req: NextRequest) {
   await prisma.apiKey.delete({ where: { id } });
   return NextResponse.json({ ok: true });
 }
+
+export const POST = withRouteSecurity(postHandler, SecurityPresets.sensitive);
+export const DELETE = withRouteSecurity(deleteHandler, SecurityPresets.sensitive);

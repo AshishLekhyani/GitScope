@@ -83,7 +83,7 @@ function modelsForEffort(effort: AgentEffort, plan: AIPlan) {
     openai:    isHigh && isPaid ? "gpt-4o"                   : "gpt-4o-mini",
     gemini:    isHigh && isPaid ? "gemini-2.0-flash"          : "gemini-1.5-flash",
     groq:      isHigh           ? "llama-3.3-70b-versatile"  : "llama-3.1-8b-instant",
-    cerebras:  "llama3.1-70b",
+    cerebras:  "llama3.1-8b",
     deepseek:  "deepseek-chat",
     mistral:   isHigh && isPaid ? "mistral-large-latest"     : "mistral-small-latest",
   };

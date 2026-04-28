@@ -2138,7 +2138,7 @@ export function SettingsPanel() {
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px]">
                     {[
-                      { name: "Groq", desc: "500 req/day (Llama 70B)", url: "console.groq.com/keys", color: "text-[#f55036]" },
+                      { name: "Groq", desc: "Free-tier Llama access", url: "console.groq.com/keys", color: "text-[#f55036]" },
                       { name: "Gemini", desc: "1,500 req/day (Flash)", url: "aistudio.google.com/apikey", color: "text-[#4285f4]" },
                       { name: "Cerebras", desc: "Fast free inference", url: "cloud.cerebras.ai", color: "text-violet-400" },
                     ].map((p) => (
@@ -2150,9 +2150,9 @@ export function SettingsPanel() {
                     ))}
                   </div>
 
-                  <ByokRow provKey="groq"     label="Groq (Llama 3.3 70B — 500 req/day free)" dot="bg-[#f55036]"  placeholder="gsk_..."    inputValue={byokGroqInput}     setInputValue={setByokGroqInput} />
+                  <ByokRow provKey="groq"     label="Groq (Llama — free tier)"                 dot="bg-[#f55036]"  placeholder="gsk_..."    inputValue={byokGroqInput}     setInputValue={setByokGroqInput} />
                   <ByokRow provKey="gemini"   label="Google Gemini (1,500 req/day free)"       dot="bg-[#4285f4]"  placeholder="AIzaSy..."  inputValue={byokGeminiInput}   setInputValue={setByokGeminiInput} />
-                  <ByokRow provKey="cerebras" label="Cerebras (Llama 70B — free tier)"         dot="bg-violet-700" placeholder="csk-..."    inputValue={byokCerebrasInput} setInputValue={setByokCerebrasInput} />
+                  <ByokRow provKey="cerebras" label="Cerebras (Llama 3.1 8B — free tier)"      dot="bg-violet-700" placeholder="csk-..."    inputValue={byokCerebrasInput} setInputValue={setByokCerebrasInput} />
                 </div>
 
                 {/* ── Prefer GitScope managed keys toggle ── */}

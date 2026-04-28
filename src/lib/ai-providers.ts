@@ -4,7 +4,7 @@
  * Provider priority (first key that is set wins):
  *   1. BYOK keys (user's own keys — highest priority)
  *   2. Server anthropic/openai/gemini keys (GitScope-managed tiers)
- *   3. Groq       — FREE tier, Llama-3.1-70B, extremely fast
+ *   3. Groq       — FREE tier, Llama 3.1/3.3 models, extremely fast
  *   4. DeepSeek   — Very cheap ($0.14/M tokens), excellent at code
  *   5. Mistral    — Free tier (mistral-small), OpenAI-compatible
  *   6. Moonshot   — Kimi AI, free credits, strong reasoning
@@ -94,13 +94,44 @@ function moonshotModel(plan: AIPlan): string {
 }
 
 function cerebrasModel(_plan: AIPlan): string {
-  // Cerebras uses Llama 3.1 on world's fastest AI chip — free tier available
-  return "llama3.1-70b";
+  // Cerebras production models currently include llama3.1-8b and gpt-oss-120b.
+  // The old llama3.1-70b id returns 404 on the OpenAI-compatible endpoint.
+  return "llama3.1-8b";
 }
 
 function ollamaModel(plan: AIPlan): string {
   // Local Ollama — model name depends on what user has pulled
   return isPaidPlan(plan) ? "llama3.1:70b" : "llama3.1:8b";
+}
+
+function trimMiddle(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const head = Math.floor(maxChars * 0.65);
+  const tail = maxChars - head;
+  return `${text.slice(0, head)}\n\n[GitScope trimmed provider payload to stay within request limits]\n\n${text.slice(-tail)}`;
+}
+
+function fitForSmallContext(opts: AICallOptions, maxChars: number, maxOutputTokens: number): AICallOptions {
+  return {
+    ...opts,
+    userPrompt: trimMiddle(opts.userPrompt, maxChars),
+    maxTokens: Math.min(opts.maxTokens ?? maxOutputTokens, maxOutputTokens),
+  };
+}
+
+async function withTimeout<T>(promise: Promise<T>, label: string): Promise<T> {
+  const ms = Number(process.env.AI_PROVIDER_TIMEOUT_MS ?? 18_000);
+  let timeout: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<T>((_, reject) => {
+        timeout = setTimeout(() => reject(new Error(`${label} timed out after ${ms}ms`)), ms);
+      }),
+    ]);
+  } finally {
+    if (timeout) clearTimeout(timeout);
+  }
 }
 
 // ── Individual provider callers ───────────────────────────────────────────────
@@ -161,6 +192,7 @@ async function callGemini(opts: AICallOptions): Promise<AICallResult | null> {
 async function callGroq(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = opts.byokKeys?.groq ?? process.env.GROQ_API_KEY;
   if (!apiKey) return null;
+  opts = fitForSmallContext(opts, isPaidPlan(opts.plan) ? 38_000 : 18_000, isPaidPlan(opts.plan) ? 2048 : 1024);
   const model = groqModel(opts.plan);
   const client = new OpenAI({ apiKey, baseURL: "https://api.groq.com/openai/v1" });
   const res = await client.chat.completions.create({
@@ -233,6 +265,7 @@ async function callMoonshot(opts: AICallOptions): Promise<AICallResult | null> {
 async function callCerebras(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = opts.byokKeys?.cerebras ?? process.env.CEREBRAS_API_KEY;
   if (!apiKey) return null;
+  opts = fitForSmallContext(opts, 28_000, 2048);
   const model = cerebrasModel(opts.plan);
   const client = new OpenAI({ apiKey, baseURL: "https://api.cerebras.ai/v1" });
   const res = await client.chat.completions.create({
@@ -304,7 +337,7 @@ function mergeJSON(primary: string, secondary: string, primaryModel: string, sec
 // continues to the next provider. Re-throws everything else (rate limits, network).
 async function safeCall(fn: () => Promise<AICallResult | null>): Promise<AICallResult | null> {
   try {
-    return await fn();
+    return await withTimeout(fn(), "AI provider");
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status;
     console.warn(`[AI] Provider error ${status ?? "(network/timeout)"} — trying next provider`);

@@ -5,6 +5,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { validateAutomationActionUrl } from "@/lib/outbound-url";
 
 const VALID_METRICS  = ["healthScore", "securityScore", "qualityScore", "criticalCount"] as const;
 const VALID_OPS      = ["lt", "gt", "drop_by"] as const;
@@ -62,9 +63,8 @@ export async function POST(req: NextRequest) {
   if (!VALID_OPS.includes(triggerOp as typeof VALID_OPS[number]))              return NextResponse.json({ error: "Invalid trigger operator." }, { status: 400 });
   if (!VALID_ACTIONS.includes(actionType as typeof VALID_ACTIONS[number]))     return NextResponse.json({ error: "Invalid action type." }, { status: 400 });
   if (isNaN(triggerThreshold)) return NextResponse.json({ error: "Threshold must be a number." }, { status: 400 });
-  if ((actionType === "webhook" || actionType === "github_issue") && !actionUrl) {
-    return NextResponse.json({ error: "actionUrl is required for webhook and github_issue actions." }, { status: 400 });
-  }
+  const actionUrlValidation = validateAutomationActionUrl(actionType, actionUrl);
+  if (!actionUrlValidation.ok) return NextResponse.json({ error: actionUrlValidation.error }, { status: 400 });
 
   const rule = await prisma.webhookRule.create({
     data: {
@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
       triggerOp,
       triggerThreshold,
       actionType,
-      actionUrl,
+      actionUrl: actionUrlValidation.url,
       repoFilter,
     },
   });

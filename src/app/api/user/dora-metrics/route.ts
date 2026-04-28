@@ -147,7 +147,7 @@ export async function GET(req: Request) {
             ),
             // GitHub Actions workflow runs — production deployments on default branch
             ghGet<{ workflow_runs: { id: number; status: string; conclusion: string | null; created_at: string; head_branch: string; event: string; run_started_at: string; updated_at: string }[] }>(
-              `https://api.github.com/repos/${fullName}/actions/runs?per_page=60&created=>=${since30d}`,
+              `https://api.github.com/repos/${fullName}/actions/runs?per_page=60&created=>${since30d}`,
               token
             ),
             ghGet<{ created_at: string; closed_at: string | null; pull_request?: object }[]>(

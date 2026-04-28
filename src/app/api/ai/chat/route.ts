@@ -48,7 +48,7 @@ function pickModels(plan: string, effort: string) {
     openai: isHigh && isPaid ? "gpt-4o" : "gpt-4o-mini",
     gemini: isHigh && isPaid ? "gemini-2.0-flash" : "gemini-1.5-flash",
     groq: isHigh ? "llama-3.3-70b-versatile" : "llama-3.1-8b-instant",
-    cerebras: "llama3.1-70b",
+    cerebras: "llama3.1-8b",
     deepseek: "deepseek-chat",
     mistral: isHigh && isPaid ? "mistral-large-latest" : "mistral-small-latest",
   };
@@ -61,6 +61,32 @@ function maxTokensForEffort(effort: string): number {
     case "maximum":  return 16000;
     default:         return 4096;
   }
+}
+
+function trimMiddle(text: string, maxChars: number): string {
+  if (text.length <= maxChars) return text;
+  const head = Math.floor(maxChars * 0.65);
+  const tail = maxChars - head;
+  return `${text.slice(0, head)}\n\n[GitScope trimmed chat context to fit this provider]\n\n${text.slice(-tail)}`;
+}
+
+function fitChatMessages(
+  messages: OpenAI.Chat.ChatCompletionMessageParam[],
+  maxChars: number
+): OpenAI.Chat.ChatCompletionMessageParam[] {
+  const next = [...messages];
+  let total = next.reduce((sum, msg) => sum + (typeof msg.content === "string" ? msg.content.length : 0), 0);
+  for (let i = 1; i < next.length - 1 && total > maxChars; i++) {
+    const content = next[i].content;
+    if (typeof content !== "string") continue;
+    const trimmed = trimMiddle(content, Math.max(400, Math.floor(content.length * 0.5)));
+    next[i] = { ...next[i], content: trimmed };
+    total -= content.length - trimmed.length;
+  }
+  if (total > maxChars && typeof next[0]?.content === "string") {
+    next[0] = { ...next[0], content: trimMiddle(next[0].content, Math.max(2_000, maxChars - 4_000)) };
+  }
+  return next;
 }
 
 export async function POST(req: Request) {
@@ -108,7 +134,7 @@ export async function POST(req: Request) {
         const conversation = await loadConversation(repo, session.user.id);
 
         // Auto-build repo context from: (1) user-provided, (2) prior scan knowledge, (3) live GitHub metadata
-        let enrichedContext = repoContext ?? conversation.repoContext ?? "";
+        const enrichedContext = repoContext ?? conversation.repoContext ?? "";
 
         // Load cached scan knowledge from prior repo scans
         const scanKnowledge = await loadRepoKnowledge(session.user.id, repo).catch(() => null);
@@ -199,13 +225,23 @@ export async function POST(req: Request) {
         let assistantText = "";
 
         // Helper: OpenAI-compatible streaming (works for OpenAI, Groq, Gemini, Cerebras, DeepSeek, Mistral)
-        async function streamOpenAICompat(client: OpenAI, model: string): Promise<string> {
-          const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+        async function streamOpenAICompat(
+          client: OpenAI,
+          model: string,
+          options?: { maxInputChars?: number; maxOutputTokens?: number }
+        ): Promise<string> {
+          let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
             { role: "system", content: systemPrompt },
             ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
             { role: "user", content: message },
           ];
-          const resp = await client.chat.completions.create({ model, max_tokens: maxTokens, stream: true, messages });
+          if (options?.maxInputChars) messages = fitChatMessages(messages, options.maxInputChars);
+          const resp = await client.chat.completions.create({
+            model,
+            max_tokens: Math.min(maxTokens, options?.maxOutputTokens ?? maxTokens),
+            stream: true,
+            messages,
+          });
           let out = "";
           for await (const chunk of resp) {
             const delta = chunk.choices[0]?.delta?.content ?? "";
@@ -261,10 +297,11 @@ export async function POST(req: Request) {
 
         if (groqKey && !providerSucceeded) {
           try {
-            emit({ type: "status", step: "Using Groq (Llama 3.3 70B)…" });
+            emit({ type: "status", step: `Using Groq (${models.groq})…` });
             assistantText = await streamOpenAICompat(
               new OpenAI({ apiKey: groqKey, baseURL: "https://api.groq.com/openai/v1" }),
-              models.groq
+              models.groq,
+              { maxInputChars: plan === "free" ? 18_000 : 38_000, maxOutputTokens: plan === "free" ? 1024 : 2048 }
             );
             providerSucceeded = true;
           } catch (err) {
@@ -274,10 +311,11 @@ export async function POST(req: Request) {
 
         if (cerebrasKey && !providerSucceeded) {
           try {
-            emit({ type: "status", step: "Using Cerebras…" });
+            emit({ type: "status", step: `Using Cerebras (${models.cerebras})…` });
             assistantText = await streamOpenAICompat(
               new OpenAI({ apiKey: cerebrasKey, baseURL: "https://api.cerebras.ai/v1" }),
-              models.cerebras
+              models.cerebras,
+              { maxInputChars: 28_000, maxOutputTokens: 2048 }
             );
             providerSucceeded = true;
           } catch (err) {

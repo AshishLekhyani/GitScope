@@ -67,6 +67,8 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
   const inviteId = new URL(req.url).searchParams.get("inviteId") ?? "";
   if (!inviteId) return NextResponse.json({ error: "inviteId required." }, { status: 400 });
 
-  await prisma.orgInvite.delete({ where: { id: inviteId } });
+  const deleted = await prisma.orgInvite.deleteMany({ where: { id: inviteId, orgId: id } });
+  if (deleted.count === 0) return NextResponse.json({ error: "Invite not found." }, { status: 404 });
+
   return NextResponse.json({ ok: true });
 }

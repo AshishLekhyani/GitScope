@@ -8,7 +8,7 @@ import { prunePublicScanCache } from "@/lib/scan-cache";
 // Protected by a simple shared secret so it can't be triggered externally at will.
 export async function GET(req: NextRequest) {
   const cronSecret = process.env.CRON_SECRET;
-  const secret = req.headers.get("x-cron-secret") ?? new URL(req.url).searchParams.get("secret");
+  const secret = req.headers.get("x-cron-secret");
   if (!cronSecret || secret !== cronSecret) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

@@ -796,6 +796,7 @@ export function RepoScanner({
       if (!reader) throw new Error("No response stream");
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedDone = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -817,6 +818,7 @@ export function RepoScanner({
             if (data.type === "progress" && data.step) {
               setProgress({ step: data.step, percent: data.percent ?? 0 });
             } else if (data.type === "done") {
+              receivedDone = true;
               if (data.error) { setState("error"); setError(data.error); }
               else if (data.result) {
                 setState("done");
@@ -828,6 +830,9 @@ export function RepoScanner({
             }
           } catch { /* skip */ }
         }
+      }
+      if (!receivedDone) {
+        throw new Error("Scan connection closed before the report was ready. The provider likely timed out; please retry or use a smaller scan.");
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

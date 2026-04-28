@@ -4,6 +4,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import { validateAutomationActionUrl } from "@/lib/outbound-url";
 
 interface ScanMetrics {
   repo: string;
@@ -33,6 +34,21 @@ function conditionMet(op: string, value: number, threshold: number, prev: number
   }
 }
 
+async function postJson(url: string, body: string): Promise<void> {
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 10_000);
+  try {
+    await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body,
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
 async function fireAction(
   actionType: string,
   actionUrl: string | null,
@@ -41,35 +57,40 @@ async function fireAction(
   payload: Record<string, unknown>,
 ): Promise<void> {
   const body = JSON.stringify(payload);
-  const headers = { "Content-Type": "application/json" };
 
   try {
     switch (actionType) {
       case "slack": {
         const url = actionUrl || userSlack;
         if (!url) return;
+        const validated = validateAutomationActionUrl("slack", url);
+        if (!validated.ok || !validated.url) return;
         const slackBody = JSON.stringify({
           text: `*GitScope Automation Alert*\n*Rule triggered* for \`${payload.repo}\`\n${payload.message}`,
         });
-        await fetch(url, { method: "POST", headers, body: slackBody });
+        await postJson(validated.url, slackBody);
         break;
       }
       case "discord": {
         const url = actionUrl || userDiscord;
         if (!url) return;
+        const validated = validateAutomationActionUrl("discord", url);
+        if (!validated.ok || !validated.url) return;
         const discordBody = JSON.stringify({
           content: `**GitScope Automation Alert**\n**Rule triggered** for \`${payload.repo}\`\n${payload.message}`,
         });
-        await fetch(url, { method: "POST", headers, body: discordBody });
+        await postJson(validated.url, discordBody);
         break;
       }
       case "webhook": {
-        if (!actionUrl) return;
-        await fetch(actionUrl, { method: "POST", headers, body });
+        const validated = validateAutomationActionUrl("webhook", actionUrl);
+        if (!validated.ok || !validated.url) return;
+        await postJson(validated.url, body);
         break;
       }
       case "github_issue": {
-        if (!actionUrl) return;
+        const validated = validateAutomationActionUrl("github_issue", actionUrl);
+        if (!validated.ok || !validated.url) return;
         // actionUrl should be the GitHub Issues API endpoint:
         // https://api.github.com/repos/{owner}/{repo}/issues
         const issueBody = JSON.stringify({
@@ -77,7 +98,7 @@ async function fireAction(
           body: `## GitScope Automation Alert\n\n${payload.message}\n\n**Repo:** \`${payload.repo}\`\n**Health Score:** ${payload.healthScore}\n\n---\n*Triggered by [GitScope](https://gitscope.dev) automation rule: ${payload.ruleName}*`,
           labels: ["gitscope", "automated"],
         });
-        await fetch(actionUrl, { method: "POST", headers, body: issueBody });
+        await postJson(validated.url, issueBody);
         break;
       }
     }

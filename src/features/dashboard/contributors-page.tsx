@@ -256,11 +256,13 @@ export function ContributorsPageClient({
   const contribQ = useQuery({
     queryKey: ["contributors", owner, repo],
     queryFn: () => getContributors(owner, repo),
+    retry: false,
   });
 
   const activityQ = useQuery({
     queryKey: ["commit-activity", owner, repo],
     queryFn: () => getCommitActivity(owner, repo),
+    retry: false,
   });
 
   const contributors = contribQ.data?.data ?? [];
@@ -273,6 +275,22 @@ export function ContributorsPageClient({
         <Skeleton className="h-10 w-64" />
         <Skeleton className="h-32 w-full rounded-none" />
         <Skeleton className="h-64 w-full rounded-none" />
+      </div>
+    );
+  }
+
+  if (contribQ.error) {
+    return (
+      <div className="rounded-none border border-red-500/15 bg-red-500/5 p-6">
+        <div className="flex items-start gap-3">
+          <MaterialIcon name="error" size={18} className="mt-0.5 text-red-400" />
+          <div>
+            <h1 className="font-heading text-xl font-bold text-foreground">Contributor data unavailable</h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {contribQ.error instanceof Error ? contribQ.error.message : "GitHub could not return contributor data right now."}
+            </p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -301,12 +319,12 @@ export function ContributorsPageClient({
       </div>
 
       {/* Heatmap */}
-      {weeks.length > 0 && <VelocityHeatmap weeks={weeks} />}
+      {!activityQ.error && weeks.length > 0 && <VelocityHeatmap weeks={weeks} />}
 
       {/* Impact + Peak Performance */}
       <div className="grid gap-6 lg:grid-cols-[1fr_260px] xl:grid-cols-[1fr_300px]">
         <TopContributors contributors={contributors} />
-        <PeakPerformance weeks={weeks} />
+        {!activityQ.error && <PeakPerformance weeks={weeks} />}
       </div>
 
       {/* All Contributors with pagination */}
