@@ -92,6 +92,7 @@ Provide a clear, engineer-grade explanation following the structure in your inst
           { role: "user", content: userPrompt },
         ],
         maxNewTokens: depth === "deep" ? 2000 : depth === "brief" ? 400 : 1000,
+        apiKey: byokKeys.huggingface ?? undefined,
       });
       explanation = result?.text ?? "Could not generate explanation. Add an API key in Settings for better results.";
     }

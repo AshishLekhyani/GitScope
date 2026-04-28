@@ -44,6 +44,8 @@ export interface HFCallOptions {
   topP?: number;
   repetitionPenalty?: number;
   stopSequences?: string[];
+  /** User-supplied HF access token (BYOK). Takes priority over HF_API_KEY env var. */
+  apiKey?: string;
 }
 
 export interface HFCallResult {
@@ -58,10 +60,11 @@ export interface HFEmbedResult {
   model: string;
 }
 
-function hfHeaders(): HeadersInit {
+function hfHeaders(apiKey?: string): HeadersInit {
   const headers: HeadersInit = { "Content-Type": "application/json" };
-  if (process.env.HF_API_KEY) {
-    headers["Authorization"] = `Bearer ${process.env.HF_API_KEY}`;
+  const token = apiKey?.trim() || process.env.HF_API_KEY;
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
   }
   return headers;
 }
@@ -146,35 +149,27 @@ function messagesToPrompt(messages: HFMessage[], modelId: string): string {
   return parts.join("");
 }
 
-/** Call the HF text-generation API with a chat-style messages array */
+/** Call the HF Serverless Inference API (OpenAI-compatible chat completions) */
 export async function callHuggingFace(opts: HFCallOptions): Promise<HFCallResult | null> {
   const modelId = opts.modelId ?? HF_MODELS[opts.tier ?? "balanced"];
-  const maxNewTokens = opts.maxNewTokens ?? 2048;
-
-  const prompt = messagesToPrompt(opts.messages, modelId);
+  const maxTokens = opts.maxNewTokens ?? 2048;
 
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
 
   try {
-    const response = await fetch(`${HF_API_BASE}/models/${modelId}`, {
+    // New HF Serverless Inference API uses OpenAI-compatible /v1/chat/completions
+    const response = await fetch(`${HF_API_BASE}/models/${modelId}/v1/chat/completions`, {
       method: "POST",
-      headers: hfHeaders(),
+      headers: hfHeaders(opts.apiKey),
       signal: controller.signal,
       body: JSON.stringify({
-        inputs: prompt,
-        parameters: {
-          max_new_tokens: maxNewTokens,
-          temperature: opts.temperature ?? 0.3,
-          top_p: opts.topP ?? 0.9,
-          repetition_penalty: opts.repetitionPenalty ?? 1.1,
-          return_full_text: false,
-          stop: opts.stopSequences ?? [
-            "<|eot_id|>", "<|end|>", "<|im_end|>", "</s>", "[INST]",
-          ],
-          do_sample: (opts.temperature ?? 0.3) > 0,
-        },
-        options: { wait_for_model: true, use_cache: false },
+        model: modelId,
+        messages: opts.messages,
+        max_tokens: maxTokens,
+        temperature: opts.temperature ?? 0.3,
+        top_p: opts.topP ?? 0.9,
+        stream: false,
       }),
     });
 
@@ -192,12 +187,15 @@ export async function callHuggingFace(opts: HFCallOptions): Promise<HFCallResult
       return null;
     }
 
-    const data = (await response.json()) as Array<{ generated_text?: string }> | { generated_text?: string };
-    const rawText = Array.isArray(data)
-      ? (data[0]?.generated_text ?? "")
-      : (data?.generated_text ?? "");
+    const data = (await response.json()) as {
+      choices?: Array<{ message?: { content?: string } }>;
+      generated_text?: string;
+    };
 
-    // Strip any leaked prompt artifacts
+    // OpenAI-compat format (new endpoint)
+    const rawText = data.choices?.[0]?.message?.content ?? "";
+
+    // Strip any leaked prompt artifacts (kept as safety net)
     const text = rawText
       .replace(/^<\|.*?\|>/g, "")
       .replace(/\[\/INST\][\s\S]*$/, "")

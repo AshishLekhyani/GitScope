@@ -1351,7 +1351,7 @@ export function RepoScanner({
               </div>
             </div>
 
-            {result.security.positives.length > 0 && (
+            {(result.security.positives?.length ?? 0) > 0 && (
               <div className="p-4 rounded-none bg-emerald-500/5 border border-emerald-500/10 space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
                   <MaterialIcon name="verified_user" size={12} /> Security Strengths
@@ -1366,14 +1366,14 @@ export function RepoScanner({
               </div>
             )}
 
-            {result.security.issues.length > 0 && (
+            {(result.security.issues?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 {/* Severity filter chips */}
                 <div className="flex flex-wrap gap-1.5 px-1">
                   {SEC_SEVERITIES.map((sev) => {
                     const count = sev === "all"
-                      ? result.security.issues.length
-                      : result.security.issues.filter((f) => f.severity === sev).length;
+                      ? result.security.issues?.length ?? 0
+                      : (result.security.issues?.filter((f) => f.severity === sev).length ?? 0);
                     if (count === 0 && sev !== "all") return null;
                     return (
                       <button
@@ -1393,7 +1393,7 @@ export function RepoScanner({
                     );
                   })}
                 </div>
-                {filteredSecIssues.length === 0 ? (
+                {(filteredSecIssues?.length ?? 0) === 0 ? (
                   <p className="text-center text-xs text-muted-foreground/40 py-4">No {secFilter} issues</p>
                 ) : (
                   filteredSecIssues.map((f, i) => <FindingItem key={i} finding={f} fixDiffsAllowed={fixDiffsAllowed} repo={targetRepo} />)
@@ -1407,7 +1407,7 @@ export function RepoScanner({
         {/* ── Quality section ── */}
         {activeSection === "quality" && (
           <div className="space-y-4 animate-in fade-in duration-300">
-            {result.codeQuality.strengths.length > 0 && (
+            {(result.codeQuality.strengths?.length ?? 0) > 0 && (
               <div className="p-4 rounded-none bg-emerald-500/5 border border-emerald-500/10 space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-emerald-400 flex items-center gap-1.5">
                   <MaterialIcon name="thumb_up" size={12} /> Strengths
@@ -1422,16 +1422,16 @@ export function RepoScanner({
               </div>
             )}
 
-            {result.codeQuality.issues.length > 0 && (
+            {(result.codeQuality.issues?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1">
-                  Quality Issues ({result.codeQuality.issues.length})
+                  Quality Issues ({result.codeQuality.issues?.length ?? 0})
                 </p>
                 {result.codeQuality.issues.map((f, i) => <FindingItem key={i} finding={f} fixDiffsAllowed={fixDiffsAllowed} repo={targetRepo} />)}
               </div>
             )}
 
-            {result.testability.gaps.length > 0 && (
+            {(result.testability.gaps?.length ?? 0) > 0 && (
               <div className="p-4 rounded-none bg-amber-500/5 border border-amber-500/10 space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-amber-400 flex items-center gap-1.5">
                   <MaterialIcon name="science" size={12} /> Test Coverage Gaps
@@ -1455,7 +1455,7 @@ export function RepoScanner({
               {[
                 { label: "Total Deps", value: result.dependencies.totalCount, color: "text-amber-400" },
                 { label: "Dep Score", value: result.dependencies.score, color: result.dependencies.score >= 70 ? "text-emerald-400" : "text-amber-400" },
-                { label: "Risk Level", value: result.dependencies.risks.length > 0 ? "⚠ Risks" : "✓ Clear", color: result.dependencies.risks.length > 0 ? "text-amber-400" : "text-emerald-400" },
+                { label: "Risk Level", value: (result.dependencies.risks?.length ?? 0) > 0 ? "⚠ Risks" : "✓ Clear", color: (result.dependencies.risks?.length ?? 0) > 0 ? "text-amber-400" : "text-emerald-400" },
               ].map((m) => (
                 <div key={m.label} className="p-3 rounded-none bg-surface-container/20 border border-outline-variant/10 text-center">
                   <div className={cn("text-lg font-black", m.color)}>{m.value}</div>
@@ -1464,7 +1464,7 @@ export function RepoScanner({
               ))}
             </div>
 
-            {result.dependencies.risks.length > 0 && (
+            {(result.dependencies.risks?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1 flex items-center gap-1.5">
                   <MaterialIcon name="warning" size={12} className="text-amber-400" /> Dependency Risks
@@ -1477,7 +1477,7 @@ export function RepoScanner({
               </div>
             )}
 
-            {result.dependencies.outdatedSignals.length > 0 && (
+            {(result.dependencies.outdatedSignals?.length ?? 0) > 0 && (
               <div className="space-y-2">
                 <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 px-1 flex items-center gap-1.5">
                   <MaterialIcon name="update" size={12} className="text-muted-foreground/50" /> Outdated Signals
@@ -1495,7 +1495,7 @@ export function RepoScanner({
         {/* ── Recommendations section ── */}
         {activeSection === "recs" && (() => {
           const RECS_PER_PAGE = 4;
-          const recsTotal = result.recommendations.length;
+          const recsTotal = result.recommendations?.length ?? 0;
           const recsPageCount = Math.max(1, Math.ceil(recsTotal / RECS_PER_PAGE));
           const rPage = Math.min(recsPage, recsPageCount - 1);
           const visibleRecs = result.recommendations.slice(rPage * RECS_PER_PAGE, (rPage + 1) * RECS_PER_PAGE);

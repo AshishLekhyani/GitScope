@@ -21,11 +21,11 @@ import { encrypt, safeDecrypt } from "@/lib/encrypt";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 type CoreProvider = "anthropic" | "openai" | "gemini";
-type ExtProvider = "groq" | "deepseek" | "mistral" | "moonshot" | "cerebras" | "ollama";
+type ExtProvider = "groq" | "deepseek" | "mistral" | "moonshot" | "cerebras" | "ollama" | "huggingface";
 type Provider = CoreProvider | ExtProvider;
 
 const CORE_PROVIDERS: CoreProvider[] = ["anthropic", "openai", "gemini"];
-const EXT_PROVIDERS: ExtProvider[] = ["groq", "deepseek", "mistral", "moonshot", "cerebras", "ollama"];
+const EXT_PROVIDERS: ExtProvider[] = ["groq", "deepseek", "mistral", "moonshot", "cerebras", "ollama", "huggingface"];
 const ALL_PROVIDERS: Provider[] = [...CORE_PROVIDERS, ...EXT_PROVIDERS];
 
 const CORE_FIELD: Record<CoreProvider, "byokAnthropicKey" | "byokOpenAIKey" | "byokGeminiKey"> = {
@@ -45,6 +45,7 @@ const KEY_PREFIXES: Partial<Record<Provider, RegExp>> = {
   moonshot:  /^sk-/,
   cerebras:  /^csk-/,
   ollama:    /^https?:\/\//,   // ollama is a base URL, not a key
+  huggingface: /^hf_/,           // HF access tokens start with hf_
 };
 
 const PROVIDER_LABELS: Record<Provider, string> = {
@@ -57,6 +58,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   moonshot:  "Kimi (Moonshot)",
   cerebras:  "Cerebras",
   ollama:    "Ollama",
+  huggingface: "HuggingFace",
 };
 
 async function postHandler(req: NextRequest) {

@@ -32,8 +32,12 @@ const PALETTE = [
   "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#f59e0b",
 ];
 
+const PAGE_SIZE = 20;
+
 export function CodeOwnership({ repos }: CodeOwnershipProps) {
   const [data, setData] = useState<Record<string, RepoState>>({});
+  const [attempts, setAttempts] = useState<Record<string, number>>({});
+  const [page, setPage] = useState<Record<string, number>>({});
   const fetchedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
@@ -47,16 +51,24 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
   }, [repos]);
 
   async function fetchOwnership(repo: string, attempt = 0) {
+    setAttempts((prev) => ({ ...prev, [repo]: attempt }));
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+
     try {
-      const res = await fetch(`/api/github/contributors?repo=${encodeURIComponent(repo)}`);
+      const res = await fetch(`/api/github/contributors?repo=${encodeURIComponent(repo)}`, {
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+
       if (res.status === 202) {
-        // GitHub is computing stats — retry with backoff up to 8 times
-        if (attempt < 8) {
-          const delay = Math.min(2000 + attempt * 1500, 10000);
+        // GitHub is computing stats — retry with backoff up to 5 times (~20s total)
+        if (attempt < 5) {
+          const delay = Math.min(1500 + attempt * 1000, 6000);
           await new Promise((r) => setTimeout(r, delay));
           return fetchOwnership(repo, attempt + 1);
         }
-        // Still computing after 8 retries — show a "still computing" state with retry
+        // Still computing after 5 retries — show a "still computing" state with retry
         setData((prev) => ({ ...prev, [repo]: "computing" }));
         return;
       }
@@ -71,6 +83,7 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
       }
       processStats(repo, Array.isArray(raw) ? raw : []);
     } catch {
+      clearTimeout(timeout);
       setData((prev) => ({ ...prev, [repo]: "error" }));
     }
   }
@@ -84,15 +97,18 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
     const contributors: Contributor[] = (raw as Record<string, unknown>[])
       .map((c) => {
         const author = c.author as Record<string, string> | null;
+        // GitHub stats/contributors returns weeks array with: w (week timestamp), a (additions), d (deletions), c (commits)
         const weeks = Array.isArray(c.weeks) ? (c.weeks as Record<string, number>[]) : [];
+        const totalAdditions = weeks.reduce((s, w) => s + (typeof w.a === "number" ? w.a : 0), 0);
+        const totalDeletions = weeks.reduce((s, w) => s + (typeof w.d === "number" ? w.d : 0), 0);
         return {
           login: author?.login ?? "unknown",
           avatarUrl: author?.avatar_url ?? "",
           totalCommits: typeof c.total === "number" ? c.total : 0,
-          additions: weeks.reduce((s, w) => s + (w.a ?? 0), 0),
-          deletions: weeks.reduce((s, w) => s + (w.d ?? 0), 0),
+          additions: totalAdditions,
+          deletions: totalDeletions,
           commitPct: 0,
-          weeks: weeks.filter((w) => (w.c ?? 0) > 0).length,
+          weeks: weeks.filter((w) => (typeof w.c === "number" ? w.c : 0) > 0).length,
         };
       })
       .sort((a, b) => b.totalCommits - a.totalCommits);
@@ -110,9 +126,10 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
       if (cumulative >= 80) break;
     }
 
+    // Store all contributors, paginate in UI
     setData((prev) => ({
       ...prev,
-      [repo]: { repo, totalCommits, contributors: contributors.slice(0, 15), busFactor },
+      [repo]: { repo, totalCommits, contributors, busFactor },
     }));
   }
 
@@ -139,7 +156,12 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
             {state === "loading" && (
               <div className="flex items-center justify-center gap-3 py-16 rounded-none border border-outline-variant/10 bg-surface-container/20">
                 <MaterialIcon name="sync" size={18} className="animate-spin text-amber-400" />
-                <span className="text-sm text-muted-foreground/60">Computing contributor ownership…</span>
+                <span className="text-sm text-muted-foreground/60">
+                  Computing contributor ownership…
+                  {attempts[repo] !== undefined && attempts[repo] > 0 && (
+                    <span className="ml-1.5 text-[10px] font-mono text-amber-400/60">(attempt {attempts[repo]}/5)</span>
+                  )}
+                </span>
               </div>
             )}
 
@@ -254,12 +276,23 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
 
                   {/* Contributor rows */}
                   <div className="space-y-2">
-                    {d.contributors.map((c, i) => (
+                    {(() => {
+                      const currentPage = page[repo] ?? 1;
+                      const start = (currentPage - 1) * PAGE_SIZE;
+                      const end = start + PAGE_SIZE;
+                      const paginated = d.contributors.slice(start, end);
+                      const totalPages = Math.ceil(d.contributors.length / PAGE_SIZE);
+
+                      return (
+                        <>
+                          {paginated.map((c, i) => {
+                            const overallRank = start + i + 1;
+                            return (
                       <div
                         key={c.login}
                         className="flex items-center gap-3 px-4 py-3 rounded-none bg-surface-container/20 border border-outline-variant/8 hover:border-amber-500/20 transition-all"
                       >
-                        <span className="text-[10px] font-black text-muted-foreground/25 w-4 text-center shrink-0">{i + 1}</span>
+                        <span className="text-[10px] font-black text-muted-foreground/25 w-4 text-center shrink-0">{overallRank}</span>
                         {c.avatarUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img src={c.avatarUrl} alt={c.login} className="size-7 rounded-full ring-1 ring-white/10 shrink-0" />
@@ -271,7 +304,7 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
                         <div className="flex-1 min-w-0 space-y-1.5">
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="text-xs font-black text-foreground/85">{c.login}</span>
-                            {i === 0 && (
+                            {overallRank === 1 && (
                               <span className="text-[8px] font-black px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-400">
                                 Top Contributor
                               </span>
@@ -286,11 +319,48 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
                           <p className="text-[9px] font-mono text-muted-foreground/40">{c.totalCommits.toLocaleString()} commits</p>
                         </div>
                         <div className="text-right shrink-0 space-y-0.5 hidden sm:block">
-                          <p className="text-[10px] font-mono text-emerald-400">+{(c.additions / 1000).toFixed(1)}k</p>
-                          <p className="text-[10px] font-mono text-red-400">-{(c.deletions / 1000).toFixed(1)}k</p>
+                          {c.additions > 0 || c.deletions > 0 ? (
+                            <>
+                              <p className="text-[10px] font-mono text-emerald-400">+{(c.additions / 1000).toFixed(1)}k</p>
+                              <p className="text-[10px] font-mono text-red-400">-{(c.deletions / 1000).toFixed(1)}k</p>
+                            </>
+                          ) : (
+                            <p className="text-[10px] font-mono text-muted-foreground/40">—</p>
+                          )}
                         </div>
                       </div>
-                    ))}
+                    );})}
+                    {d.contributors.length > PAGE_SIZE && (
+                      <div className="flex items-center justify-between pt-4 border-t border-outline-variant/10">
+                        <p className="text-[10px] font-mono text-muted-foreground/60">
+                          Showing {start + 1}-{Math.min(end, d.contributors.length)} of {d.contributors.length} contributors
+                        </p>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            disabled={currentPage <= 1}
+                            onClick={() => setPage((prev) => ({ ...prev, [repo]: currentPage - 1 }))}
+                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-none border border-outline-variant/20 disabled:opacity-40 hover:border-amber-500/30"
+                          >
+                            Previous
+                          </button>
+                          <span className="text-[10px] font-mono text-muted-foreground/60 px-2">
+                            {currentPage} / {totalPages}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={currentPage >= totalPages}
+                            onClick={() => setPage((prev) => ({ ...prev, [repo]: currentPage + 1 }))}
+                            className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider rounded-none border border-outline-variant/20 disabled:opacity-40 hover:border-amber-500/30"
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    </>
+                    );
+                  })()}
                   </div>
 
                   {/* Bus factor callout */}

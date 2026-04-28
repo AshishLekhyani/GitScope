@@ -123,6 +123,7 @@ Return the complete JSON schema.`;
         messages: [{ role: "system", content: REFACTOR_SYSTEM }, { role: "user", content: userPrompt }],
         maxNewTokens: 3000,
         temperature: 0.15,
+        apiKey: byokKeys.huggingface ?? undefined,
       });
       rawResponse = result?.text ?? "";
       modelUsed = result?.model ?? "huggingface";

@@ -34,18 +34,19 @@ export async function getUserBYOKKeys(userId: string): Promise<UserBYOKKeys> {
     gemini:    dbUser?.byokGeminiKey    ? safeDecrypt(dbUser.byokGeminiKey)    : null,
   };
 
-  // Extended keys (groq, deepseek, mistral, moonshot, cerebras, ollama)
+  // Extended keys (groq, deepseek, mistral, moonshot, cerebras, ollama, huggingface)
   if (dbUser?.byokExtendedKeys) {
     try {
       const decrypted = safeDecrypt(dbUser.byokExtendedKeys);
       if (decrypted) {
         const ext = JSON.parse(decrypted) as Record<string, string>;
-        if (ext.groq)      keys.groq      = ext.groq;
-        if (ext.deepseek)  keys.deepseek  = ext.deepseek;
-        if (ext.mistral)   keys.mistral   = ext.mistral;
-        if (ext.moonshot)  keys.moonshot  = ext.moonshot;
-        if (ext.cerebras)  keys.cerebras  = ext.cerebras;
-        if (ext.ollama)    keys.ollama    = ext.ollama;
+        if (ext.groq)         keys.groq         = ext.groq;
+        if (ext.deepseek)     keys.deepseek     = ext.deepseek;
+        if (ext.mistral)      keys.mistral      = ext.mistral;
+        if (ext.moonshot)     keys.moonshot     = ext.moonshot;
+        if (ext.cerebras)     keys.cerebras     = ext.cerebras;
+        if (ext.ollama)       keys.ollama       = ext.ollama;
+        if (ext.huggingface)  keys.huggingface  = ext.huggingface;
       }
     } catch { /* ignore malformed JSON */ }
   }
@@ -58,7 +59,8 @@ export function hasAnyByokKey(keys: UserBYOKKeys): boolean {
   return !!(
     keys.anthropic || keys.openai || keys.gemini ||
     keys.groq || keys.deepseek || keys.mistral ||
-    keys.moonshot || keys.cerebras || keys.ollama
+    keys.moonshot || keys.cerebras || keys.ollama ||
+    keys.huggingface
   );
 }
 
@@ -72,7 +74,8 @@ export function resolveActiveProvider(keys: UserBYOKKeys): string {
   if (keys.mistral)   return "Mistral (BYOK)";
   if (keys.moonshot)  return "Kimi / Moonshot (BYOK)";
   if (keys.cerebras)  return "Cerebras (BYOK)";
-  if (keys.ollama)    return "Ollama (local, BYOK)";
+  if (keys.ollama)       return "Ollama (local, BYOK)";
+  if (keys.huggingface)  return "HuggingFace (BYOK)";
   if (process.env.ANTHROPIC_API_KEY) return "Claude (GitScope)";
   if (process.env.OPENAI_API_KEY)    return "GPT (GitScope)";
   if (process.env.GEMINI_API_KEY)    return "Gemini (GitScope)";

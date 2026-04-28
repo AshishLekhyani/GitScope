@@ -87,7 +87,7 @@ export function SettingsPanel() {
   // BYOK (Bring Your Own Key) state — core providers
   const [byokSaved, setByokSaved] = useState({
     anthropic: false, openai: false, gemini: false,
-    groq: false, deepseek: false, mistral: false, moonshot: false, cerebras: false, ollama: false,
+    groq: false, deepseek: false, mistral: false, moonshot: false, cerebras: false, ollama: false, huggingface: false,
   });
   const [byokAnthropicInput, setByokAnthropicInput] = useState("");
   const [byokOpenAIInput, setByokOpenAIInput]       = useState("");
@@ -98,6 +98,7 @@ export function SettingsPanel() {
   const [byokMoonshotInput, setByokMoonshotInput]   = useState("");
   const [byokCerebrasInput, setByokCerebrasInput]   = useState("");
   const [byokOllamaInput, setByokOllamaInput]       = useState("");
+  const [byokHuggingFaceInput, setByokHuggingFaceInput] = useState("");
   const [byokPreferPlatform, setByokPreferPlatform] = useState(false);
   const [byokSaving, setByokSaving]                 = useState(false);
   const [byokMsg, setByokMsg]                       = useState<{ type: "success" | "error"; text: string } | null>(null);
@@ -228,6 +229,7 @@ export function SettingsPanel() {
             moonshot:  data.byok.moonshot   ?? false,
             cerebras:  data.byok.cerebras   ?? false,
             ollama:    data.byok.ollama     ?? false,
+            huggingface: data.byok.huggingface ?? false,
           });
           setByokPreferPlatform(data.byok.preferPlatform ?? false);
         }
@@ -712,12 +714,13 @@ export function SettingsPanel() {
   ];
 
   // ── BYOK handlers ────────────────────────────────────────────────────────────
-  type ByokProvider = "anthropic" | "openai" | "gemini" | "groq" | "deepseek" | "mistral" | "moonshot" | "cerebras" | "ollama";
+  type ByokProvider = "anthropic" | "openai" | "gemini" | "groq" | "deepseek" | "mistral" | "moonshot" | "cerebras" | "ollama" | "huggingface";
 
   const PROVIDER_LABELS: Record<ByokProvider, string> = {
     anthropic: "Anthropic", openai: "OpenAI", gemini: "Google Gemini",
     groq: "Groq", deepseek: "DeepSeek", mistral: "Mistral",
     moonshot: "Kimi (Moonshot)", cerebras: "Cerebras", ollama: "Ollama",
+    huggingface: "HuggingFace",
   };
 
   const clearInput = (provider: ByokProvider) => {
@@ -730,6 +733,7 @@ export function SettingsPanel() {
     if (provider === "moonshot")  setByokMoonshotInput("");
     if (provider === "cerebras")  setByokCerebrasInput("");
     if (provider === "ollama")    setByokOllamaInput("");
+    if (provider === "huggingface") setByokHuggingFaceInput("");
   };
 
   const handleSaveByok = async (provider: ByokProvider, key: string) => {
@@ -2185,6 +2189,7 @@ export function SettingsPanel() {
                     <ByokRow provKey="mistral"   label="Mistral AI"                dot="bg-[#ff7000]" placeholder="xxxxxxxx..."     inputValue={byokMistralInput}   setInputValue={setByokMistralInput} />
                     <ByokRow provKey="moonshot"  label="Kimi / Moonshot"           dot="bg-indigo-500" placeholder="sk-..."         inputValue={byokMoonshotInput}  setInputValue={setByokMoonshotInput} />
                     <ByokRow provKey="ollama"    label="Ollama (local / self-hosted)" dot="bg-slate-500" placeholder="http://localhost:11434" inputValue={byokOllamaInput} setInputValue={setByokOllamaInput} inputType="url" />
+                    <ByokRow provKey="huggingface" label="HuggingFace (free tier + higher rate limits)" dot="bg-[#ffbd4a]" placeholder="hf_..." inputValue={byokHuggingFaceInput} setInputValue={setByokHuggingFaceInput} />
                   </div>
 
                 {byokMsg && (

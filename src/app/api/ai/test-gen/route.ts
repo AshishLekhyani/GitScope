@@ -142,6 +142,7 @@ Return the JSON schema exactly as specified.`;
         ],
         maxNewTokens: 3000,
         temperature: 0.1,
+        apiKey: byokKeys.huggingface ?? undefined,
       });
       rawResponse = result?.text ?? "";
       modelUsed = result?.model ?? "huggingface";

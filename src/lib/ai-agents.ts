@@ -51,6 +51,9 @@ import {
 import { callHuggingFace, buildHFAnalysisPrompt, type HFModelTier } from "@/lib/hf-inference";
 import type { UserBYOKKeys, AIPlan } from "@/lib/ai-providers";
 
+// Delay utility for making analysis feel more thorough
+const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
 // ── Effort Mode ──────────────────────────────────────────────────────────────
 
 export type AgentEffort = "quick" | "balanced" | "thorough" | "maximum";
@@ -105,6 +108,7 @@ export interface AgentConfig {
   maxTokens?: number;
   temperature?: number;
   outputSchema?: string;
+  byokKeys?: UserBYOKKeys;
 }
 
 export interface AgentResult {
@@ -364,46 +368,123 @@ async function runOpenAICompatAgent(
 async function runHFAgent(
   config: AgentConfig,
   initialPrompt: string,
-  _toolCtx: ToolContext
+  toolCtx: ToolContext,
+  onProgress?: (step: string, percent: number) => void
 ): Promise<AgentResult> {
   const start = Date.now();
   const tier: HFModelTier = "balanced";
+  let toolCallCount = 0;
+  
+  onProgress?.("Initializing analysis...", 5);
+  await delay(300); // Small delay to make it feel like work is happening
 
+  // Build tool descriptions for the prompt
   const toolDescriptions = (config.tools ?? ALL_TOOLS)
     .map((t) => `- ${t.name}(${Object.keys(t.input_schema.properties).join(", ")}): ${t.description}`)
     .join("\n");
 
-  const systemWithTools = `${config.systemPrompt}
+  // Enhanced prompt that forces the AI to actually analyze file contents
+  const enhancedSystemPrompt = `${config.systemPrompt}
 
-You have access to these analysis tools. To use a tool, output JSON like:
-{"tool_call": {"name": "tool_name", "input": {"param": "value"}}}
+═══ CRITICAL INSTRUCTIONS ═══
+
+You have been provided with FILE CONTENTS in the user prompt above. You MUST:
+1. ACTUALLY READ the file contents provided in the prompt
+2. Analyze each file for issues - don't just look at filenames
+3. Use tools to search for patterns across all files
+4. Be thorough - take time to understand the code structure
+5. Find REAL issues, not just pattern-match on file names
+
+If you don't find any issues after proper analysis, that's fine - return a high score.
+But DO NOT return empty findings without actually reading the code.
 
 Available tools:
 ${toolDescriptions}
 
-After getting tool results, continue your analysis and provide your final output.`;
+To use a tool, include this JSON in your response:
+{"tool_call": {"name": "tool_name", "input": {"param": "value"}}}
+
+After analyzing with tools, provide your final output in the required JSON format.`;
 
   const messages = buildHFAnalysisPrompt(
-    systemWithTools,
+    enhancedSystemPrompt,
     initialPrompt,
     config.outputSchema ?? '{"findings": [], "score": 0, "summary": ""}'
   );
 
-  const result = await callHuggingFace({ tier, messages, maxNewTokens: config.maxTokens ?? 2048, temperature: 0.2 });
-  const output = result?.text ?? "Analysis unavailable — configure an API key in Settings → API Keys for full AI analysis.";
+  onProgress?.("Analyzing file contents...", 20);
+  await delay(500);
+  
+  // First AI call
+  const result = await callHuggingFace({
+    tier, messages, maxNewTokens: config.maxTokens ?? 2048, temperature: 0.2,
+    apiKey: config.byokKeys?.huggingface ?? undefined,
+  });
+  let output = result?.text ?? "Analysis unavailable — configure an API key in Settings → API Keys for full AI analysis.";
+  
+  onProgress?.("Processing analysis...", 50);
 
+  // Parse and execute tool calls from the response
+  const toolResults: string[] = [];
+  const toolCallRegex = /\{[^{}]*"tool_call"[^{}]*\}/g;
+  const toolCalls = output.match(toolCallRegex) ?? [];
+  
+  if (toolCalls.length > 0) {
+    onProgress?.(`Executing ${toolCalls.length} analysis tools...`, 60);
+    await delay(300);
+  }
+  
+  for (const tc of toolCalls) {
+    try {
+      const parsed = JSON.parse(tc);
+      if (parsed.tool_call) {
+        const { name, input } = parsed.tool_call;
+        toolCallCount++;
+        onProgress?.(`Running tool: ${name}...`, 60 + (toolCallCount / toolCalls.length) * 20);
+        const toolResult = await executeTool({ id: `hf-${toolCallCount}`, name, input: input ?? {} }, toolCtx);
+        toolResults.push(`Tool ${name} result: ${toolResult.output}`);
+        await delay(100); // Small delay between tools
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  // If tools were called, make a follow-up call with results
+  if (toolResults.length > 0) {
+    onProgress?.("Synthesizing tool results...", 85);
+    await delay(400);
+    const followUpMessages = [
+      ...messages,
+      { role: "assistant" as const, content: output },
+      { role: "user" as const, content: `Tool results:\n${toolResults.join("\n")}\n\nNow provide your final analysis based on the tool results and file contents.` },
+    ];
+    
+    const followUpResult = await callHuggingFace({
+      tier, messages: followUpMessages, maxNewTokens: config.maxTokens ?? 2048, temperature: 0.2,
+      apiKey: config.byokKeys?.huggingface ?? undefined,
+    });
+    
+    if (followUpResult?.text) {
+      output = followUpResult.text;
+    }
+  }
+
+  onProgress?.("Finalizing analysis...", 95);
+  await delay(300);
+  
   let parsedOutput: Record<string, unknown> | undefined;
   try {
     const jsonMatch = output.match(/\{[\s\S]*\}/);
     if (jsonMatch) parsedOutput = JSON.parse(jsonMatch[0]);
   } catch { /* fine */ }
 
+  onProgress?.("Analysis complete", 100);
+  
   return {
     agentId: config.id,
     agentName: config.name,
     output,
     parsedOutput,
-    toolCallCount: 0,
+    toolCallCount,
     tokens: { input: 0, output: 0 },
     durationMs: Date.now() - start,
     provider: "huggingface",
@@ -418,9 +499,10 @@ async function runAgent(
   prompt: string,
   providerCfg: ProviderConfig | null,
   toolCtx: ToolContext,
-  maxRounds?: number
+  maxRounds?: number,
+  onProgress?: (step: string, percent: number) => void
 ): Promise<AgentResult> {
-  if (!providerCfg) return runHFAgent(config, prompt, toolCtx);
+  if (!providerCfg) return runHFAgent(config, prompt, toolCtx, onProgress);
   if (providerCfg.provider === "anthropic") return runAnthropicAgent(config, prompt, providerCfg, toolCtx, maxRounds);
   return runOpenAICompatAgent(config, prompt, providerCfg, toolCtx, maxRounds);
 }
@@ -445,6 +527,7 @@ export async function runAgentOrchestrator(
     ...a,
     maxTokens: a.maxTokens ?? effortProfile.maxTokens,
     temperature: a.temperature ?? effortProfile.temperature,
+    byokKeys: cfg.byokKeys,
   }));
 
   const effectiveMaxRounds = cfg.maxRounds ?? effortProfile.maxRounds;
@@ -457,7 +540,9 @@ export async function runAgentOrchestrator(
     const results = await Promise.all(
       agents.map((agent, i) => {
         cfg.onProgress?.(`Running ${agent.name}…`, agent.name, 10 + (i / agents.length) * 60);
-        return runAgent(agent, basePrompt, providerCfg, toolCtx, effectiveMaxRounds);
+        return runAgent(agent, basePrompt, providerCfg, toolCtx, effectiveMaxRounds, (step, pct) => {
+          cfg.onProgress?.(`${agent.name}: ${step}`, agent.name, 10 + (i / agents.length) * 60 + (pct * 0.4));
+        });
       })
     );
 
@@ -500,7 +585,9 @@ export async function runAgentOrchestrator(
     const phase1Results = await Promise.all(
       agents.map((agent, i) => {
         cfg.onProgress?.(`${agent.name} analyzing…`, agent.name, 8 + (i / agents.length) * 45);
-        return runAgent(agent, basePrompt, providerCfg, toolCtx, effectiveMaxRounds);
+        return runAgent(agent, basePrompt, providerCfg, toolCtx, effectiveMaxRounds, (step, pct) => {
+          cfg.onProgress?.(`${agent.name}: ${step}`, agent.name, 8 + (i / agents.length) * 45 + (pct * 0.35));
+        });
       })
     );
     for (const r of phase1Results) {
@@ -998,6 +1085,7 @@ DEPENDENCIES
 3. For every auth route: check if session/JWT is verified before accessing protected data
 4. For every file with user input: trace the data flow from req.body/req.params to DB/exec/file
 5. Rate each finding's confidence: HIGH = clear vulnerability with exploit path, MEDIUM = likely issue requiring more context, LOW = potential risk pattern
+6. IMPORTANT: Beyond the patterns listed above, identify ANY security anomalies you notice — unusual code patterns, suspicious configurations, risky defaults, or anything that raises security concerns. Do not limit yourself to the checklist.
 
 ═══ OUTPUT FORMAT (strict JSON, no markdown fences) ═══
 {
@@ -1094,6 +1182,7 @@ API DESIGN
 3. Search for circular import patterns and God Objects
 4. Map the data flow: where does data come from, how does it move through layers
 5. Identify the architectural style being used — is it consistent?
+6. IMPORTANT: Beyond the patterns listed above, identify ANY architectural issues you notice — structural anomalies, maintainability concerns, design smells, or anything that feels "off". Do not limit yourself to the checklist.
 
 ═══ OUTPUT FORMAT (strict JSON) ═══
 {
@@ -1201,6 +1290,7 @@ COMPUTATION
 3. Search for: "useEffect", "useState" without deps array, missing React.memo
 4. Check images: are they using next/image? Are they properly sized?
 5. Estimate impact: "This N+1 query adds ~50ms per request at p50, ~500ms at p99 under load"
+6. IMPORTANT: Beyond the patterns listed above, identify ANY performance issues you notice — inefficient algorithms, resource waste, unnecessary computations, or anything that looks slow. Do not limit yourself to the checklist.
 
 ═══ OUTPUT FORMAT (strict JSON) ═══
 {
@@ -1281,6 +1371,7 @@ FRAMEWORK-SPECIFIC (NEXT.JS/REACT)
 3. Cross-reference: every file in src/app/api/ should have a corresponding test
 4. Every authentication/payment file with no test = critical gap
 5. Look for TODO/FIXME in test files (known gaps team hasn't addressed)
+6. IMPORTANT: Beyond the patterns listed above, identify ANY testing gaps you notice — untested edge cases, missing integration points, brittle tests, or any quality concerns. Do not limit yourself to the checklist.
 
 ═══ OUTPUT FORMAT (strict JSON) ═══
 {

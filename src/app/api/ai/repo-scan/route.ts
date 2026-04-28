@@ -11,6 +11,7 @@ import { prisma } from "@/lib/prisma";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
 import { callAI, hasAnyAIProvider, hasByokKey, type AIPlan, type UserBYOKKeys } from "@/lib/ai-providers";
 import { getUserBYOKKeys } from "@/lib/byok";
+import { runAgentOrchestrator, SECURITY_AGENT, ARCHITECTURE_AGENT, PERFORMANCE_AGENT, TESTING_AGENT, DEPENDENCY_AGENT, DEBT_AGENT, type AgentConfig } from "@/lib/ai-agents";
 import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "@/lib/repo-knowledge";
 import { sendEmail, buildScanAlertEmail } from "@/lib/email";
 import { sendScanAlert as sendSlackScanAlert } from "@/lib/slack";
@@ -648,13 +649,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        emit({ type: "progress", step: `Read ${filesRead} files — running static analysis…`, percent: 63 });
-
-        // Always run internal AI — works without any API key
-        const internalScanResult = scanRepoWithInternalAI({
-          repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-          realLoc, realLocByExt, totalCodeFiles, importGraph,
-        });
+        emit({ type: "progress", step: `Read ${filesRead} files — checking AI availability…`, percent: 63 });
 
         let result: RepoScanResult;
 
@@ -666,7 +661,7 @@ export async function POST(req: NextRequest) {
           const cached = await checkPublicScanCache(repo, scanMode, isPrivateRepo);
           if (cached) {
             emit({ type: "progress", step: "Serving cached analysis…", percent: 90 });
-            result = { ...internalScanResult, ...(cached as Partial<RepoScanResult>), fromCache: true } as RepoScanResult;
+            result = { ...(cached as Partial<RepoScanResult>), fromCache: true } as RepoScanResult;
             done(result);
             return;
           }
@@ -719,11 +714,17 @@ export async function POST(req: NextRequest) {
           }
         }
 
+        // ── LAST RESORT: Run internal AI only when no AI providers available ──────
+        let internalScanResult: RepoScanResult | undefined;
         if (!useLlm) {
-          emit({ type: "progress", step: "Analysis complete…", percent: 90 });
+          emit({ type: "progress", step: "Running static analysis (no AI key configured)…", percent: 65 });
+          internalScanResult = scanRepoWithInternalAI({
+            repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+            realLoc, realLocByExt, totalCodeFiles, importGraph,
+          });
           result = internalScanResult;
         } else {
-          emit({ type: "progress", step: "Enhancing with AI analysis…", percent: 65 });
+          emit({ type: "progress", step: "AI scanning architecture, security, and quality…", percent: 65 });
 
           // Build prompt — inject cached knowledge if available so AI builds on prior findings
           let basePrompt = buildRepoScanPrompt({ repo, meta, fileTree, keyFileContents, recentCommits, contributors, openPRCount, scanMode, realLoc, filesRead, importGraph });
@@ -733,63 +734,121 @@ export async function POST(req: NextRequest) {
             basePrompt = formatKnowledgeForPrompt(cachedKnowledge) + "\n\n" + basePrompt;
           }
 
-          emit({ type: "progress", step: "AI scanning architecture, security, and quality…", percent: 78 });
-          try {
-            const aiRes = await callAI({
-              plan: plan as AIPlan,
-              systemPrompt: REPO_SCAN_SYSTEM_PROMPT,
-              userPrompt: basePrompt,
-              maxTokens: scanMode === "deep" ? 8192 : 6144,
-              byokKeys,
-            });
-            if (aiRes) {
-              const cleaned = aiRes.text.replace(/^```(?:json)?\n?/, "").replace(/\n?```$/, "").trim();
-              const parsed = JSON.parse(cleaned) as RepoScanResult;
+          // Hard cap: prevent 413 Payload Too Large from any provider's HTTP limit
+          const MAX_PROMPT_CHARS = 90_000;
+          if (basePrompt.length > MAX_PROMPT_CHARS) {
+            const head = Math.floor(MAX_PROMPT_CHARS * 0.7);
+            const tail = MAX_PROMPT_CHARS - head;
+            basePrompt = `${basePrompt.slice(0, head)}\n\n[GitScope trimmed scan payload to stay within provider request limits — ${(basePrompt.length / 1000).toFixed(0)}k chars → ${(MAX_PROMPT_CHARS / 1000).toFixed(0)}k chars]\n\n${basePrompt.slice(-tail)}`;
+          }
 
-              // ── Defensive backfill ───────────────────────────────────────
-              // If the AI omits any required section (e.g. performance), use
-              // internal AI's value so the UI never crashes on undefined.
+          emit({ type: "progress", step: "Running multi-agent AI analysis…", percent: 78 });
+          try {
+            // Select agents based on scan mode
+            const agents: AgentConfig[] = scanMode === "quick"
+              ? [SECURITY_AGENT, ARCHITECTURE_AGENT]
+              : scanMode === "deep"
+                ? [SECURITY_AGENT, ARCHITECTURE_AGENT, PERFORMANCE_AGENT, TESTING_AGENT, DEPENDENCY_AGENT, DEBT_AGENT]
+                : [SECURITY_AGENT, ARCHITECTURE_AGENT, PERFORMANCE_AGENT, TESTING_AGENT];
+
+            const orchestratorRes = await runAgentOrchestrator(
+              {
+                agents,
+                effort: scanMode === "deep" ? "thorough" : scanMode === "quick" ? "quick" : "balanced",
+                plan: plan as AIPlan,
+                byokKeys,
+                mode: "parallel",
+              },
+              basePrompt,
+              { repo, fileContents: keyFileContents }
+            );
+
+            if (orchestratorRes) {
+              // Merge agent outputs into RepoScanResult format
+              const securityOutput = orchestratorRes.agentResults.find(r => r.agentId === "security")?.parsedOutput as Record<string, unknown> | undefined;
+              const archOutput = orchestratorRes.agentResults.find(r => r.agentId === "architecture")?.parsedOutput as Record<string, unknown> | undefined;
+              const perfOutput = orchestratorRes.agentResults.find(r => r.agentId === "performance")?.parsedOutput as Record<string, unknown> | undefined;
+              const testOutput = orchestratorRes.agentResults.find(r => r.agentId === "testing")?.parsedOutput as Record<string, unknown> | undefined;
+              const depOutput = orchestratorRes.agentResults.find(r => r.agentId === "dependency")?.parsedOutput as Record<string, unknown> | undefined;
+              const debtOutput = orchestratorRes.agentResults.find(r => r.agentId === "debt")?.parsedOutput as Record<string, unknown> | undefined;
+
+              // Calculate scores based on findings - if no issues found, score is 100
+              const securityFindings = (securityOutput?.["findings"] as RepoScanFinding[]) ?? [];
+              const archConcerns = (archOutput?.["concerns"] as string[]) ?? [];
+              const perfIssues = (perfOutput?.["issues"] as RepoScanFinding[]) ?? [];
+              const testGaps = (testOutput?.["gaps"] as string[]) ?? [];
+              
+              const securityScore = securityOutput?.["securityScore"] as number ?? Math.max(0, 100 - securityFindings.length * 10);
+              const archScore = archOutput?.["architectureScore"] as number ?? Math.max(0, 100 - archConcerns.length * 5);
+              const perfScore = perfOutput?.["performanceScore"] as number ?? Math.max(0, 100 - perfIssues.length * 8);
+              const testScore = testOutput?.["testabilityScore"] as number ?? Math.max(0, 100 - testGaps.length * 5);
+              
               result = {
-                ...internalScanResult,   // base: all fields guaranteed
-                ...parsed,               // AI overrides everything it returned
-                // Per-section: prefer AI but fall back to internal if the AI
-                // didn't return a valid object for that section.
-                performance: parsed.performance?.score != null
-                  ? parsed.performance
-                  : internalScanResult.performance,
-                security: parsed.security?.score != null
-                  ? parsed.security
-                  : internalScanResult.security,
-                codeQuality: parsed.codeQuality?.score != null
-                  ? parsed.codeQuality
-                  : internalScanResult.codeQuality,
-                testability: parsed.testability?.score != null
-                  ? parsed.testability
-                  : internalScanResult.testability,
-                dependencies: parsed.dependencies?.score != null
-                  ? parsed.dependencies
-                  : internalScanResult.dependencies,
-                techDebt: parsed.techDebt?.level
-                  ? parsed.techDebt
-                  : internalScanResult.techDebt,
-                architecture: parsed.architecture?.summary
-                  ? parsed.architecture
-                  : internalScanResult.architecture,
-                recommendations: parsed.recommendations?.length
-                  ? parsed.recommendations
-                  : internalScanResult.recommendations,
-                metrics: {
-                  ...internalScanResult.metrics,
-                  ...(parsed.metrics ?? {}),
+                healthScore: Math.round((securityScore + archScore + perfScore + testScore) / 4),
+                summary: orchestratorRes.parsedFinal?.summary as string ?? orchestratorRes.finalOutput.slice(0, 500),
+                architecture: {
+                  summary: archOutput?.["summary"] as string ?? "Architecture analysis completed.",
+                  patterns: (archOutput?.["patterns"] as string[]) ?? [],
+                  strengths: (archOutput?.["positives"] as string[]) ?? [],
+                  concerns: (archOutput?.["concerns"] as string[]) ?? [],
                 },
-                model: aiRes.model,
+                security: {
+                  score: securityScore,
+                  grade: securityScore >= 90 ? "A" : securityScore >= 75 ? "B" : securityScore >= 60 ? "C" : securityScore >= 40 ? "D" : "F",
+                  issues: securityFindings,
+                  positives: (securityOutput?.["positives"] as string[]) ?? [],
+                },
+                codeQuality: {
+                  score: Math.round((securityScore + archScore + perfScore + testScore) / 4), // Derived from overall
+                  grade: (securityScore + archScore + perfScore + testScore) / 4 >= 90 ? "A" : (securityScore + archScore + perfScore + testScore) / 4 >= 75 ? "B" : (securityScore + archScore + perfScore + testScore) / 4 >= 60 ? "C" : (securityScore + archScore + perfScore + testScore) / 4 >= 40 ? "D" : "F",
+                  issues: (debtOutput?.["issues"] as RepoScanFinding[]) ?? [],
+                  strengths: (debtOutput?.["positives"] as string[]) ?? [],
+                },
+                performance: {
+                  score: perfScore,
+                  grade: perfScore >= 90 ? "A" : perfScore >= 75 ? "B" : perfScore >= 60 ? "C" : perfScore >= 40 ? "D" : "F",
+                  issues: perfIssues,
+                  positives: (perfOutput?.["positives"] as string[]) ?? [],
+                },
+                testability: {
+                  score: testScore,
+                  grade: testScore >= 90 ? "A" : testScore >= 75 ? "B" : testScore >= 60 ? "C" : testScore >= 40 ? "D" : "F",
+                  hasTestFramework: (testOutput?.["hasTestFramework"] as boolean) ?? false,
+                  coverageEstimate: testOutput?.["coverageEstimate"] as string ?? "unknown",
+                  gaps: testGaps,
+                },
+                dependencies: {
+                  score: depOutput?.["dependencyScore"] as number ?? 85,
+                  totalCount: (depOutput?.["totalCount"] as number) ?? 0,
+                  risks: (depOutput?.["risks"] as string[]) ?? [],
+                  outdatedSignals: (depOutput?.["outdatedSignals"] as string[]) ?? [],
+                },
+                techDebt: {
+                  score: debtOutput?.["techDebtScore"] as number ?? 75,
+                  level: (debtOutput?.["debtLevel"] as "minimal" | "manageable" | "significant" | "severe") ?? "manageable",
+                  hotspots: (debtOutput?.["hotspots"] as string[]) ?? [],
+                  estimatedHours: debtOutput?.["estimatedHours"] as string ?? "Unknown",
+                },
+                recommendations: (orchestratorRes.parsedFinal?.recommendations as Array<{
+                  priority: "immediate" | "short-term" | "long-term";
+                  title: string;
+                  description: string;
+                  effort: "low" | "medium" | "high";
+                }>) ?? [],
+                metrics: {
+                  primaryLanguage: (meta as Record<string, unknown>).language as string ?? "unknown",
+                  fileCount: fileTree.length,
+                  estimatedLoc: `${realLoc}`,
+                  contributors: Array.isArray(contributors) ? contributors.length : 0,
+                  repoAge: (meta as Record<string, unknown>).created_at
+                    ? `${Math.round((Date.now() - Date.parse((meta as Record<string, unknown>).created_at as string)) / (1000 * 60 * 60 * 24))} days`
+                    : "unknown",
+                  openIssues: (meta as Record<string, unknown>).open_issues_count as number ?? 0,
+                  stars: (meta as Record<string, unknown>).stargazers_count as number ?? 0,
+                },
+                model: orchestratorRes.providers[0] ?? "multi-agent-v2",
                 isDemo: false,
               };
-
-              // Merge unique internal security findings the AI missed
-              const llmDescs = new Set(result.security.issues.map((i) => i.description.slice(0, 40)));
-              const extra = internalScanResult.security.issues.filter((i) => !llmDescs.has(i.description.slice(0, 40)));
-              result.security.issues = [...result.security.issues, ...extra].slice(0, 8);
 
               // Populate public cache so the next user gets this result instantly
               savePublicScanCache(repo, scanMode, result as unknown as Record<string, unknown>, isPrivateRepo)
@@ -800,7 +859,7 @@ export async function POST(req: NextRequest) {
                   data: {
                     userId: session.user.id, repo, scanMode, analysisType: "repo",
                     result: JSON.parse(JSON.stringify(result)),
-                    tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
+                    tokensUsed: orchestratorRes.totalTokens.input + orchestratorRes.totalTokens.output,
                   },
                 }),
                 saveRepoKnowledge(session.user.id, repo, plan, {
@@ -811,25 +870,32 @@ export async function POST(req: NextRequest) {
                     securityGrade: result.security.grade,
                     qualityGrade: result.codeQuality.grade,
                     techDebtLevel: result.techDebt.level,
-                    topIssues: result.security.issues.slice(0, 3).map((i) => i.description),
+                    topIssues: (result.security.issues ?? []).slice(0, 3).map((i) => i.description),
                   },
                   fileCount: fileTree.length,
-                  tokensUsed: aiRes.inputTokens + aiRes.outputTokens,
+                  tokensUsed: orchestratorRes.totalTokens.input + orchestratorRes.totalTokens.output,
                 }),
               ]);
             } else {
-              // callAI returns null when no provider key is set (free plan handled above).
-              // Any actual API error will be thrown and caught below.
-              result = internalScanResult;
+              // Multi-agent returned null — fallback to internal AI
+              emit({ type: "progress", step: "AI agents unavailable — falling back to static analysis…", percent: 80 });
+              internalScanResult = scanRepoWithInternalAI({
+                repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+                realLoc, realLocByExt, totalCodeFiles, importGraph,
+              });
+              result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
             }
           } catch (aiErr) {
-            // If the AI call failed with an actual error (bad key, rate limit, network),
-            // emit a warning in dev but still serve internal AI results so the scan
-            // completes. The model field will reveal it fell back.
+            // AI agents failed — fall back to internal AI as last resort
             if (process.env.NODE_ENV !== "production") {
-              console.error("[repo-scan] AI provider error — falling back to internal:", aiErr);
+              console.error("[repo-scan] Multi-agent error — falling back to internal:", aiErr);
             }
-            result = internalScanResult;
+            emit({ type: "progress", step: "AI error — falling back to static analysis…", percent: 80 });
+            internalScanResult = scanRepoWithInternalAI({
+              repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+              realLoc, realLocByExt, totalCodeFiles, importGraph,
+            });
+            result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
           }
         }
 

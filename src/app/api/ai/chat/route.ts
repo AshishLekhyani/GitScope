@@ -219,6 +219,7 @@ export async function POST(req: Request) {
         const cerebrasKey  = byokKeys.cerebras  ?? process.env.CEREBRAS_API_KEY;
         const deepseekKey  = byokKeys.deepseek  ?? process.env.DEEPSEEK_API_KEY;
         const mistralKey   = byokKeys.mistral   ?? process.env.MISTRAL_API_KEY;
+        const hfKey        = byokKeys.huggingface; // HF has env fallback in hf-inference.ts
 
         emit({ type: "status", step: "Thinking…" });
 
@@ -358,7 +359,7 @@ export async function POST(req: Request) {
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
               { role: "user" as const, content: message },
             ];
-            const result = await callHuggingFace({ tier: "balanced", messages: hfMessages, maxNewTokens: 1024, temperature: 0.4 });
+            const result = await callHuggingFace({ tier: "balanced", messages: hfMessages, maxNewTokens: 1024, temperature: 0.4, apiKey: hfKey ?? undefined });
             assistantText = result?.text ?? "";
           } catch {
             assistantText = "";

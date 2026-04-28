@@ -22,6 +22,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import OpenAI from "openai";
+import { HF_MODELS } from "./hf-inference";
 
 export type AIPlan = "free" | "developer";
 
@@ -36,6 +37,7 @@ export interface UserBYOKKeys {
   moonshot?: string | null;
   cerebras?: string | null;
   ollama?: string | null;
+  huggingface?: string | null;
 }
 
 export interface AICallOptions {
@@ -211,6 +213,7 @@ async function callGroq(opts: AICallOptions): Promise<AICallResult | null> {
 async function callDeepSeek(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = opts.byokKeys?.deepseek ?? process.env.DEEPSEEK_API_KEY;
   if (!apiKey) return null;
+  opts = fitForSmallContext(opts, 60_000, 4096);
   const model = deepseekModel(opts.plan);
   const client = new OpenAI({ apiKey, baseURL: "https://api.deepseek.com/v1" });
   const res = await client.chat.completions.create({
@@ -229,6 +232,7 @@ async function callDeepSeek(opts: AICallOptions): Promise<AICallResult | null> {
 async function callMistral(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = opts.byokKeys?.mistral ?? process.env.MISTRAL_API_KEY;
   if (!apiKey) return null;
+  opts = fitForSmallContext(opts, 50_000, 4096);
   const model = mistralModel(opts.plan);
   const client = new OpenAI({ apiKey, baseURL: "https://api.mistral.ai/v1" });
   const res = await client.chat.completions.create({
@@ -247,6 +251,7 @@ async function callMistral(opts: AICallOptions): Promise<AICallResult | null> {
 async function callMoonshot(opts: AICallOptions): Promise<AICallResult | null> {
   const apiKey = opts.byokKeys?.moonshot ?? process.env.MOONSHOT_API_KEY;
   if (!apiKey) return null;
+  opts = fitForSmallContext(opts, 60_000, 4096);
   const model = moonshotModel(opts.plan);
   const client = new OpenAI({ apiKey, baseURL: "https://api.moonshot.cn/v1" });
   const res = await client.chat.completions.create({
@@ -393,6 +398,7 @@ export function hasAnyAIProvider(byokKeys?: UserBYOKKeys): boolean {
     byokKeys?.anthropic || byokKeys?.openai || byokKeys?.gemini ||
     byokKeys?.groq || byokKeys?.deepseek || byokKeys?.mistral ||
     byokKeys?.moonshot || byokKeys?.cerebras || byokKeys?.ollama ||
+    byokKeys?.huggingface || process.env.HF_API_KEY ||
     process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY ||
     process.env.GROQ_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.MISTRAL_API_KEY ||
     process.env.MOONSHOT_API_KEY || process.env.CEREBRAS_API_KEY || process.env.OLLAMA_BASE_URL
@@ -404,7 +410,8 @@ export function hasByokKey(byokKeys?: UserBYOKKeys): boolean {
   return !!(
     byokKeys?.anthropic || byokKeys?.openai || byokKeys?.gemini ||
     byokKeys?.groq || byokKeys?.deepseek || byokKeys?.mistral ||
-    byokKeys?.moonshot || byokKeys?.cerebras || byokKeys?.ollama
+    byokKeys?.moonshot || byokKeys?.cerebras || byokKeys?.ollama ||
+    byokKeys?.huggingface
   );
 }
 
@@ -427,7 +434,8 @@ export function getModelLabel(plan: AIPlan, byokKeys?: UserBYOKKeys): string {
   if (byokKeys?.mistral)   return `mistral/${mistralModel(plan)}`;
   if (byokKeys?.moonshot)  return `moonshot/${moonshotModel(plan)}`;
   if (byokKeys?.cerebras)  return `cerebras/${cerebrasModel(plan)}`;
-  if (byokKeys?.ollama)    return `ollama/${ollamaModel(plan)}`;
+  if (byokKeys?.ollama)       return `ollama/${ollamaModel(plan)}`;
+  if (byokKeys?.huggingface)  return `huggingface/${HF_MODELS.balanced}`;
 
   if (hasServer) {
     if (process.env.ANTHROPIC_API_KEY) return `GitScope AI (${anthropicModel(plan)})`;
@@ -456,7 +464,9 @@ export function getProviderLabel(byokKeys?: UserBYOKKeys): string {
   if (byokKeys?.mistral)   return "Mistral (BYOK)";
   if (byokKeys?.moonshot)  return "Kimi / Moonshot (BYOK)";
   if (byokKeys?.cerebras)  return "Cerebras (BYOK)";
-  if (byokKeys?.ollama)    return "Ollama (local)";
+  if (byokKeys?.ollama)       return "Ollama (local)";
+  if (byokKeys?.huggingface)  return "HuggingFace (BYOK)";
+  if (process.env.HF_API_KEY) return "HuggingFace (GitScope)";
   if (process.env.ANTHROPIC_API_KEY) return "GitScope AI (Anthropic)";
   if (process.env.OPENAI_API_KEY)    return "GitScope AI (OpenAI)";
   if (process.env.GEMINI_API_KEY)    return "GitScope AI (Gemini)";

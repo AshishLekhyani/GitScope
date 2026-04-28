@@ -46,22 +46,19 @@ export default function OgImage() {
           }}
         />
 
-        {/* Logo mark */}
+        {/* Logo mark — hexagon via clip-path (avoids edge font download for ⬡) */}
         <div
           style={{
             width: "80px",
             height: "80px",
-            borderRadius: "20px",
-            background: "linear-gradient(135deg, #f59e0b, #f59e0b)",
+            background: "linear-gradient(135deg, #f59e0b, #d97706)",
+            clipPath: "polygon(25% 0%, 75% 0%, 100% 50%, 75% 100%, 25% 100%, 0% 50%)",
+            marginBottom: "32px",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            marginBottom: "32px",
-            fontSize: "40px",
           }}
-        >
-          ⬡
-        </div>
+        />
 
         {/* Title */}
         <div

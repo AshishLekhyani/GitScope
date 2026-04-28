@@ -107,6 +107,7 @@ Return the JSON schema with ${count} message option(s). Make each option meaning
         messages: [{ role: "system", content: COMMIT_SYSTEM }, { role: "user", content: userPrompt }],
         maxNewTokens: 600,
         temperature: 0.5,
+        apiKey: byokKeys.huggingface ?? undefined,
       });
       rawResponse = result?.text ?? "";
       modelUsed = result?.model ?? "huggingface";

@@ -135,6 +135,7 @@ Respond with the JSON fix schema. Make the fix minimal and surgical — only cha
         ],
         maxNewTokens: 2000,
         temperature: 0.1,
+        apiKey: byokKeys.huggingface ?? undefined,
       });
       rawResponse = result?.text ?? "";
       modelUsed = result?.model ?? "huggingface";

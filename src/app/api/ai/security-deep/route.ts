@@ -128,6 +128,7 @@ Do not hallucinate — every finding must be grounded in evidence from the actua
             ],
             maxNewTokens: 2048,
             temperature: 0.1,
+            apiKey: byokKeys.huggingface ?? undefined,
           });
 
           let parsedFinal: Record<string, unknown> | undefined;
