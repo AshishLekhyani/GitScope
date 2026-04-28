@@ -19,10 +19,7 @@ function generateApiKey(): { raw: string; prefix: string } {
 
 const MAX_KEYS: Record<string, number> = {
   free: 0,
-  professional: 2,
-  developer: 5,
-  team: 10,
-  enterprise: 50,
+  developer: 10,
 };
 
 // GET /api/user/api-keys — list keys (prefix only, never hash)
@@ -48,7 +45,7 @@ export async function POST(req: NextRequest) {
   const plan = await resolveAiPlanFromSessionDb(session);
   const maxKeys = MAX_KEYS[plan] ?? 0;
   if (maxKeys === 0) {
-    return NextResponse.json({ error: "API keys require Professional plan or higher" }, { status: 403 });
+    return NextResponse.json({ error: "API keys require Developer plan" }, { status: 403 });
   }
 
   const existing = await prisma.apiKey.count({ where: { userId: session.user.id } });

@@ -9,8 +9,7 @@ import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
 const VALID_METRICS  = ["healthScore", "securityScore", "qualityScore", "criticalCount"] as const;
 const VALID_OPS      = ["lt", "gt", "drop_by"] as const;
 const VALID_ACTIONS  = ["slack", "discord", "github_issue", "webhook"] as const;
-const MAX_RULES_TEAM = 20;
-const MAX_RULES_ENT  = 100;
+const MAX_RULES = 100;
 
 // GET /api/webhook-rules — list user's automation rules
 export async function GET() {
@@ -30,11 +29,11 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const plan = await resolveAiPlanFromSessionDb(session);
-  if (plan !== "team" && plan !== "enterprise") {
-    return NextResponse.json({ error: "Automation rules require a Team plan or higher.", upgradeRequired: true }, { status: 403 });
+  if (plan !== "developer") {
+    return NextResponse.json({ error: "Automation rules require a Developer plan.", upgradeRequired: true }, { status: 403 });
   }
 
-  const maxRules = plan === "enterprise" ? MAX_RULES_ENT : MAX_RULES_TEAM;
+  const maxRules = MAX_RULES;
   const existing = await prisma.webhookRule.count({ where: { userId: session.user.id } });
   if (existing >= maxRules) {
     return NextResponse.json({ error: `Rule limit reached (${maxRules}). Delete an existing rule to add a new one.` }, { status: 403 });

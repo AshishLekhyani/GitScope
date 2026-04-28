@@ -22,7 +22,7 @@ export default function PrivacyPage() {
       content: (
         <>
           <p>
-            When you sign in with GitHub or Google OAuth, we receive and store your{" "}
+            When you sign in with GitHub OAuth or email/password, we receive and store your{" "}
             <strong className="text-white">email address</strong>, display name, and OAuth access
             token. The access token is used exclusively during your active session to query the
             GitHub API on your behalf; we do not persist it to our database after the session ends.
@@ -35,7 +35,6 @@ export default function PrivacyPage() {
               "Repository search queries and the GitHub repository IDs you view or track.",
               "Usage data such as page visits, feature interactions, and dashboard configurations — collected in aggregate to improve the product.",
               "Session identifiers stored in a secure, HTTP-only cookie for authentication purposes.",
-              "Billing information (name, payment method type, last-four digits) processed and stored by Stripe — we never see or store raw card numbers.",
             ].map((item, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-stone-400">
                 <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-amber-400" />
@@ -108,19 +107,9 @@ export default function PrivacyPage() {
                   "Your OAuth token is used to query GitHub on your behalf. GitHub's own privacy policy governs data held on their platform.",
               },
               {
-                name: "Google OAuth",
+                name: "AI Providers (Anthropic, OpenAI, Gemini, Groq, etc.)",
                 detail:
-                  "If you sign in with Google, Google shares your email and profile name with us. We do not receive your Google password.",
-              },
-              {
-                name: "Anthropic (Claude API)",
-                detail:
-                  "Repository metadata (names, commit summaries, language stats) may be sent to Anthropic to power AI-generated insights. No source code is included. Anthropic does not train on API inputs by default.",
-              },
-              {
-                name: "Stripe",
-                detail:
-                  "Handles payment processing for Pro and Enterprise subscriptions. Stripe is PCI-DSS Level 1 certified. We store only your Stripe customer ID and subscription status.",
+                  "Repository metadata (names, commit summaries, language stats) may be sent to AI providers to power AI-generated insights. No source code is included. Providers do not train on API inputs by default. When you supply your own BYOK key, your data goes directly to your chosen provider under your own account.",
               },
               {
                 name: "Vercel",
@@ -152,10 +141,6 @@ export default function PrivacyPage() {
             permanently deleted within <strong className="text-white">30 days</strong>. Anonymised,
             aggregated analytics (e.g., total daily active users) are retained indefinitely as
             they cannot be linked back to you.
-          </p>
-          <p className="mt-3">
-            Stripe retains billing records for the period required by applicable tax and financial
-            regulations (typically 7 years), independent of account deletion.
           </p>
         </>
       ),
@@ -236,7 +221,7 @@ export default function PrivacyPage() {
         <h1 className="font-heading text-4xl font-black tracking-tight text-white sm:text-5xl">
           Privacy Policy
         </h1>
-        <p className="mt-3 text-sm text-stone-500">Last updated: April 1, 2026</p>
+        <p className="mt-3 text-sm text-stone-500">Last updated: April 28, 2026</p>
         <p className="mt-4 max-w-2xl text-base text-stone-400">
           GitScope is built on the principle that your data exists to serve you — not our
           ad network, not third-party data brokers. This policy explains plainly what we

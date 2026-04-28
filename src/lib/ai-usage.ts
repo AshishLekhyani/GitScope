@@ -10,6 +10,7 @@ export type AiUsageFeature =
   | "dora-metrics"
   | "dependency-map"
   | "repo-analysis"
+  | "ai-chat"
   | "code-review"
   | "repo-scan"
   | "repo-scan-llm";   // daily LLM cost gate (separate from hourly rate limit)

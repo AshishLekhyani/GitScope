@@ -17,7 +17,7 @@ import { performLogout } from "@/lib/client-auth";
 
 type SettingsTab = "profile" | "account" | "appearance" | "workspace" | "integrations" | "automation" | "api-keys";
 type ThemeOption = "light" | "dark" | "system";
-type AiPlan = "free" | "professional" | "developer" | "team" | "enterprise";
+type AiPlan = "free" | "developer";
 
 interface AiUsageSnapshot {
   total: number;
@@ -84,13 +84,31 @@ export function SettingsPanel() {
   const [apiKeySaving, setApiKeySaving] = useState(false);
   const [apiKeyMsg, setApiKeyMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
-  // BYOK (Bring Your Own Key) state
-  const [byokSaved, setByokSaved]               = useState({ anthropic: false, openai: false, gemini: false });
+  // BYOK (Bring Your Own Key) state — core providers
+  const [byokSaved, setByokSaved] = useState({
+    anthropic: false, openai: false, gemini: false,
+    groq: false, deepseek: false, mistral: false, moonshot: false, cerebras: false, ollama: false,
+  });
   const [byokAnthropicInput, setByokAnthropicInput] = useState("");
   const [byokOpenAIInput, setByokOpenAIInput]       = useState("");
   const [byokGeminiInput, setByokGeminiInput]       = useState("");
-  const [byokSaving, setByokSaving]               = useState(false);
-  const [byokMsg, setByokMsg]                     = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [byokGroqInput, setByokGroqInput]           = useState("");
+  const [byokDeepSeekInput, setByokDeepSeekInput]   = useState("");
+  const [byokMistralInput, setByokMistralInput]     = useState("");
+  const [byokMoonshotInput, setByokMoonshotInput]   = useState("");
+  const [byokCerebrasInput, setByokCerebrasInput]   = useState("");
+  const [byokOllamaInput, setByokOllamaInput]       = useState("");
+  const [byokPreferPlatform, setByokPreferPlatform] = useState(false);
+  const [byokSaving, setByokSaving]                 = useState(false);
+  const [byokMsg, setByokMsg]                       = useState<{ type: "success" | "error"; text: string } | null>(null);
+
+  // Profile meta (extra fields)
+  const [location, setLocation]     = useState("");
+  const [website, setWebsite]       = useState("");
+  const [role, setRole]             = useState("");
+  const [company, setCompany]       = useState("");
+  const [timezone, setTimezone]     = useState("");
+  const [primaryStack, setPrimaryStack] = useState("");
 
   // Automation rules state
   const [autoRules, setAutoRules] = useState<{
@@ -139,7 +157,7 @@ export function SettingsPanel() {
   const [aiOpsLoading, setAiOpsLoading] = useState(false);
   const [aiOpsError, setAiOpsError] = useState<string | null>(null);
   const [tierTargetUserId, setTierTargetUserId] = useState("");
-  const [tierTargetPlan, setTierTargetPlan] = useState<AiPlan>("professional");
+  const [tierTargetPlan, setTierTargetPlan] = useState<AiPlan>("developer");
   const [tierSaving, setTierSaving] = useState(false);
   const [tierMsg, setTierMsg] = useState<{ type: "success" | "error"; text: string } | null>(null);
 
@@ -201,10 +219,26 @@ export function SettingsPanel() {
         // BYOK key presence
         if (data.byok) {
           setByokSaved({
-            anthropic: data.byok.hasAnthropic ?? false,
-            openai:    data.byok.hasOpenAI    ?? false,
-            gemini:    data.byok.hasGemini    ?? false,
+            anthropic: data.byok.anthropic  ?? data.byok.hasAnthropic ?? false,
+            openai:    data.byok.openai     ?? data.byok.hasOpenAI    ?? false,
+            gemini:    data.byok.gemini     ?? data.byok.hasGemini    ?? false,
+            groq:      data.byok.groq       ?? false,
+            deepseek:  data.byok.deepseek   ?? false,
+            mistral:   data.byok.mistral    ?? false,
+            moonshot:  data.byok.moonshot   ?? false,
+            cerebras:  data.byok.cerebras   ?? false,
+            ollama:    data.byok.ollama     ?? false,
           });
+          setByokPreferPlatform(data.byok.preferPlatform ?? false);
+        }
+        // Profile meta (extra fields)
+        if (data.profileMeta) {
+          setLocation(data.profileMeta.location ?? "");
+          setWebsite(data.profileMeta.website ?? "");
+          setRole(data.profileMeta.role ?? "");
+          setCompany(data.profileMeta.company ?? "");
+          setTimezone(data.profileMeta.timezone ?? "");
+          setPrimaryStack(data.profileMeta.primaryStack ?? "");
         }
         
         // Connected providers
@@ -375,7 +409,10 @@ export function SettingsPanel() {
       const res = await fetch("/api/user/profile", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ displayName, bio, gitHandle, avatarUrl: avatarUrl || undefined }),
+        body: JSON.stringify({
+          displayName, bio, gitHandle, avatarUrl: avatarUrl || undefined,
+          profileMeta: { location, website, role, company, timezone, primaryStack },
+        }),
       });
       if (!res.ok) throw new Error(`Server error: ${res.status}`);
       setDirty(false);
@@ -602,7 +639,7 @@ export function SettingsPanel() {
       if (!res.ok) {
         const d = await res.json();
         if (d.upgradeRequired) {
-          setDigestMsg({ type: "error", text: "Weekly digest requires Professional plan or higher." });
+          setDigestMsg({ type: "error", text: "Weekly digest requires Developer plan." });
           setWeeklyDigest(false);
         }
       }
@@ -666,7 +703,6 @@ export function SettingsPanel() {
   // Check if provider is connected using database-stored providers, not just current session
   const isProviderConnected = (providerName: string) => connectedProviders.includes(providerName);
   const hasGithub = isProviderConnected("github");
-  const hasGoogle = isProviderConnected("google");
   const hasCredentials = isProviderConnected("credentials") || hasPassword;
 
   const themeOptions: { value: ThemeOption; label: string; bgClass: string }[] = [
@@ -676,7 +712,27 @@ export function SettingsPanel() {
   ];
 
   // ── BYOK handlers ────────────────────────────────────────────────────────────
-  const handleSaveByok = async (provider: "anthropic" | "openai" | "gemini", key: string) => {
+  type ByokProvider = "anthropic" | "openai" | "gemini" | "groq" | "deepseek" | "mistral" | "moonshot" | "cerebras" | "ollama";
+
+  const PROVIDER_LABELS: Record<ByokProvider, string> = {
+    anthropic: "Anthropic", openai: "OpenAI", gemini: "Google Gemini",
+    groq: "Groq", deepseek: "DeepSeek", mistral: "Mistral",
+    moonshot: "Kimi (Moonshot)", cerebras: "Cerebras", ollama: "Ollama",
+  };
+
+  const clearInput = (provider: ByokProvider) => {
+    if (provider === "anthropic") setByokAnthropicInput("");
+    if (provider === "openai")    setByokOpenAIInput("");
+    if (provider === "gemini")    setByokGeminiInput("");
+    if (provider === "groq")      setByokGroqInput("");
+    if (provider === "deepseek")  setByokDeepSeekInput("");
+    if (provider === "mistral")   setByokMistralInput("");
+    if (provider === "moonshot")  setByokMoonshotInput("");
+    if (provider === "cerebras")  setByokCerebrasInput("");
+    if (provider === "ollama")    setByokOllamaInput("");
+  };
+
+  const handleSaveByok = async (provider: ByokProvider, key: string) => {
     setByokSaving(true);
     setByokMsg(null);
     try {
@@ -688,10 +744,8 @@ export function SettingsPanel() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Save failed");
       setByokSaved((prev) => ({ ...prev, [provider]: true }));
-      if (provider === "anthropic") setByokAnthropicInput("");
-      if (provider === "openai")    setByokOpenAIInput("");
-      if (provider === "gemini")    setByokGeminiInput("");
-      setByokMsg({ type: "success", text: `${provider === "anthropic" ? "Anthropic" : provider === "openai" ? "OpenAI" : "Gemini"} key saved and encrypted.` });
+      clearInput(provider);
+      setByokMsg({ type: "success", text: `${PROVIDER_LABELS[provider]} key saved and encrypted.` });
     } catch (e) {
       setByokMsg({ type: "error", text: e instanceof Error ? e.message : "Failed to save key." });
     } finally {
@@ -699,7 +753,7 @@ export function SettingsPanel() {
     }
   };
 
-  const handleDeleteByok = async (provider: "anthropic" | "openai" | "gemini") => {
+  const handleDeleteByok = async (provider: ByokProvider) => {
     setByokSaving(true);
     setByokMsg(null);
     try {
@@ -710,12 +764,21 @@ export function SettingsPanel() {
       });
       if (!res.ok) throw new Error("Remove failed");
       setByokSaved((prev) => ({ ...prev, [provider]: false }));
-      setByokMsg({ type: "success", text: "Key removed." });
+      setByokMsg({ type: "success", text: `${PROVIDER_LABELS[provider]} key removed.` });
     } catch {
       setByokMsg({ type: "error", text: "Failed to remove key." });
     } finally {
       setByokSaving(false);
     }
+  };
+
+  const handleByokPreferPlatformToggle = async (val: boolean) => {
+    setByokPreferPlatform(val);
+    await fetch("/api/user/byok-preference", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ preferPlatform: val }),
+    }).catch(() => {/* non-critical */});
   };
 
   return (
@@ -783,7 +846,7 @@ export function SettingsPanel() {
                         onClick={() => { dispatch(setAvatarUrl(session.user!.image!)); setAvatarCleared(false); setDirty(true); }}
                       >
                         <MaterialIcon name="sync" size={12} />
-                        Use {hasGithub ? "GitHub" : hasGoogle ? "Google" : "OAuth"} photo
+                        Use {hasGithub ? "GitHub" : "OAuth"} photo
                       </button>
                     )}
                     <button
@@ -797,37 +860,90 @@ export function SettingsPanel() {
                   </div>
                 </div>
 
-                {/* Default avatars grid */}
+                {/* Default avatars grid — 54 options across 9 styles */}
                 <div>
-                  <p className="mb-2 font-mono text-[9px] font-bold tracking-widest text-muted-foreground uppercase">Choose Default</p>
-                  <div className="grid grid-cols-6 gap-1.5">
-                    {[
-                      "https://api.dicebear.com/7.x/bottts/svg?seed=alpha&backgroundColor=6366f1",
-                      "https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=8b5cf6",
-                      "https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=06b6d4",
-                      "https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=10b981",
-                      "https://api.dicebear.com/7.x/shapes/svg?seed=omega&backgroundColor=f59e0b",
-                      "https://api.dicebear.com/7.x/shapes/svg?seed=sigma&backgroundColor=ef4444",
-                      "https://api.dicebear.com/7.x/identicon/svg?seed=theta&backgroundColor=6366f1",
-                      "https://api.dicebear.com/7.x/identicon/svg?seed=lambda&backgroundColor=8b5cf6",
-                      "https://api.dicebear.com/7.x/thumbs/svg?seed=kappa&backgroundColor=06b6d4",
-                      "https://api.dicebear.com/7.x/thumbs/svg?seed=zeta&backgroundColor=10b981",
-                      "https://api.dicebear.com/7.x/pixel-art/svg?seed=gitscope&backgroundColor=f59e0b",
-                      "https://api.dicebear.com/7.x/pixel-art/svg?seed=engineer&backgroundColor=ef4444",
-                    ].map((src) => (
-                      <button
-                        key={src}
-                        type="button"
-                        onClick={() => { dispatch(setAvatarUrl(src)); setAvatarUrlInput(src); setAvatarCleared(false); setDirty(true); }}
-                        className={cn(
-                          "size-9 rounded-none overflow-hidden border-2 transition-all hover:scale-110",
-                          (avatarUrl === src) ? "border-amber-500 shadow-lg shadow-amber-500/20" : "border-transparent hover:border-outline-variant/40"
-                        )}
-                        title="Select this avatar"
-                      >
-                        <Image src={src} width={36} height={36} alt="Avatar option" className="size-full" unoptimized />
-                      </button>
-                    ))}
+                  <p className="mb-2 font-mono text-[9px] font-bold tracking-widest text-muted-foreground uppercase">Choose Avatar</p>
+                  <div className="max-h-48 overflow-y-auto pr-1">
+                    <div className="grid grid-cols-6 gap-1.5">
+                      {[
+                        // Bottts (robot avatars)
+                        "https://api.dicebear.com/7.x/bottts/svg?seed=alpha&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/bottts/svg?seed=beta&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/bottts/svg?seed=gamma&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/bottts/svg?seed=delta&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/bottts/svg?seed=epsilon&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/bottts/svg?seed=zeta&backgroundColor=ef4444",
+                        // Pixel Art
+                        "https://api.dicebear.com/7.x/pixel-art/svg?seed=gitscope&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/pixel-art/svg?seed=engineer&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/pixel-art/svg?seed=hacker&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/pixel-art/svg?seed=coder&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/pixel-art/svg?seed=dev&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/pixel-art/svg?seed=builder&backgroundColor=ef4444",
+                        // Lorelei (illustrated faces)
+                        "https://api.dicebear.com/7.x/lorelei/svg?seed=alex&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/lorelei/svg?seed=morgan&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/lorelei/svg?seed=riley&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/lorelei/svg?seed=taylor&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/lorelei/svg?seed=jordan&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/lorelei/svg?seed=sam&backgroundColor=ef4444",
+                        // Fun Emoji
+                        "https://api.dicebear.com/7.x/fun-emoji/svg?seed=omega&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/fun-emoji/svg?seed=sigma&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/fun-emoji/svg?seed=theta&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/fun-emoji/svg?seed=kappa&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/fun-emoji/svg?seed=lambda&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/fun-emoji/svg?seed=mu&backgroundColor=ef4444",
+                        // Micah (portrait style)
+                        "https://api.dicebear.com/7.x/micah/svg?seed=px1&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/micah/svg?seed=px2&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/micah/svg?seed=px3&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/micah/svg?seed=px4&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/micah/svg?seed=px5&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/micah/svg?seed=px6&backgroundColor=ef4444",
+                        // Shapes (abstract)
+                        "https://api.dicebear.com/7.x/shapes/svg?seed=s1&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/shapes/svg?seed=s2&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/shapes/svg?seed=s3&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/shapes/svg?seed=s4&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/shapes/svg?seed=s5&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/shapes/svg?seed=s6&backgroundColor=ef4444",
+                        // Identicon
+                        "https://api.dicebear.com/7.x/identicon/svg?seed=i1&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/identicon/svg?seed=i2&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/identicon/svg?seed=i3&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/identicon/svg?seed=i4&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/identicon/svg?seed=i5&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/identicon/svg?seed=i6&backgroundColor=ef4444",
+                        // Thumbs
+                        "https://api.dicebear.com/7.x/thumbs/svg?seed=t1&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/thumbs/svg?seed=t2&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/thumbs/svg?seed=t3&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/thumbs/svg?seed=t4&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/thumbs/svg?seed=t5&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/thumbs/svg?seed=t6&backgroundColor=ef4444",
+                        // Open Peeps (illustrated people)
+                        "https://api.dicebear.com/7.x/open-peeps/svg?seed=op1&backgroundColor=6366f1",
+                        "https://api.dicebear.com/7.x/open-peeps/svg?seed=op2&backgroundColor=8b5cf6",
+                        "https://api.dicebear.com/7.x/open-peeps/svg?seed=op3&backgroundColor=06b6d4",
+                        "https://api.dicebear.com/7.x/open-peeps/svg?seed=op4&backgroundColor=10b981",
+                        "https://api.dicebear.com/7.x/open-peeps/svg?seed=op5&backgroundColor=f59e0b",
+                        "https://api.dicebear.com/7.x/open-peeps/svg?seed=op6&backgroundColor=ef4444",
+                      ].map((src) => (
+                        <button
+                          key={src}
+                          type="button"
+                          onClick={() => { dispatch(setAvatarUrl(src)); setAvatarUrlInput(src); setAvatarCleared(false); setDirty(true); }}
+                          className={cn(
+                            "size-9 rounded-none overflow-hidden border-2 transition-all hover:scale-110",
+                            (avatarUrl === src) ? "border-amber-500 shadow-lg shadow-amber-500/20" : "border-transparent hover:border-outline-variant/40"
+                          )}
+                          title="Select this avatar"
+                        >
+                          <Image src={src} width={36} height={36} alt="Avatar option" className="size-full" unoptimized />
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
@@ -904,6 +1020,72 @@ export function SettingsPanel() {
                     className="w-full resize-none rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
                   />
                 </div>
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <label htmlFor="role" className="mb-1.5 block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                      Role / Title
+                    </label>
+                    <input
+                      id="role"
+                      value={role}
+                      placeholder="e.g. Senior Engineer, Tech Lead"
+                      onChange={(e) => { setRole(e.target.value); setDirty(true); }}
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="company" className="mb-1.5 block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                      Company / Org
+                    </label>
+                    <input
+                      id="company"
+                      value={company}
+                      placeholder="e.g. Acme Corp"
+                      onChange={(e) => { setCompany(e.target.value); setDirty(true); }}
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="location" className="mb-1.5 block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                      Location
+                    </label>
+                    <input
+                      id="location"
+                      value={location}
+                      placeholder="e.g. San Francisco, CA"
+                      onChange={(e) => { setLocation(e.target.value); setDirty(true); }}
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="website" className="mb-1.5 block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                      Website / Portfolio
+                    </label>
+                    <input
+                      id="website"
+                      type="url"
+                      value={website}
+                      placeholder="https://yoursite.com"
+                      onChange={(e) => { setWebsite(e.target.value); setDirty(true); }}
+                      className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label htmlFor="primary-stack" className="mb-1.5 block font-mono text-[9px] font-bold tracking-[0.3em] text-muted-foreground uppercase">
+                    Primary Stack
+                  </label>
+                  <input
+                    id="primary-stack"
+                    value={primaryStack}
+                    placeholder="e.g. TypeScript, Next.js, PostgreSQL, Docker"
+                    onChange={(e) => { setPrimaryStack(e.target.value); setDirty(true); }}
+                    className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-sm text-foreground focus:border-primary/50 focus:outline-none"
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">Comma-separated list of languages, frameworks, and tools</p>
+                </div>
               </div>
             </div>
           </div>
@@ -948,11 +1130,6 @@ export function SettingsPanel() {
                       <MaterialIcon name="check_circle" size={14} /> GitHub Connected
                     </span>
                   )}
-                  {hasGoogle && (
-                    <span className="inline-flex items-center gap-2 rounded-none border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
-                      <MaterialIcon name="check_circle" size={14} /> Google Connected
-                    </span>
-                  )}
                   {!hasCredentials && (
                     <span className="inline-flex items-center gap-2 rounded-none border border-amber-500/20 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600">
                       <MaterialIcon name="info" size={14} /> No password set
@@ -994,34 +1171,6 @@ export function SettingsPanel() {
                   </div>
                 )}
 
-                {/* Google connect card */}
-                {!hasGoogle && (
-                  <div className="rounded-none border border-amber-500/20 bg-linear-to-br from-amber-500/5 to-teal-500/5 p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="size-9 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center shrink-0 mt-0.5">
-                        <MaterialIcon name="person" size={20} className="text-amber-500" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold text-foreground mb-0.5">Connect Google</p>
-                        <p className="text-xs text-muted-foreground leading-relaxed mb-3">
-                          Add Google sign-in to your account. Use your Google profile photo and sign in faster across devices.
-                        </p>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            signIn("google", {
-                              callbackUrl: "/settings?tab=account&connected=google",
-                            })
-                          }
-                          className="inline-flex items-center gap-2 px-4 py-2 rounded-none bg-amber-500 text-white text-xs font-bold hover:bg-amber-600 active:scale-[0.98] transition-all"
-                        >
-                          <MaterialIcon name="person" size={14} />
-                          Connect Google Account
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                )}
               </div>
             </div>
           </div>
@@ -1487,10 +1636,7 @@ export function SettingsPanel() {
                       className="w-full rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 text-xs focus:border-primary/50 focus:outline-none"
                     >
                       <option value="free">Free</option>
-                      <option value="professional">Professional</option>
-                      <option value="developer">Developer (BYOK)</option>
-                      <option value="team">Team</option>
-                      <option value="enterprise">Enterprise</option>
+                      <option value="developer">Developer</option>
                     </select>
                     <Button
                       type="button"
@@ -1823,14 +1969,14 @@ export function SettingsPanel() {
           )} {/* end Weekly Digest gate */}
 
           {/* GitHub App — Team+ */}
-          {(tierInfo?.resolvedPlan === "free" || tierInfo?.resolvedPlan === "professional" || tierInfo?.resolvedPlan === "developer") ? (
+          {false ? (
             <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
               <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-foreground/5 border border-outline-variant/20">
                 <MaterialIcon name="integration_instructions" size={18} className="text-foreground/50" />
               </div>
               <div className="flex-1">
                 <p className="font-bold text-sm text-foreground">GitHub App</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Auto-review PRs and post AI analysis as GitHub review comments. Available on Team plan and above.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Auto-review PRs and post AI analysis as GitHub review comments.</p>
               </div>
               <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
                 <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
@@ -1927,147 +2073,128 @@ export function SettingsPanel() {
           </div>
           )} {/* end GitHub App gate */}
 
-          {/* ── AI Provider Keys (BYOK) — Professional+ only ── */}
-          {tierInfo?.resolvedPlan === "free" ? (
-            <div className="rounded-none border border-outline-variant/15 bg-surface-container/50 p-6 flex items-center gap-4">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20">
-                <MaterialIcon name="vpn_key" size={18} className="text-amber-400" />
-              </div>
-              <div className="flex-1">
-                <p className="font-bold text-sm text-foreground">AI Provider Keys (BYOK)</p>
-                <p className="text-xs text-muted-foreground mt-0.5">Bring your own Anthropic / OpenAI / Gemini key for unlimited AI scans. Available on Professional and Developer plans.</p>
-              </div>
-              <a href="/pricing-settings" className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 rounded-none bg-amber-500 text-white text-[11px] font-black hover:bg-amber-600 transition-colors">
-                <MaterialIcon name="upgrade" size={13} className="text-white" /> Upgrade
-              </a>
-            </div>
-          ) : (
-          <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-5">
-            <div className="flex items-center gap-3 mb-1">
-              <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20">
-                <MaterialIcon name="vpn_key" size={18} className="text-amber-500" />
-              </div>
-              <div>
-                <h3 className="font-heading text-lg font-bold text-foreground">AI Provider Keys (BYOK)</h3>
-                <p className="text-xs text-muted-foreground">Use your own API keys — removes daily scan caps entirely.</p>
-              </div>
-              {(byokSaved.anthropic || byokSaved.openai || byokSaved.gemini) && (
-                <span className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest text-emerald-500">
-                  Active
-                </span>
-              )}
-            </div>
-
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Instead of GitScope&apos;s shared AI budget, supply your own API keys. Keys are encrypted at rest with AES-256-GCM.
-              BYOK accounts bypass the daily LLM scan limit — scan as much as you want.
-            </p>
-
-            <div className="space-y-4">
-              {/* Anthropic */}
+          {/* ── AI Provider Keys (BYOK) ── */}
+          {(() => {
+            const ByokRow = ({
+              provKey, label, dot, placeholder, inputValue, setInputValue, inputType = "password",
+            }: {
+              provKey: ByokProvider; label: string; dot: string; placeholder: string;
+              inputValue: string; setInputValue: (v: string) => void; inputType?: string;
+            }) => (
               <div className="space-y-2">
                 <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-[#cc785c]" />
-                  Anthropic (Claude Sonnet)
-                  {byokSaved.anthropic && <span className="text-emerald-500 normal-case font-normal">✓ key saved</span>}
+                  <span className={cn("inline-block size-2 rounded-full", dot)} />
+                  {label}
+                  {byokSaved[provKey] && <span className="text-emerald-500 normal-case font-normal">✓ saved</span>}
                 </p>
                 <div className="flex gap-2">
                   <input
-                    type="password"
-                    value={byokAnthropicInput}
-                    onChange={(e) => setByokAnthropicInput(e.target.value)}
-                    placeholder={byokSaved.anthropic ? "sk-ant-•••••••••••••••••" : "sk-ant-api03-..."}
+                    type={inputType}
+                    value={inputValue}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    placeholder={byokSaved[provKey] ? "••••••••••••••••••••" : placeholder}
                     className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
                   />
-                  <button
-                    type="button"
-                    disabled={byokSaving || !byokAnthropicInput.trim()}
-                    onClick={() => handleSaveByok("anthropic", byokAnthropicInput)}
-                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
-                  >Save</button>
-                  {byokSaved.anthropic && (
-                    <button
-                      type="button"
-                      disabled={byokSaving}
-                      onClick={() => handleDeleteByok("anthropic")}
-                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                    >Remove</button>
+                  <button type="button" disabled={byokSaving || !inputValue.trim()} onClick={() => handleSaveByok(provKey, inputValue)}
+                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40">Save</button>
+                  {byokSaved[provKey] && (
+                    <button type="button" disabled={byokSaving} onClick={() => handleDeleteByok(provKey)}
+                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40">Remove</button>
                   )}
                 </div>
               </div>
+            );
 
-              {/* OpenAI */}
-              <div className="space-y-2">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-[#10a37f]" />
-                  OpenAI (GPT-4o)
-                  {byokSaved.openai && <span className="text-emerald-500 normal-case font-normal">✓ key saved</span>}
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={byokOpenAIInput}
-                    onChange={(e) => setByokOpenAIInput(e.target.value)}
-                    placeholder={byokSaved.openai ? "sk-•••••••••••••••••" : "sk-proj-..."}
-                    className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    disabled={byokSaving || !byokOpenAIInput.trim()}
-                    onClick={() => handleSaveByok("openai", byokOpenAIInput)}
-                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
-                  >Save</button>
-                  {byokSaved.openai && (
-                    <button
-                      type="button"
-                      disabled={byokSaving}
-                      onClick={() => handleDeleteByok("openai")}
-                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                    >Remove</button>
+            return (
+              <div className="rounded-none border border-outline-variant/15 bg-surface-container p-6 space-y-6">
+                {/* Header */}
+                <div className="flex items-center gap-3">
+                  <div className="flex size-9 items-center justify-center rounded-none bg-amber-500/10 border border-amber-500/20 shrink-0">
+                    <MaterialIcon name="vpn_key" size={18} className="text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-heading text-lg font-bold text-foreground">AI Provider Keys (BYOK)</h3>
+                    <p className="text-xs text-muted-foreground">All keys encrypted at rest with AES-256-GCM.</p>
+                  </div>
+                  {Object.values(byokSaved).some(Boolean) && (
+                    <span className="ml-auto shrink-0 inline-flex items-center gap-1.5 rounded-full border border-emerald-500/20 bg-emerald-500/10 px-2.5 py-0.5 font-mono text-[9px] font-black uppercase tracking-widest text-emerald-500">
+                      {Object.values(byokSaved).filter(Boolean).length} key{Object.values(byokSaved).filter(Boolean).length !== 1 ? "s" : ""} saved
+                    </span>
                   )}
                 </div>
-              </div>
 
-              {/* Gemini */}
-              <div className="space-y-2">
-                <p className="font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                  <span className="inline-block size-2 rounded-full bg-[#4285f4]" />
-                  Google Gemini
-                  {byokSaved.gemini && <span className="text-emerald-500 normal-case font-normal">✓ key saved</span>}
-                </p>
-                <div className="flex gap-2">
-                  <input
-                    type="password"
-                    value={byokGeminiInput}
-                    onChange={(e) => setByokGeminiInput(e.target.value)}
-                    placeholder={byokSaved.gemini ? "AIza•••••••••••••••" : "AIzaSy..."}
-                    className="flex-1 rounded-none border border-outline-variant/20 bg-surface-container-lowest px-3 py-2 font-mono text-sm text-foreground focus:border-primary/50 focus:outline-none min-w-0"
-                  />
-                  <button
-                    type="button"
-                    disabled={byokSaving || !byokGeminiInput.trim()}
-                    onClick={() => handleSaveByok("gemini", byokGeminiInput)}
-                    className="shrink-0 rounded-none bg-primary px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-primary-foreground disabled:opacity-40"
-                  >Save</button>
-                  {byokSaved.gemini && (
-                    <button
-                      type="button"
-                      disabled={byokSaving}
-                      onClick={() => handleDeleteByok("gemini")}
-                      className="shrink-0 rounded-none border border-destructive/30 px-3 py-2 font-mono text-[10px] font-bold uppercase tracking-widest text-destructive hover:bg-destructive/10 disabled:opacity-40"
-                    >Remove</button>
-                  )}
+                {/* ── Free-tier providers — available to ALL users ── */}
+                <div className="space-y-4 rounded-none border border-emerald-500/15 bg-emerald-500/5 p-4">
+                  <div className="flex items-start gap-3">
+                    <MaterialIcon name="card_giftcard" size={16} className="text-emerald-400 mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-bold text-emerald-400">Free AI Boost — Available on all plans</p>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        These providers have generous <span className="font-bold text-foreground/70">free tiers</span> — no credit card needed.
+                        Adding your own key removes platform rate limits and routes your AI calls through your free quota.
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-[10px]">
+                    {[
+                      { name: "Groq", desc: "500 req/day (Llama 70B)", url: "console.groq.com/keys", color: "text-[#f55036]" },
+                      { name: "Gemini", desc: "1,500 req/day (Flash)", url: "aistudio.google.com/apikey", color: "text-[#4285f4]" },
+                      { name: "Cerebras", desc: "Fast free inference", url: "cloud.cerebras.ai", color: "text-violet-400" },
+                    ].map((p) => (
+                      <div key={p.name} className="rounded-none border border-outline-variant/10 bg-surface-container/50 px-3 py-2 space-y-0.5">
+                        <p className={cn("font-black uppercase tracking-wider", p.color)}>{p.name}</p>
+                        <p className="text-muted-foreground/60">{p.desc}</p>
+                        <p className="text-muted-foreground/40 truncate">{p.url}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  <ByokRow provKey="groq"     label="Groq (Llama 3.3 70B — 500 req/day free)" dot="bg-[#f55036]"  placeholder="gsk_..."    inputValue={byokGroqInput}     setInputValue={setByokGroqInput} />
+                  <ByokRow provKey="gemini"   label="Google Gemini (1,500 req/day free)"       dot="bg-[#4285f4]"  placeholder="AIzaSy..."  inputValue={byokGeminiInput}   setInputValue={setByokGeminiInput} />
+                  <ByokRow provKey="cerebras" label="Cerebras (Llama 70B — free tier)"         dot="bg-violet-700" placeholder="csk-..."    inputValue={byokCerebrasInput} setInputValue={setByokCerebrasInput} />
                 </div>
-              </div>
-            </div>
 
-            {byokMsg && (
-              <p className={cn("font-mono text-xs", byokMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>
-                {byokMsg.text}
-              </p>
-            )}
-          </div>
-          )}
+                {/* ── Prefer GitScope managed keys toggle ── */}
+                {true && (
+                  <div className="flex items-center gap-3 rounded-none border border-outline-variant/15 bg-surface-container-high p-3">
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-foreground">Use GitScope managed keys instead</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        When enabled, your BYOK keys are ignored and GitScope uses its own shared AI budget (subject to your plan limits).
+                      </p>
+                    </div>
+                    <Switch checked={byokPreferPlatform} onCheckedChange={handleByokPreferPlatformToggle} />
+                  </div>
+                )}
+
+                {/* ── All providers — available to ALL users ── */}
+                <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-px flex-1 bg-outline-variant/15" />
+                      <span className="font-mono text-[9px] font-bold uppercase tracking-widest text-muted-foreground">All Providers</span>
+                      <div className="h-px flex-1 bg-outline-variant/15" />
+                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Pay-per-token providers. Adding your key routes all your AI calls through your own account — no platform rate limits.
+                      Priority order: Anthropic → OpenAI → Gemini → Groq → Cerebras → DeepSeek → Mistral → Ollama.
+                    </p>
+                    <ByokRow provKey="anthropic" label="Anthropic (Claude Sonnet)" dot="bg-[#cc785c]" placeholder="sk-ant-api03-..." inputValue={byokAnthropicInput} setInputValue={setByokAnthropicInput} />
+                    <ByokRow provKey="openai"    label="OpenAI (GPT-4o)"           dot="bg-[#10a37f]" placeholder="sk-proj-..."     inputValue={byokOpenAIInput}    setInputValue={setByokOpenAIInput} />
+                    <ByokRow provKey="deepseek"  label="DeepSeek (very cheap)"     dot="bg-[#0ea5e9]" placeholder="sk-..."          inputValue={byokDeepSeekInput}  setInputValue={setByokDeepSeekInput} />
+                    <ByokRow provKey="mistral"   label="Mistral AI"                dot="bg-[#ff7000]" placeholder="xxxxxxxx..."     inputValue={byokMistralInput}   setInputValue={setByokMistralInput} />
+                    <ByokRow provKey="moonshot"  label="Kimi / Moonshot"           dot="bg-indigo-500" placeholder="sk-..."         inputValue={byokMoonshotInput}  setInputValue={setByokMoonshotInput} />
+                    <ByokRow provKey="ollama"    label="Ollama (local / self-hosted)" dot="bg-slate-500" placeholder="http://localhost:11434" inputValue={byokOllamaInput} setInputValue={setByokOllamaInput} inputType="url" />
+                  </div>
+
+                {byokMsg && (
+                  <p className={cn("text-xs font-medium", byokMsg.type === "success" ? "text-emerald-500" : "text-destructive")}>
+                    {byokMsg.text}
+                  </p>
+                )}
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -2080,9 +2207,9 @@ export function SettingsPanel() {
                 <MaterialIcon name="bolt" size={20} className="text-amber-500" />
                 Automation Rules
               </h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Trigger Slack, Discord, GitHub Issues, or webhooks when scan metrics cross a threshold. Team plan required.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Trigger Slack, Discord, GitHub Issues, or webhooks when scan metrics cross a threshold. Developer plan required.</p>
             </div>
-            {(tierInfo?.resolvedPlan === "team" || tierInfo?.resolvedPlan === "enterprise") && (
+            {tierInfo?.resolvedPlan === "developer" && (
               <button
                 type="button"
                 onClick={() => { setShowRuleForm((v) => !v); setRuleMsg(null); }}
@@ -2225,15 +2352,15 @@ export function SettingsPanel() {
           )}
 
           {/* Upgrade gate */}
-          {tierInfo && tierInfo.resolvedPlan !== "team" && tierInfo.resolvedPlan !== "enterprise" && (
+          {tierInfo && tierInfo.resolvedPlan !== "developer" && (
             <div className="rounded-none border border-dashed border-amber-500/30 bg-amber-500/5 p-8 text-center space-y-3">
               <MaterialIcon name="bolt" size={32} className="text-amber-500/40 mx-auto" />
-              <p className="text-sm font-bold">Team plan required</p>
+              <p className="text-sm font-bold">Developer plan required</p>
               <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                 Automation rules trigger Slack, Discord, GitHub Issues, or custom webhooks when your repo health crosses a threshold.
               </p>
               <a href="/pricing" className="inline-flex items-center gap-1.5 rounded-none bg-amber-500 hover:bg-amber-600 px-5 py-2 text-[11px] font-black uppercase tracking-wider text-white transition-colors">
-                <MaterialIcon name="upgrade" size={13} /> Upgrade to Team
+                <MaterialIcon name="upgrade" size={13} /> Upgrade to Developer
               </a>
             </div>
           )}
@@ -2290,7 +2417,7 @@ export function SettingsPanel() {
               ))}
             </div>
           )}
-          {!autoLoading && autoRules.length === 0 && (tierInfo?.resolvedPlan === "team" || tierInfo?.resolvedPlan === "enterprise") && (
+          {!autoLoading && autoRules.length === 0 && tierInfo?.resolvedPlan === "developer" && (
             <div className="rounded-none border border-dashed border-border bg-muted/20 p-8 text-center space-y-2">
               <MaterialIcon name="bolt" size={28} className="text-muted-foreground/30 mx-auto" />
               <p className="text-sm font-semibold text-muted-foreground">No automation rules yet</p>
@@ -2312,7 +2439,7 @@ export function SettingsPanel() {
           {pubApiKeyMaxKeys === 0 && !pubApiKeysLoading && (
             <div className="rounded-none border border-primary/20 bg-primary/5 p-5 space-y-2">
               <p className="text-sm font-black text-primary flex items-center gap-2">
-                <MaterialIcon name="vpn_key" size={16} /> API Keys require Professional plan or higher
+                <MaterialIcon name="vpn_key" size={16} /> API Keys require Developer plan
               </p>
               <p className="text-[11px] text-muted-foreground/60">Upgrade to generate machine-readable keys for the GitScope REST API.</p>
             </div>

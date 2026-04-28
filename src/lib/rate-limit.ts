@@ -39,10 +39,10 @@ function getUpstashLimiter(limit: number, windowMs: number): Ratelimit | null {
   if (!upstashEnabled()) return null;
 
   if (!_redis) {
-    _redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
-    });
+    const url = process.env.UPSTASH_REDIS_REST_URL;
+    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    if (!url || !token) return null; // upstashEnabled() guard above ensures this won't happen
+    _redis = new Redis({ url, token });
   }
 
   const cacheKey = `${limit}:${windowMs}`;

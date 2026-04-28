@@ -4,10 +4,8 @@
  * Stores AI-generated knowledge about repositories in the database, gated by plan tier.
  *
  * TTL by plan:
- *   free         — 1 hour  (ephemeral, essentially disabled)
- *   professional — 7 days
- *   team         — 30 days (shared across org)
- *   enterprise   — 90 days (shared across org + team coding patterns)
+ *   free      — 1 hour  (ephemeral)
+ *   developer — 30 days
  *
  * The knowledge is injected as context into subsequent AI scans, so the AI
  * "remembers" what it already knows about a codebase and builds on it rather
@@ -33,18 +31,14 @@ export interface RepoKnowledgeEntry {
 // ── Plan TTL config ─────────────────────────────────────────────────────────
 
 const TTL_BY_PLAN: Record<string, number> = {
-  free:         1 * 60 * 60 * 1000,         // 1 hour
-  professional: 7 * 24 * 60 * 60 * 1000,    // 7 days
-  team:         30 * 24 * 60 * 60 * 1000,   // 30 days
-  enterprise:   90 * 24 * 60 * 60 * 1000,   // 90 days
+  free:         1 * 60 * 60 * 1000,          // 1 hour
+  developer:    30 * 24 * 60 * 60 * 1000,    // 30 days
 };
 
 // Max knowledge entries per plan (across all repos)
 const KNOWLEDGE_CAP_BY_PLAN: Record<string, number> = {
-  free:         3,
-  professional: 25,
-  team:         100,
-  enterprise:   500,
+  free:      3,
+  developer: 100,
 };
 
 export function getKnowledgeTTL(plan: string): number {
@@ -59,7 +53,7 @@ export function getKnowledgeCap(plan: string): number {
 
 /**
  * Load cached knowledge for a repo. Returns null if not found or expired.
- * Also checks org-shared knowledge for team/enterprise plans.
+ * Also checks org-shared knowledge when orgId is provided.
  */
 export async function loadRepoKnowledge(
   userId: string,

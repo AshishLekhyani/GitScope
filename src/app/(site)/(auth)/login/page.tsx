@@ -452,24 +452,15 @@ function AuthForm() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
-                  <Button 
-                    variant="outline" 
-                    type="button" 
+                <div className="grid grid-cols-1 gap-3">
+                  <Button
+                    variant="outline"
+                    type="button"
                     onClick={() => handleOAuth("github")}
                     className="border-border bg-secondary/50 hover:bg-secondary"
                   >
                     <GithubIcon className="mr-2 size-4" />
-                    GitHub
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    type="button" 
-                    onClick={() => handleOAuth("google")}
-                    className="border-border bg-secondary/50 hover:bg-secondary"
-                  >
-                    <Mail className="mr-2 size-4" />
-                    Google
+                    Continue with GitHub
                   </Button>
                 </div>
               </motion.div>

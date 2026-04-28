@@ -44,9 +44,9 @@ async function postHandler(req: NextRequest) {
   }
 
   try {
-    // Check if user has OAuth accounts (Google/GitHub)
+    // Check if user has OAuth accounts (GitHub; google is legacy but kept for existing users)
     const oauthAccounts = await prisma.account.findMany({
-      where: { userId: user.id, provider: { in: ["google", "github"] } },
+      where: { userId: user.id, provider: { in: ["github", "google"] } },
       select: { provider: true },
     });
     const hasOAuth = oauthAccounts.length > 0;

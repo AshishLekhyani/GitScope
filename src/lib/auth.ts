@@ -1,7 +1,6 @@
 import { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import GitHubProvider from "next-auth/providers/github";
-import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
@@ -90,28 +89,6 @@ export const authOptions: NextAuthOptions = {
         };
       },
     }),
-    ...(process.env.GOOGLE_ID && process.env.GOOGLE_SECRET
-      ? [GoogleProvider({
-          clientId: process.env.GOOGLE_ID,
-          clientSecret: process.env.GOOGLE_SECRET,
-          // SECURITY: Google verifies emails - see GitHubProvider for additional safety measures.
-          // Fail-closed: if Google signals email is unverified, block sign-in to prevent
-          // account takeover via allowDangerousEmailAccountLinking.
-          allowDangerousEmailAccountLinking: true,
-          profile(profile) {
-            if (profile.email && !profile.email_verified) {
-              throw new Error("Google email is not verified. Please verify your email with Google first.");
-            }
-            return {
-              id: profile.sub,
-              name: profile.name,
-              email: profile.email,
-              image: profile.picture,
-              emailVerified: profile.email_verified ? new Date() : null,
-            };
-          },
-        })]
-      : []),
     // One-time autologin token — used immediately after email verification
     CredentialsProvider({
       id: "token",
@@ -169,9 +146,9 @@ export const authOptions: NextAuthOptions = {
         }
 
         if (!user.emailVerified) {
-          // Check if user has OAuth providers connected (email already verified by Google/GitHub)
+          // Check if user has OAuth providers connected (email already verified by GitHub; google is legacy)
           const oauthAccounts = await prisma.account.findMany({
-            where: { userId: user.id, provider: { in: ["google", "github"] } },
+            where: { userId: user.id, provider: { in: ["github", "google"] } },
             select: { id: true },
             take: 1,
           });
@@ -285,7 +262,7 @@ export const authOptions: NextAuthOptions = {
       if (token && session.user) {
         // Robust mapping to prevent identity loss across tab switches
         session.user.id = token.id;
-        session.user.name = token.name || (token.email as string)?.split('@')[0];
+        session.user.name = token.name || token.email?.split('@')[0] || "User";
         session.user.email = token.email;
         session.user.image = token.picture;
         session.accessToken = token.accessToken;

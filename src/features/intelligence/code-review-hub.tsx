@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { PRReviewer } from "@/features/intelligence/pr-reviewer";
@@ -11,8 +11,10 @@ import { AiGenerator } from "@/features/intelligence/ai-generator";
 import { OsvScanner } from "@/features/intelligence/osv-scanner";
 import { TestCoverage } from "@/features/intelligence/test-coverage";
 import { PrQueue } from "@/features/intelligence/pr-queue";
+import { ChatWithRepo } from "@/features/intelligence/chat-with-repo";
+import { EngineeringInsights } from "@/features/intelligence/engineering-insights";
 
-type CodeLensTab = "pr-review" | "commit-inspect" | "repo-scan" | "osv" | "pr-desc" | "generate" | "coverage" | "pr-queue";
+type CodeLensTab = "pr-review" | "commit-inspect" | "repo-scan" | "osv" | "pr-desc" | "generate" | "coverage" | "pr-queue" | "chat" | "insights";
 
 const TABS = [
   {
@@ -32,6 +34,12 @@ const TABS = [
     icon: "manage_search",
     label: "Repo Deep Scan",
     description: "Full codebase health & tech debt audit",
+  },
+  {
+    id: "chat" as CodeLensTab,
+    icon: "chat",
+    label: "AI Chat",
+    description: "Ask anything about this repository",
   },
   {
     id: "osv" as CodeLensTab,
@@ -63,6 +71,12 @@ const TABS = [
     label: "PR Queue",
     description: "Bulk AI review of all open PRs",
   },
+  {
+    id: "insights" as CodeLensTab,
+    icon: "insights",
+    label: "Eng Insights",
+    description: "PR complexity, cycle time & DORA metrics",
+  },
 ];
 
 interface CodeReviewHubProps {
@@ -80,16 +94,16 @@ export function CodeReviewHub({
   githubConnected,
 }: CodeReviewHubProps) {
   const [activeTab, setActiveTab] = useState<CodeLensTab>("pr-review");
+  const tabScrollRef = useRef<HTMLDivElement>(null);
 
-  const isPro  = plan === "professional" || plan === "developer" || plan === "team" || plan === "enterprise";
-  const isTeam = plan === "team" || plan === "enterprise";
-  const canDeepScan            = isPro;
-  const allowsPrivateRepo      = isPro;
-  const fixDiffsAllowed        = isPro;
-  const scheduledScansAllowed  = isPro;
-  const customRulesAllowed     = isTeam;
-  const multiBranchAllowed     = plan === "developer" || isTeam;
-  const scanHistoryDays        = plan === "enterprise" ? 365 : plan === "team" ? 90 : (plan === "professional" || plan === "developer") ? 30 : 0;
+  const isDeveloper = plan === "developer";
+  const canDeepScan            = isDeveloper;
+  const allowsPrivateRepo      = isDeveloper;
+  const fixDiffsAllowed        = isDeveloper;
+  const scheduledScansAllowed  = isDeveloper;
+  const customRulesAllowed     = isDeveloper;
+  const multiBranchAllowed     = isDeveloper;
+  const scanHistoryDays        = isDeveloper ? 365 : 0;
   const primaryRepo = selectedRepos[0] ?? null;
   const activeTabConfig = TABS.find((t) => t.id === activeTab)!;
 
@@ -132,18 +146,27 @@ export function CodeReviewHub({
         </div>
       </div>
 
-      {/* ── Tab bar ── */}
-      <div className="relative">
-        <div className="flex gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10 overflow-x-auto scrollbar-none">
+      {/* ── Tab bar with scroll affordance ── */}
+      <div className="relative group/tabs">
+        <div ref={tabScrollRef}
+          className="flex gap-1 p-1 bg-surface-container/30 border border-outline-variant/10 overflow-x-auto scrollbar-none scroll-smooth">
           {TABS.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 type="button"
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id);
+                  // Scroll the active tab into view
+                  setTimeout(() => {
+                    const el = tabScrollRef.current?.querySelector(`[data-tab="${tab.id}"]`);
+                    el?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+                  }, 50);
+                }}
+                data-tab={tab.id}
                 className={cn(
-                  "flex items-center gap-2 px-3 sm:px-4 py-2.5 rounded-none transition-all text-left shrink-0",
+                  "flex items-center gap-2 px-3 sm:px-4 py-2.5 transition-all text-left shrink-0",
                   isActive
                     ? "bg-amber-500 text-white shadow-lg shadow-amber-500/20"
                     : "text-muted-foreground/60 hover:text-foreground hover:bg-surface-container-highest/60"
@@ -162,9 +185,23 @@ export function CodeReviewHub({
             );
           })}
         </div>
-        {/* Fade hint for horizontal scroll */}
-        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-8 rounded-r-2xl bg-linear-to-l from-background/60 to-transparent sm:hidden" />
+        {/* Always-visible right-fade gradient — primary scroll affordance */}
+        <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 bg-linear-to-l from-background via-background/70 to-transparent" />
+        {/* Scroll-right arrow */}
+        <button
+          type="button"
+          aria-label="Scroll tabs right"
+          onClick={() => tabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+          className="absolute right-1 top-1/2 -translate-y-1/2 z-10 size-7 flex items-center justify-center bg-surface-container border border-outline-variant/20 text-muted-foreground/60 hover:text-amber-400 hover:border-amber-500/30 transition-all shadow-sm"
+        >
+          <MaterialIcon name="chevron_right" size={14} />
+        </button>
       </div>
+
+      {/* ── Scrollable tab hint (mobile only) ── */}
+      <p className="sm:hidden text-[8px] font-mono text-muted-foreground/25 text-center -mt-2">
+        ← swipe to see more tools →
+      </p>
 
       {/* GitHub notice */}
       {!githubConnected && (
@@ -211,6 +248,11 @@ export function CodeReviewHub({
             />
           </div>
         )}
+        {activeTab === "chat" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <ChatWithRepo selectedRepo={primaryRepo} isPro={isDeveloper} />
+          </div>
+        )}
         {activeTab === "osv" && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <OsvScanner selectedRepo={primaryRepo} />
@@ -220,7 +262,7 @@ export function CodeReviewHub({
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <PrDescriptionGenerator
               selectedRepo={primaryRepo}
-              isPro={isPro}
+              isPro={isDeveloper}
             />
           </div>
         )}
@@ -228,7 +270,7 @@ export function CodeReviewHub({
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <AiGenerator
               selectedRepo={primaryRepo}
-              isPro={isPro}
+              isPro={isDeveloper}
             />
           </div>
         )}
@@ -239,7 +281,12 @@ export function CodeReviewHub({
         )}
         {activeTab === "pr-queue" && (
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
-            <PrQueue selectedRepo={primaryRepo} isPro={isPro} />
+            <PrQueue selectedRepo={primaryRepo} isPro={isDeveloper} />
+          </div>
+        )}
+        {activeTab === "insights" && (
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <EngineeringInsights selectedRepo={primaryRepo} isDeveloper={isDeveloper} />
           </div>
         )}
       </div>

@@ -121,9 +121,9 @@ export async function GET(req: Request) {
     session,
   });
 
-  const pullWindow  = plan === "free" ? 20  : plan === "professional" ? 40  : 60;
-  const issueWindow = plan === "free" ? 20  : plan === "professional" ? 40  : 60;
-  const leadSamples = plan === "free" ? 3   : plan === "professional" ? 6   : 10;
+  const pullWindow  = plan === "free" ? 20  : 60;
+  const issueWindow = plan === "free" ? 20  : 60;
+  const leadSamples = plan === "free" ? 3   : 10;
 
   try {
     const metricsMap = await Promise.all(

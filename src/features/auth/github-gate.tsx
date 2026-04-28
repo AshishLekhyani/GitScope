@@ -7,28 +7,25 @@ import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 
 /** Tier of the currently logged-in user */
-export type AuthTier = "none" | "credentials" | "google" | "github";
+export type AuthTier = "none" | "credentials" | "github";
 
 export function getAuthTier(provider?: string | null): AuthTier {
   if (!provider) return "none";
   if (provider === "github") return "github";
-  if (provider === "google") return "google";
   return "credentials";
 }
 
 export function useTier(): AuthTier {
   const { data: session } = useSession();
-  // If provider isn't recorded but accessToken is present, treat as GitHub (pre-tracking JWT edge case)
   const provider = session?.provider ?? (!session?.provider && session?.accessToken ? "github" : undefined);
   return getAuthTier(provider);
 }
 
 /**
  * Feature access matrix.
- * "none" = not logged in
- * "credentials" = email/password
- * "google" = Google OAuth
- * "github" = GitHub OAuth (most features)
+ * "none"        = not logged in
+ * "credentials" = email/password or any OAuth
+ * "github"      = GitHub OAuth connected (most features)
  */
 export const FEATURE_TIERS: Record<string, { minTier: AuthTier; label: string }> = {
   "intelligence-hub":      { minTier: "credentials", label: "Intelligence Hub" },
@@ -43,11 +40,11 @@ export const FEATURE_TIERS: Record<string, { minTier: AuthTier; label: string }>
   "topics":                { minTier: "credentials", label: "Topic Explorer" },
   "bookmarks":             { minTier: "credentials", label: "Bookmarks" },
   "compare":               { minTier: "credentials", label: "Repo Comparison" },
-  "organizations":         { minTier: "google", label: "Organization Pulse" },
-  "api-token-settings":    { minTier: "google", label: "API Token Management" },
+  "organizations":         { minTier: "github", label: "Organization Pulse" },
+  "api-token-settings":    { minTier: "credentials", label: "API Token Management" },
 };
 
-const TIER_ORDER: AuthTier[] = ["none", "credentials", "google", "github"];
+const TIER_ORDER: AuthTier[] = ["none", "credentials", "github"];
 
 export function hasAccess(userTier: AuthTier, requiredTier: AuthTier): boolean {
   return TIER_ORDER.indexOf(userTier) >= TIER_ORDER.indexOf(requiredTier);
@@ -60,14 +57,8 @@ const UPGRADE_MESSAGES: Record<AuthTier, { title: string; body: string; cta: str
     cta: "Sign In",
   },
   "credentials": {
-    title: "Upgrade your account",
-    body: "This feature requires a Google or GitHub account. Link one in Settings → Account.",
-    cta: "Connect Google",
-    provider: "google",
-  },
-  "google": {
     title: "Connect GitHub to unlock",
-    body: "This feature uses the GitHub API with your personal token. Connect GitHub to continue — your rate limit stays personal to you.",
+    body: "This feature uses the GitHub API. Connect GitHub to continue — your rate limit stays personal to you.",
     cta: "Connect GitHub",
     provider: "github",
   },
@@ -100,11 +91,9 @@ export function GitHubGate({ feature, children, inline = false, className }: Git
   if (inline) {
     return (
       <div className={cn("relative rounded-none overflow-hidden", className)}>
-        {/* Blurred preview */}
         <div className="pointer-events-none select-none blur-sm opacity-40 saturate-0">
           {children}
         </div>
-        {/* Overlay */}
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-4 bg-surface-container/80 backdrop-blur-sm rounded-none border border-outline-variant/20 p-6 text-center">
           <div className="size-12 rounded-none bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
             <MaterialIcon name={required === "github" ? "hub" : "lock"} size={24} className="text-amber-400" />
@@ -179,11 +168,11 @@ function GateModal({ msg, featureLabel, required, onClose }: {
               <MaterialIcon name="close" size={18} />
             </button>
             <div className="mx-auto mb-4 flex size-14 items-center justify-center rounded-none bg-amber-500/15 border border-amber-500/20">
-              <MaterialIcon name={required === "github" ? "hub" : required === "google" ? "person" : "lock"} size={28} className="text-amber-400" />
+              <MaterialIcon name={required === "github" ? "hub" : "lock"} size={28} className="text-amber-400" />
             </div>
             <h2 className="text-lg font-bold tracking-tight">{msg.title}</h2>
             <p className="mt-1 text-xs text-muted-foreground/60 uppercase tracking-widest font-mono">
-              {featureLabel} requires {required === "github" ? "GitHub" : required === "google" ? "Google" : "an account"}
+              {featureLabel} requires {required === "github" ? "GitHub" : "an account"}
             </p>
           </div>
 
@@ -194,9 +183,8 @@ function GateModal({ msg, featureLabel, required, onClose }: {
             {/* Tier comparison */}
             <div className="rounded-none border border-outline-variant/10 overflow-hidden">
               {[
-                { tier: "credentials" as AuthTier, label: "Email / Password", features: ["Search repos", "Compare repos", "Trending", "Bookmarks"] },
-                { tier: "google" as AuthTier, label: "Google Account", features: ["Everything above", "Organization Pulse", "API Token settings"] },
-                { tier: "github" as AuthTier, label: "GitHub Account", features: ["Everything above", "Intelligence Hub", "Activity Feed", "Notifications", "AI Risk Scoring", "Dependency Radar"] },
+                { tier: "credentials" as AuthTier, label: "Email / Password", features: ["Search repos", "Compare repos", "Trending", "Bookmarks", "Intelligence Hub"] },
+                { tier: "github" as AuthTier, label: "GitHub Account", features: ["Everything above", "Activity Feed", "Notifications", "Org Pulse", "AI Risk Scoring", "Dependency Radar"] },
               ].map((row) => (
                 <div
                   key={row.tier}
@@ -232,7 +220,7 @@ function GateModal({ msg, featureLabel, required, onClose }: {
                 onClick={() => { signIn(msg.provider!); onClose(); }}
                 className="w-full rounded-none bg-amber-500 px-4 py-3 text-sm font-bold text-white hover:bg-amber-600 transition-colors flex items-center justify-center gap-2"
               >
-                <MaterialIcon name={msg.provider === "github" ? "hub" : "person"} size={18} />
+                <MaterialIcon name="hub" size={18} />
                 {msg.cta}
               </button>
             )}

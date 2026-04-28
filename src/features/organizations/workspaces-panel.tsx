@@ -430,7 +430,7 @@ export function WorkspacesPanel({ currentUserId, plan }: { currentUserId: string
   const [newName, setNewName] = useState("");
   const [createErr, setCreateErr] = useState("");
 
-  const canCreate = plan === "team" || plan === "enterprise";
+  const canCreate = plan === "developer";
 
   const load = useCallback(async () => {
     setLoading(true);

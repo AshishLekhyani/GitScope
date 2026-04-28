@@ -39,7 +39,7 @@ export default function APIPage() {
                 <div className="flex items-center gap-2 text-stone-400 mb-2">
                   <Lock className="size-3" />
                   <span className="text-amber-300">API key</span>
-                  <span>— <code>/api/v1/</code> endpoints (Professional plan+)</span>
+                  <span>— <code>/api/v1/</code> endpoints (Developer plan+)</span>
                 </div>
                 <div className="text-stone-400 space-y-1 mt-2">
                   <div><span className="text-emerald-400">Authorization:</span> Bearer sk_gs_your_key_here</div>
@@ -210,7 +210,7 @@ export default function APIPage() {
               <Link href="/settings?tab=api-keys" className="text-amber-400 hover:underline">Settings → API Keys</Link>.
               Pass the key as <code className="text-xs bg-white/5 px-1 rounded">Authorization: Bearer sk_gs_...</code> or{" "}
               <code className="text-xs bg-white/5 px-1 rounded">X-API-Key</code>.
-              Rate limit: 120 req/min per key. Available on Professional plan and above.
+              Rate limit: 120 req/min per key. Available on Developer plan and above.
             </p>
             <div className="space-y-6">
               <EndpointCard

@@ -161,7 +161,13 @@ const ASCII_LINES = [
 function useClock() {
   const [time, setTime] = useState("");
   useEffect(() => {
-    const tick = () => setTime(new Date().toISOString().substring(11, 19) + " UTC");
+    const tick = () => {
+      const now = new Date();
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      const label = now.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit", timeZoneName: "short" });
+      setTime(label || now.toISOString().substring(11, 19) + " UTC");
+      void tz;
+    };
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);

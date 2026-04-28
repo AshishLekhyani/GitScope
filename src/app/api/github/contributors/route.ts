@@ -15,9 +15,11 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ error: "repo param required (owner/name)" }, { status: 400 });
   }
 
-  const token = await getGitHubToken();
-  const headers: Record<string, string> = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const token = await getGitHubToken({ session, allowEnvFallback: true });
+  if (!token) {
+    return NextResponse.json({ noToken: true, error: "Connect GitHub to view contributor data" }, { status: 200 });
+  }
+  const headers: Record<string, string> = { Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28", Authorization: `Bearer ${token}` };
 
   const res = await fetch(`https://api.github.com/repos/${repo}/stats/contributors`, {
     headers,

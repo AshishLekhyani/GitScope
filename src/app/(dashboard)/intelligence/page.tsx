@@ -8,14 +8,17 @@ export const metadata: Metadata = {
 
 import { Suspense } from "react";
 import { requireTier } from "@/lib/auth-tier";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { IntelligenceClient } from "@/features/intelligence/intelligence-client";
 
 export default async function IntelligencePage() {
-  // Intelligence hub is available to all signed-in users with tiered capabilities.
   await requireTier("credentials");
+  const session = await getServerSession(authOptions);
+  const userId = session?.user?.id ?? session?.user?.email ?? "anon";
   return (
     <Suspense>
-      <IntelligenceClient />
+      <IntelligenceClient userId={userId} />
     </Suspense>
   );
 }

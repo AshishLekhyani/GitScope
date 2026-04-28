@@ -24,9 +24,8 @@ export async function GET(req: NextRequest) {
   }
 
   const plan = await resolveAiPlanFromSessionDb(session);
-  const allowedPlans = ["developer", "professional", "team", "enterprise"];
-  if (!allowedPlans.includes(plan)) {
-    return NextResponse.json({ error: "SBOM export requires Developer plan or higher." }, { status: 403 });
+  if (plan !== "developer") {
+    return NextResponse.json({ error: "SBOM export requires Developer plan." }, { status: 403 });
   }
 
   const { searchParams } = new URL(req.url);

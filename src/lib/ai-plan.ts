@@ -4,7 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { authOptions } from "@/lib/auth";
 import type { AiTier as PrismaAiTier } from "@prisma/client";
 
-export type AiPlan = "free" | "professional" | "developer" | "team" | "enterprise";
+/**
+ * Two-tier model: "free" (generous limits) | "developer" (all features, BYOK, PPP pricing $10-20).
+ * All legacy plan values (professional/team/enterprise) are normalized to "developer" at runtime.
+ */
+export type AiPlan = "free" | "developer";
 
 export interface AiCapabilities {
   plan: AiPlan;
@@ -42,160 +46,71 @@ export interface AiCapabilities {
   dailyLlmScanLimit: number;
 }
 
+// ── Two-tier capability matrix ────────────────────────────────────────────────
+// Free: generous — BYOK works for ALL providers, most features unlocked.
+// Developer ($10-20/mo PPP-priced): EVERYTHING, unlimited scans via BYOK, all enterprise features.
 const AI_CAPABILITIES: Record<AiPlan, AiCapabilities> = {
   free: {
     plan: "free",
-    label: "Explorer",
-    maxReposInWorkspace: 5,            // bumped from 3 → more generous free tier
-    maxReposPerRequest: 5,
-    maxOpenPRsPerRepo: 5,
-    maxFilesPerDeepScan: 4,
-    maxPackagesPerSecurityScan: 100,   // CVE scan available free — bumped from 80
+    label: "Free",
+    maxReposInWorkspace: 10,
+    maxReposPerRequest: 10,
+    maxOpenPRsPerRepo: 10,
+    maxFilesPerDeepScan: 8,
+    maxPackagesPerSecurityScan: 200,
     aiAgentDepth: 1,
-    aiRequestsPerHour: 20,
-    allowsPrivateRepoAnalysis: false,
-    allowSharedTokenFallback: true,    // GitScope AI: 3 free server-key scans/day
-    deepScanAllowed: false,
+    aiRequestsPerHour: 30,
+    allowsPrivateRepoAnalysis: true,   // BYOK unlocks private repos for free users too
+    allowSharedTokenFallback: true,
+    deepScanAllowed: false,            // thorough/maximum effort locked to Developer
     fixDiffsAllowed: false,
-    scanHistoryDays: 0,
+    scanHistoryDays: 7,                // 7-day history on free (was 0)
     scheduledScansAllowed: false,
     maxScheduledScans: 0,
     customRulesAllowed: false,
     maxCustomRules: 0,
-    dailyScanLimit: 5,                 // bumped from 3
-    generateReadmeAllowed: false,
+    dailyScanLimit: 10,
+    generateReadmeAllowed: true,       // README gen available on free
     generateChangelogAllowed: false,
-    dailyGenerateLimit: 0,
+    dailyGenerateLimit: 3,
     slackNotificationsAllowed: false,
-    githubAppPrReviewsAllowed: true,   // 5 free PR reviews/month via GitHub App
-    weeklyDigestAllowed: false,
-    benchmarkComparisonAllowed: false,
-    monthlyPrReviewLimit: 5,
-    dailyLlmScanLimit: 3,              // GitScope AI: 3 free server-key scans/day (haiku model)
-  },
-  professional: {
-    plan: "professional",
-    label: "Professional",
-    maxReposInWorkspace: 15,           // bumped from 10
-    maxReposPerRequest: 15,
-    maxOpenPRsPerRepo: 10,
-    maxFilesPerDeepScan: 12,
-    maxPackagesPerSecurityScan: 300,   // bumped from 220
-    aiAgentDepth: 2,
-    aiRequestsPerHour: 100,
-    allowsPrivateRepoAnalysis: true,
-    allowSharedTokenFallback: false,
-    deepScanAllowed: true,
-    fixDiffsAllowed: true,
-    scanHistoryDays: 30,
-    scheduledScansAllowed: true,
-    maxScheduledScans: 5,              // bumped from 3
-    customRulesAllowed: false,
-    maxCustomRules: 0,
-    dailyScanLimit: 25,
-    generateReadmeAllowed: true,
-    generateChangelogAllowed: true,
-    dailyGenerateLimit: 10,
-    slackNotificationsAllowed: true,
     githubAppPrReviewsAllowed: true,
-    weeklyDigestAllowed: true,
+    weeklyDigestAllowed: false,
     benchmarkComparisonAllowed: true,
-    monthlyPrReviewLimit: 50,
-    dailyLlmScanLimit: 10,             // ~$0.63/day Sonnet cost; well within professional pricing
+    monthlyPrReviewLimit: 10,
+    dailyLlmScanLimit: 5,              // 5 server-key scans/day; BYOK is unlimited
   },
   developer: {
     plan: "developer",
     label: "Developer",
-    maxReposInWorkspace: 15,
-    maxReposPerRequest: 15,
-    maxOpenPRsPerRepo: 10,
-    maxFilesPerDeepScan: 12,
-    maxPackagesPerSecurityScan: 300,
-    aiAgentDepth: 2,
-    aiRequestsPerHour: 80,
-    allowsPrivateRepoAnalysis: true,
-    allowSharedTokenFallback: false,
-    deepScanAllowed: true,
-    fixDiffsAllowed: true,
-    scanHistoryDays: 30,
-    scheduledScansAllowed: true,
-    maxScheduledScans: 5,
-    customRulesAllowed: false,
-    maxCustomRules: 0,
-    dailyScanLimit: 999,                // effectively unlimited — BYOK pays the bill
-    generateReadmeAllowed: true,
-    generateChangelogAllowed: true,
-    dailyGenerateLimit: 10,
-    slackNotificationsAllowed: true,
-    githubAppPrReviewsAllowed: true,
-    weeklyDigestAllowed: true,
-    benchmarkComparisonAllowed: true,
-    monthlyPrReviewLimit: 50,
-    dailyLlmScanLimit: 10,              // fallback if BYOK not configured; BYOK bypasses this
-  },
-  team: {
-    plan: "team",
-    label: "Team",
-    maxReposInWorkspace: 30,           // bumped from 20
-    maxReposPerRequest: 25,
-    maxOpenPRsPerRepo: 20,
-    maxFilesPerDeepScan: 25,
-    maxPackagesPerSecurityScan: 600,   // bumped from 500
+    maxReposInWorkspace: 9999,
+    maxReposPerRequest: 100,
+    maxOpenPRsPerRepo: 100,
+    maxFilesPerDeepScan: 500,
+    maxPackagesPerSecurityScan: 9999,
     aiAgentDepth: 3,
-    aiRequestsPerHour: 300,
-    allowsPrivateRepoAnalysis: true,
-    allowSharedTokenFallback: false,
-    deepScanAllowed: true,
-    fixDiffsAllowed: true,
-    scanHistoryDays: 90,
-    scheduledScansAllowed: true,
-    maxScheduledScans: 30,             // bumped from 20
-    customRulesAllowed: true,
-    maxCustomRules: 30,                // bumped from 25
-    dailyScanLimit: 80,
-    generateReadmeAllowed: true,
-    generateChangelogAllowed: true,
-    dailyGenerateLimit: 40,
-    slackNotificationsAllowed: true,
-    githubAppPrReviewsAllowed: true,
-    weeklyDigestAllowed: true,
-    benchmarkComparisonAllowed: true,
-    monthlyPrReviewLimit: 200,
-    dailyLlmScanLimit: 25,             // ~$1.58/day Sonnet cost; well within team pricing
-  },
-  enterprise: {
-    plan: "enterprise",
-    label: "Enterprise",
-    maxReposInWorkspace: 100,          // bumped from 50
-    maxReposPerRequest: 50,
-    maxOpenPRsPerRepo: 40,
-    maxFilesPerDeepScan: 50,
-    maxPackagesPerSecurityScan: 2000,  // bumped from 1200
-    aiAgentDepth: 3,
-    aiRequestsPerHour: 2000,
+    aiRequestsPerHour: 9999,
     allowsPrivateRepoAnalysis: true,
     allowSharedTokenFallback: true,
     deepScanAllowed: true,
     fixDiffsAllowed: true,
     scanHistoryDays: 365,
     scheduledScansAllowed: true,
-    maxScheduledScans: 200,            // bumped from 100
+    maxScheduledScans: 200,
     customRulesAllowed: true,
-    maxCustomRules: 150,               // bumped from 100
-    dailyScanLimit: 500,
+    maxCustomRules: 200,
+    dailyScanLimit: 9999,              // unlimited via BYOK
     generateReadmeAllowed: true,
     generateChangelogAllowed: true,
-    dailyGenerateLimit: 200,
+    dailyGenerateLimit: 9999,
     slackNotificationsAllowed: true,
     githubAppPrReviewsAllowed: true,
     weeklyDigestAllowed: true,
     benchmarkComparisonAllowed: true,
-    monthlyPrReviewLimit: 10000,       // effectively unlimited
-    dailyLlmScanLimit: 50,             // ~$3.15/day Sonnet cost; well within enterprise pricing
+    monthlyPrReviewLimit: 999999,
+    dailyLlmScanLimit: 20,             // 20 server-key scans/day; BYOK is unlimited
   },
 };
-
-const PLAN_ORDER: AiPlan[] = ["free", "professional", "developer", "team", "enterprise"];
 
 function normalize(value: string): string {
   return value.trim().toLowerCase();
@@ -203,26 +118,21 @@ function normalize(value: string): string {
 
 function normalizePlan(value: string): AiPlan | null {
   const normalized = normalize(value);
-  if (normalized === "pro" || normalized === "premium") return "professional";
-  if (normalized === "ent") return "enterprise";
-  if (PLAN_ORDER.includes(normalized as AiPlan)) return normalized as AiPlan;
+  // Legacy plan names all map to "developer"
+  if (["professional", "pro", "premium", "team", "enterprise", "ent", "developer"].includes(normalized)) return "developer";
+  if (normalized === "free") return "free";
   return null;
 }
 
-// function planRank(plan: AiPlan): number {
-//   return PLAN_ORDER.indexOf(plan);
-// }
-
-// function maxPlan(a: AiPlan, b: AiPlan): AiPlan {
-//   return planRank(a) >= planRank(b) ? a : b;
-// }
 
 function toPrismaTier(plan: AiPlan): PrismaAiTier {
   return plan as PrismaAiTier;
 }
 
-function fromPrismaTier(tier: PrismaAiTier): AiPlan {
-  return tier as AiPlan;
+export function fromPrismaTier(tier: PrismaAiTier): AiPlan {
+  // Normalize legacy tier values to the two-tier model
+  if (tier === "free") return "free";
+  return "developer"; // professional / team / enterprise / developer all → developer
 }
 
 function parseOverrideMap(raw?: string): Map<string, AiPlan> {
@@ -250,8 +160,7 @@ function parseCsv(raw?: string): string[] {
 }
 
 const planOverrides = parseOverrideMap(process.env.AI_TIER_OVERRIDES);
-const teamDomains = parseCsv(process.env.AI_TEAM_DOMAINS);
-const enterpriseDomains = parseCsv(process.env.AI_ENTERPRISE_DOMAINS);
+const developerDomains = parseCsv(process.env.AI_DEVELOPER_DOMAINS);
 
 export function getCapabilitiesForPlan(plan: AiPlan): AiCapabilities {
   return AI_CAPABILITIES[plan];
@@ -271,12 +180,9 @@ function inferAiPlanFromSession(session: Session | null): AiPlan {
   if (email) {
     const explicit = planOverrides.get(email);
     if (explicit) return explicit;
-    if (matchesDomain(email, enterpriseDomains)) return "enterprise";
-    if (matchesDomain(email, teamDomains)) return "team";
+    if (matchesDomain(email, developerDomains)) return "developer";
   }
 
-  // const provider = session.provider ?? (session.accessToken ? "github" : undefined);
-  // New users should default to free tier regardless of auth provider
   return "free";
 }
 

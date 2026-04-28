@@ -25,9 +25,9 @@ export async function GET(req: NextRequest) {
 
   if (!caps.customRulesAllowed) {
     return NextResponse.json({
-      error: "Custom scan rules require a Team plan or higher.",
+      error: "Custom scan rules require a Developer plan.",
       upgradeRequired: true,
-      requiredPlan: "team",
+      requiredPlan: "developer",
       plan,
     }, { status: 403 });
   }
@@ -59,9 +59,9 @@ export async function POST(req: NextRequest) {
 
   if (!caps.customRulesAllowed) {
     return NextResponse.json({
-      error: "Custom scan rules require a Team plan or higher.",
+      error: "Custom scan rules require a Developer plan.",
       upgradeRequired: true,
-      requiredPlan: "team",
+      requiredPlan: "developer",
     }, { status: 403 });
   }
 

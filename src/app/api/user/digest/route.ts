@@ -45,10 +45,10 @@ export async function POST(req: NextRequest) {
   const plan = await resolveAiPlanFromSessionDb(session);
   const caps = getCapabilitiesForPlan(plan);
 
-  // Only pro+ can use weekly digest
+  // Only developer plan can use weekly digest
   if (plan === "free") {
     return NextResponse.json({
-      error: "Weekly digest requires a Professional plan or higher.",
+      error: "Weekly digest requires a Developer plan.",
       upgradeRequired: true,
     }, { status: 403 });
   }

@@ -9,14 +9,17 @@ import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
 import { callAI, hasAnyAIProvider } from "@/lib/ai-providers";
 import type { AIPlan } from "@/lib/ai-providers";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
+import { getUserBYOKKeys } from "@/lib/byok";
 
 async function handler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const plan = await resolveAiPlanFromSessionDb(session);
-  if (plan === "free") {
-    return NextResponse.json({ error: "PR description generation requires Professional plan or higher." }, { status: 403 });
+  const byokKeys = await getUserBYOKKeys(session.user.id);
+  const hasByok = !!(byokKeys.anthropic || byokKeys.openai || byokKeys.gemini || byokKeys.groq || byokKeys.cerebras || byokKeys.deepseek || byokKeys.mistral);
+  if (plan === "free" && !hasByok) {
+    return NextResponse.json({ error: "PR description generation requires Developer plan or a BYOK key." }, { status: 403 });
   }
   if (!hasAnyAIProvider()) {
     return NextResponse.json({ error: "No AI provider configured." }, { status: 503 });
@@ -60,8 +63,8 @@ async function handler(req: NextRequest) {
       const diffRes = await fetch(`https://api.github.com/repos/${repo}/pulls/${prNumber}/files?per_page=30`, { headers });
       if (diffRes.ok) {
         const files = await diffRes.json() as { filename: string; status: string; additions: number; deletions: number; patch?: string }[];
-        diff = files.slice(0, 20).map((f) =>
-          `${f.status.toUpperCase()} ${f.filename} (+${f.additions}/-${f.deletions})\n${(f.patch ?? "").slice(0, 400)}`
+        diff = files.slice(0, 25).map((f) =>
+          `${f.status.toUpperCase()} ${f.filename} (+${f.additions}/-${f.deletions})\n${(f.patch ?? "").slice(0, 1200)}`
         ).join("\n\n");
       }
     } else if (headBranch) {
@@ -77,8 +80,8 @@ async function handler(req: NextRequest) {
           message: c.commit.message.split("\n")[0],
         }));
         diff = ((data.files ?? []) as { filename: string; status: string; additions: number; deletions: number; patch?: string }[])
-          .slice(0, 20)
-          .map((f) => `${f.status.toUpperCase()} ${f.filename} (+${f.additions}/-${f.deletions})\n${(f.patch ?? "").slice(0, 300)}`)
+          .slice(0, 25)
+          .map((f) => `${f.status.toUpperCase()} ${f.filename} (+${f.additions}/-${f.deletions})\n${(f.patch ?? "").slice(0, 1200)}`)
           .join("\n\n");
       }
     }
@@ -90,32 +93,42 @@ async function handler(req: NextRequest) {
     return NextResponse.json({ error: "No commits or diff found. Ensure the branch has changes against the base." }, { status: 404 });
   }
 
-  const systemPrompt = `You are a senior software engineer who writes clear, professional GitHub pull request descriptions. Be concise, factual, and base everything on the actual diff provided. Do not invent changes that aren't in the diff.`;
+  const systemPrompt = `You are a principal engineer who writes professional, high-signal GitHub pull request descriptions. You read actual diffs and produce descriptions that tell reviewers exactly what changed, why, and how to test it.
 
-  const userPrompt = `Repository: ${repo}
-${existingTitle ? `PR Title: ${existingTitle}` : ""}
-${prNumber ? `PR #${prNumber}` : `Comparing: ${baseBranch}...${headBranch}`}
+RULES:
+1. Base every claim on the actual diff provided — never invent changes.
+2. Group related file changes into themes (e.g., "Auth refactor", "UI changes", "Database migration").
+3. Flag security-relevant changes (auth, secrets, permissions) explicitly.
+4. If commits reference issue numbers or ticket IDs, include them.
+5. Output ONLY the raw Markdown — no preamble, no "Here is your PR description:".`;
 
-Commits (${commits.length}):
-${commits.map((c) => `• ${c.sha} ${c.message}`).join("\n")}
+  const userPrompt = `Generate a professional PR description for this pull request.
 
-Changed files (sample):
-${diff.slice(0, 3000)}
+Repository: ${repo}
+${existingTitle ? `PR Title: "${existingTitle}"` : ""}
+${prNumber ? `PR #${prNumber}` : `Comparing: ${baseBranch} → ${headBranch}`}
 
-Write a concise PR description in Markdown with these exact sections:
+## Commits (${commits.length} total)
+${commits.map((c) => `- \`${c.sha}\` ${c.message}`).join("\n")}
+
+## Diff (key file changes)
+${diff.slice(0, 6000)}
+
+Write a PR description with exactly these sections:
+
 ## Summary
-(2-4 bullet points — what was changed and why)
+(3-5 bullet points — what this PR does and why, grounded in the actual diff)
 
 ## Changes
-(key technical changes, grouped by concern)
+(Group related changes by concern. Name specific files/functions that changed. Highlight any breaking changes or security implications.)
 
 ## Testing
-(how to verify this works)
+(How to verify this works — specific commands, test scenarios, or edge cases to check)
 
-Use imperative mood. No fluff.`;
+Use imperative mood ("Add", "Fix", "Remove"). Be specific.`;
 
   try {
-    const result = await callAI({ plan: plan as AIPlan, systemPrompt, userPrompt, maxTokens: 1024 });
+    const result = await callAI({ plan: plan as AIPlan, byokKeys, systemPrompt, userPrompt, maxTokens: 1500 });
     if (!result) return NextResponse.json({ error: "AI generation failed — no provider available" }, { status: 500 });
     return NextResponse.json({ description: result.text, model: result.model });
   } catch (e) {

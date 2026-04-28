@@ -13,7 +13,7 @@ import { prisma } from "@/lib/prisma";
 import { sendEmail, buildWeeklyDigestEmail } from "@/lib/email";
 import { sendWeeklyDigestSlack } from "@/lib/slack";
 import { sendDiscordDigest } from "@/lib/discord";
-import { getCapabilitiesForPlan } from "@/lib/ai-plan";
+import { getCapabilitiesForPlan, fromPrismaTier } from "@/lib/ai-plan";
 
 function isCronAuthorized(req: Request): boolean {
   const secret = process.env.AI_JOBS_CRON_SECRET ?? process.env.CRON_SECRET ?? null;
@@ -37,7 +37,7 @@ async function sendDigestForUser(userId: string): Promise<{ ok: boolean; reason?
 
   if (!user?.email) return { ok: false, reason: "no email" };
 
-  const caps = getCapabilitiesForPlan(user.aiTier);
+  const caps = getCapabilitiesForPlan(fromPrismaTier(user.aiTier));
   const ownerHandle = user.githubHandle?.toLowerCase() ?? null;
   const bookmarkedSet = new Set(bookmarks.map((b) => `${b.owner}/${b.repo}`.toLowerCase()));
   const relevantRepo = (repo: string) => {

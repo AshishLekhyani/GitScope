@@ -1,5 +1,5 @@
 export const dynamic = "force-dynamic";
-export const maxDuration = 90;
+export const maxDuration = 60;
 
 import { NextRequest } from "next/server";
 import { getServerSession } from "next-auth";
@@ -10,7 +10,7 @@ import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
 import { callAI, hasAnyAIProvider, hasByokKey, type AIPlan, type UserBYOKKeys } from "@/lib/ai-providers";
-import { safeDecrypt } from "@/lib/encrypt";
+import { getUserBYOKKeys } from "@/lib/byok";
 import { loadRepoKnowledge, saveRepoKnowledge, formatKnowledgeForPrompt } from "@/lib/repo-knowledge";
 import { sendEmail, buildScanAlertEmail } from "@/lib/email";
 import { sendScanAlert as sendSlackScanAlert } from "@/lib/slack";
@@ -239,6 +239,16 @@ ${localImports || "(import graph unavailable)"}
 ## File Contents — base ALL findings on this actual code
 ${keyFilesStr || "(no file contents available — analyse from file tree only)"}
 
+## Project Scale Classification (calibrate ALL severities to this)
+${(() => {
+  const stars = Number(meta.stargazers_count ?? 0);
+  const contribs = Number(contributors ?? 1);
+  if (stars > 5000 || contribs > 20) return "SCALE: Large / production-critical. Full severity applies for all categories.";
+  if (stars > 500 || contribs > 5) return "SCALE: Growing / production. Full severity applies. Flag infra gaps as medium, not critical.";
+  if (stars > 50 || contribs > 2) return "SCALE: Small / early-stage. Downgrade process gaps (no CI/CD, no changelog, no release tags) from high→low. Security vulns stay at full severity.";
+  return "SCALE: Personal / hobby / student project (≤50 stars, ≤2 contributors). DO NOT flag: missing CI/CD, missing Docker, missing tests, missing CHANGELOG, missing release pipeline — these are normal and expected. Only report genuine security vulnerabilities (exposed secrets, injection, broken auth) and real code bugs. Everything else is low severity at most.";
+})()}
+
 ## Instructions — MANDATORY
 - CROSS-FILE ANALYSIS: Use the dependency graph above to trace data flows across boundaries. If a bug in file A causes problems in file B (e.g. unvalidated input flows from route → service → DB; missing auth in route that delegates to privileged handler; secret accessed in server file imported by client component), report it as a CROSS-FILE finding and name BOTH files.
 - Base findings only on what you see in the file contents — no speculation
@@ -247,6 +257,7 @@ ${keyFilesStr || "(no file contents available — analyse from file tree only)"}
 - SUGGESTION RULE: Every suggestion must include a concrete code snippet fix, not just a principle.
 - GROUPING RULE: Same pattern in multiple files → ONE finding listing all affected files.
 - IMPACT RULE: Only include findings with real production impact. Skip pure style nitpicks.
+- SCALE RULE: Apply the Project Scale Classification above. Never mark missing CI/CD, tests, or DevOps tooling as "critical" — that's reserved for exploitable security vulnerabilities.
 - LOC: Use the real LOC value (${realLoc}) verbatim in metrics.estimatedLoc — do NOT re-estimate.
 - For dependency risks, check exact package names in package.json shown above.
 
@@ -367,7 +378,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let body: { repo?: string; scanMode?: string; branch?: string };
+  let body: { repo?: string; scanMode?: string; branch?: string; selectedPaths?: string[]; effort?: string };
   try {
     body = await req.json();
   } catch {
@@ -377,7 +388,12 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const { repo, scanMode = "quick", branch } = body;
+  const { repo, branch, selectedPaths, effort = "balanced" } = body;
+  // Map effort to scanMode for backward compat:
+  // quick/balanced → quick scan caps; thorough/maximum → deep (reads all files)
+  const scanMode = (effort === "thorough" || effort === "maximum") ? "deep" : (body.scanMode ?? "quick");
+  // File read caps per effort level
+  const EFFORT_FILE_CAPS: Record<string, number> = { quick: 50, balanced: 90, thorough: 200, maximum: 400 };
   const targetBranch = typeof branch === "string" && branch.trim() ? branch.trim() : undefined;
 
   if (!repo || typeof repo !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(repo)) {
@@ -390,16 +406,8 @@ export async function POST(req: NextRequest) {
   const plan = await resolveAiPlanFromSessionDb(session);
   const caps = getCapabilitiesForPlan(plan);
 
-  // Fetch BYOK keys (decrypted) — BYOK bypasses daily LLM caps entirely
-  const userRecord = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { byokAnthropicKey: true, byokOpenAIKey: true, byokGeminiKey: true },
-  });
-  const byokKeys: UserBYOKKeys = {
-    anthropic: safeDecrypt(userRecord?.byokAnthropicKey),
-    openai:    safeDecrypt(userRecord?.byokOpenAIKey),
-    gemini:    safeDecrypt(userRecord?.byokGeminiKey),
-  };
+  // Fetch all BYOK keys (Anthropic, OpenAI, Gemini + extended: Groq, Cerebras, etc.)
+  const byokKeys: UserBYOKKeys = await getUserBYOKKeys(session.user.id);
   const userHasByok = hasByokKey(byokKeys);
 
   const budget = await consumeUsageBudget({
@@ -421,7 +429,7 @@ export async function POST(req: NextRequest) {
   // Deep scan is Pro+ only
   if (scanMode === "deep" && !caps.deepScanAllowed) {
     return new Response(
-      JSON.stringify({ error: "Deep scan requires a Professional plan or higher.", upgradeRequired: true, requiredPlan: "professional" }),
+      JSON.stringify({ error: "Deep scan requires a Developer plan.", upgradeRequired: true, requiredPlan: "developer" }),
       { status: 403, headers: { "Content-Type": "application/json" } }
     );
   }
@@ -545,13 +553,24 @@ export async function POST(req: NextRequest) {
 
         // High-signal tier — always read these first regardless of mode
         const HIGH_SIGNAL = /auth|api[/\\]|\/lib\/|middleware|main\.|index\.|server\.|app\.|router|database|\/db\/|prisma|model|service|controller|store|schema|util|hook|action|guard|handler|payment|stripe|webhook|config|env|permission|role/i;
-        const tier1 = allSourceFiles.filter((f) => HIGH_SIGNAL.test(f));
-        const tier2 = allSourceFiles.filter((f) => !HIGH_SIGNAL.test(f));
 
-        // Deep: read every source file; Quick: read top 60 most important
-        const sourceFilesToRead = scanMode === "deep"
-          ? allSourceFiles                          // ALL — no cap
-          : [...tier1, ...tier2].slice(0, 60);
+        let sourceFilesToRead: string[];
+        if (selectedPaths && selectedPaths.length > 0) {
+          // User-selected files: honour exactly what they picked (filtered to valid source)
+          const validSelected = selectedPaths.filter((p) => fileTree.includes(p) && !EXCLUDE.test(p));
+          const tier1 = validSelected.filter((f) => HIGH_SIGNAL.test(f));
+          const tier2 = validSelected.filter((f) => !HIGH_SIGNAL.test(f));
+          sourceFilesToRead = [...tier1, ...tier2];
+          emit({ type: "progress", step: `Scanning ${sourceFilesToRead.length} selected file${sourceFilesToRead.length === 1 ? "" : "s"}…`, percent: 36 });
+        } else {
+          // Auto-select based on effort level
+          const fileCap = EFFORT_FILE_CAPS[effort] ?? 90;
+          const tier1 = allSourceFiles.filter((f) => HIGH_SIGNAL.test(f));
+          const tier2 = allSourceFiles.filter((f) => !HIGH_SIGNAL.test(f));
+          sourceFilesToRead = scanMode === "deep"
+            ? [...tier1, ...tier2].slice(0, fileCap)
+            : [...tier1, ...tier2].slice(0, fileCap);
+        }
 
         const allFilesToRead = [...CONFIG_FILES, ...sourceFilesToRead];
 
@@ -681,9 +700,9 @@ export async function POST(req: NextRequest) {
           if (llmBudget.allowed) {
             useLlm = true;
           } else {
-            // Limit hit — enterprise/team get an error (internal AI is too basic for them).
-            // Professional and below fall back gracefully to internal AI.
-            if (plan === "enterprise" || plan === "team") {
+            // Limit hit — developer plan gets an error (internal AI is too basic for them).
+            // Free plan falls back gracefully to internal AI.
+            if (plan === "developer") {
               emit({
                 type: "done",
                 error: `Daily AI scan limit reached (${caps.dailyLlmScanLimit} LLM scans/day on ${plan} plan). Add your own API key in Settings → Integrations → BYOK to remove this limit, or wait until midnight UTC for reset.`,

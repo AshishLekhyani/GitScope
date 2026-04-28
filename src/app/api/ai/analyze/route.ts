@@ -5,6 +5,7 @@ import { getGitHubToken } from "@/lib/github-auth";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 import { callAI, hasAnyAIProvider } from "@/lib/ai-providers";
 import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { getUserBYOKKeys } from "@/lib/byok";
 import type { AIPlan } from "@/lib/ai-providers";
 
 interface RepoSummary {
@@ -18,42 +19,71 @@ interface RepoSummary {
   recentCommitMessages: string[];
 }
 
-async function fetchRepoSummary(fullName: string, token: string): Promise<RepoSummary | null> {
+interface RepoSummaryExtended extends RepoSummary {
+  fileTree?: string[];
+  keyFileContents?: Record<string, string>;
+}
+
+async function fetchRepoSummary(fullName: string, token: string): Promise<RepoSummaryExtended | null> {
   const headers: Record<string, string> = {
     Accept: "application/vnd.github.v3+json",
+    "X-GitHub-Api-Version": "2022-11-28",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
-  const [repoRes, commitsRes] = await Promise.all([
-    fetch(`https://api.github.com/repos/${fullName}`, {
-      headers,
+  const ghGet = async (path: string) => {
+    const res = await fetch(`https://api.github.com${path}`, { headers, next: { revalidate: 300 } });
+    return res.ok ? res.json() : null;
+  };
+  const ghText = async (path: string) => {
+    const res = await fetch(`https://api.github.com${path}`, {
+      headers: { ...headers, Accept: "application/vnd.github.raw+json" },
       next: { revalidate: 300 },
-    }),
-    fetch(`https://api.github.com/repos/${fullName}/commits?per_page=10`, {
-      headers,
-      next: { revalidate: 300 },
-    }),
+    });
+    return res.ok ? res.text() : null;
+  };
+
+  const [repoRaw, commitsRaw, treeRaw] = await Promise.all([
+    ghGet(`/repos/${fullName}`),
+    ghGet(`/repos/${fullName}/commits?per_page=10`),
+    ghGet(`/repos/${fullName}/git/trees/HEAD?recursive=1`),
   ]);
 
-  if (!repoRes.ok) return null;
+  if (!repoRaw) return null;
 
-  const repo = await repoRes.json();
-  const commits = commitsRes.ok ? await commitsRes.json() : [];
-  const recentCommitMessages: string[] = Array.isArray(commits)
-    ? commits
-        .slice(0, 5)
-        .map((c: { commit: { message: string } }) => c.commit.message.split("\n")[0])
+  const recentCommitMessages: string[] = Array.isArray(commitsRaw)
+    ? commitsRaw.slice(0, 8).map((c: { commit: { message: string; author?: { name: string } } }) =>
+        `[${c.commit.author?.name ?? "Unknown"}] ${c.commit.message.split("\n")[0]}`)
     : [];
 
+  // Build file tree
+  const allPaths: string[] = Array.isArray(treeRaw?.tree)
+    ? (treeRaw.tree as { path: string; type: string }[]).filter((t) => t.type === "blob").map((t) => t.path)
+    : [];
+
+  // Read a few key files for richer AI context
+  const HIGH_SIGNAL = /package\.json|readme|auth|middleware|main\.|index\.|server\.|prisma/i;
+  const EXCLUDE = /node_modules|\.next|dist\/|\.min\.js|\.d\.ts$/;
+  const filesToRead = allPaths.filter((p) => HIGH_SIGNAL.test(p) && !EXCLUDE.test(p)).slice(0, 8);
+  const keyFileContents: Record<string, string> = {};
+  await Promise.all(
+    filesToRead.map(async (f) => {
+      const content = await ghText(`/repos/${fullName}/contents/${f}`);
+      if (content) keyFileContents[f] = content.slice(0, 3000);
+    })
+  );
+
   return {
-    name: repo.full_name,
-    description: repo.description,
-    language: repo.language,
-    stars: repo.stargazers_count,
-    forks: repo.forks_count,
-    openIssues: repo.open_issues_count,
-    topics: repo.topics ?? [],
+    name: repoRaw.full_name,
+    description: repoRaw.description,
+    language: repoRaw.language,
+    stars: repoRaw.stargazers_count,
+    forks: repoRaw.forks_count,
+    openIssues: repoRaw.open_issues_count,
+    topics: repoRaw.topics ?? [],
     recentCommitMessages,
+    fileTree: allPaths.slice(0, 150),
+    keyFileContents,
   };
 }
 
@@ -71,6 +101,7 @@ async function handler(req: Request) {
   }
 
   const plan = await resolveAiPlanFromSessionDb(session) as AIPlan;
+  const byokKeys = session.user.id ? await getUserBYOKKeys(session.user.id) : undefined;
 
   let body: { repo?: string; question?: string };
   try {
@@ -96,47 +127,59 @@ async function handler(req: Request) {
     return NextResponse.json({ error: "Repository not found or inaccessible" }, { status: 404 });
   }
 
-  const systemPrompt =
-    "You are GitScope's AI analyst. Sound like a strong senior teammate: clear, practical, and human. Focus on engineering health, code quality signals, maintenance patterns, and concrete recommendations.";
+  const systemPrompt = `You are GitScope's principal AI engineering advisor — a staff-level engineer with expertise across security, architecture, performance, and code quality. You give precise, evidence-based analysis grounded in the actual code and commit history provided.
+
+RULES:
+1. Ground every claim in the file contents or commit history provided — no speculation.
+2. Name exact files, functions, and patterns. "hashPassword() in lib/auth.ts uses MD5" not "weak hashing detected".
+3. When writing code fixes, show complete, production-ready snippets — never pseudocode.
+4. Be concise: no filler, no re-stating the question, no bullet points that say nothing.`;
+
+  const fileTreeSection = repoData.fileTree && repoData.fileTree.length > 0
+    ? `\n## File Tree (${repoData.fileTree.length} files)\n${repoData.fileTree.slice(0, 100).join("\n")}`
+    : "";
+
+  const keyFilesSection = repoData.keyFileContents && Object.keys(repoData.keyFileContents).length > 0
+    ? `\n## Key File Contents\n` + Object.entries(repoData.keyFileContents)
+        .map(([name, content]) => `### ${name}\n\`\`\`\n${content}\n\`\`\``)
+        .join("\n")
+    : "";
+
+  const repoBlock = `## Repository: ${repoData.name}
+Description: ${repoData.description ?? "None"}
+Language: ${repoData.language ?? "Unknown"} | Stars: ${repoData.stars.toLocaleString()} | Forks: ${repoData.forks.toLocaleString()} | Open issues: ${repoData.openIssues}
+Topics: ${repoData.topics.join(", ") || "None"}
+
+## Recent Commits
+${repoData.recentCommitMessages.map((m, i) => `${i + 1}. ${m}`).join("\n") || "None available"}
+${fileTreeSection}
+${keyFilesSection}`;
 
   const userPrompt = question
-    ? `Analyze the GitHub repository "${repoData.name}" and answer: ${question}
+    ? `Analyze the GitHub repository "${repoData.name}" and answer this question: ${question}
 
-Repository context:
-- Description: ${repoData.description ?? "None"}
-- Primary language: ${repoData.language ?? "Unknown"}
-- Stars: ${repoData.stars.toLocaleString()}, Forks: ${repoData.forks.toLocaleString()}, Open issues: ${repoData.openIssues}
-- Topics: ${repoData.topics.join(", ") || "None"}
-- Recent commit messages: ${repoData.recentCommitMessages
-        .map((m, i) => `${i + 1}. "${m}"`)
-        .join("; ") || "None available"}
+${repoBlock}
 
-Answer the specific question with technical depth in plain, human language. Keep it under 200 words.`
+Answer with technical depth, citing specific files and patterns from the code above. Under 250 words.`
     : `Provide an engineering health readout for the GitHub repository "${repoData.name}".
 
-Repository data:
-- Description: ${repoData.description ?? "None"}
-- Primary language: ${repoData.language ?? "Unknown"}
-- Stars: ${repoData.stars.toLocaleString()}, Forks: ${repoData.forks.toLocaleString()}, Open issues: ${repoData.openIssues}
-- Topics: ${repoData.topics.join(", ") || "None"}
-- Recent commit messages: ${repoData.recentCommitMessages
-        .map((m, i) => `${i + 1}. "${m}"`)
-        .join("; ") || "None available"}
+${repoBlock}
 
 Provide:
-1. Health Score (0-100) with one-line justification
-2. Strengths (2-3 bullet points)
-3. Risk Signals (2-3 bullet points)
-4. Top Recommendation (1-2 sentences)
+1. **Health Score** (0-100) with one-line justification tied to the actual code
+2. **Strengths** (2-3 bullet points citing specific files or patterns)
+3. **Risk Signals** (2-3 bullet points citing specific code evidence)
+4. **Top Recommendation** (specific action with a code snippet if applicable)
 
-Keep the total response under 300 words. Be specific, technical, and easy to understand.`;
+Under 350 words. Be specific and evidence-based.`;
 
   try {
     const result = await callAI({
       plan,
+      byokKeys,
       systemPrompt,
       userPrompt,
-      maxTokens: 512,
+      maxTokens: 1024,
     });
 
     if (!result) {

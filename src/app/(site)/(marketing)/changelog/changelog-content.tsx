@@ -111,7 +111,7 @@ const RELEASES: Release[] = [
       { kind: "new", text: "PR Risk Predictor — Machine learning model analyzing merge probability, estimated review time, deployment impact scoring, and conflict prediction" },
       { kind: "new", text: "Dependency Radar v3 — Multi-language package analysis supporting Node.js, Python, Go, Rust with CVE database integration and automated security alerts" },
       { kind: "new", text: "Enterprise Security Suite — Complete security implementation including CSRF protection with HMAC-SHA256 tokens, IP-based rate limiting with exponential backoff, comprehensive audit logging with 34 event types, and AES-256-GCM encryption for all sensitive data" },
-      { kind: "new", text: "Multi-Provider Authentication — Support for GitHub OAuth, Google OAuth, and email/password authentication with email verification, password reset flows, and session management" },
+      { kind: "new", text: "Multi-Provider Authentication — Support for GitHub OAuth and email/password authentication with email verification, password reset flows, and session management" },
       { kind: "new", text: "AI-Powered Code Analysis — Integration with Anthropic Claude API for repository summaries, code health scoring, and automated documentation generation" },
       { kind: "new", text: "Advanced Analytics Dashboard — Comprehensive metrics including DORA metrics (deployment frequency, lead time, change failure rate, MTTR), velocity tracking, and team performance indicators" },
       { kind: "improvement", text: "Performance optimizations achieving 50% faster page load times through server components, intelligent caching, and database query optimization" },

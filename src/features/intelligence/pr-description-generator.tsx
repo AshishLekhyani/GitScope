@@ -52,7 +52,7 @@ export function PrDescriptionGenerator({ selectedRepo, isPro }: PrDescriptionGen
     return (
       <div className="rounded-none border border-amber-500/20 bg-amber-500/5 p-8 text-center space-y-3">
         <MaterialIcon name="edit_note" size={32} className="text-amber-400 mx-auto" />
-        <p className="font-black text-base text-foreground">PR Description Generator requires Professional+</p>
+        <p className="font-black text-base text-foreground">PR Description Generator requires Developer plan</p>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Auto-generate structured PR descriptions from your commits and diff. Upgrade to unlock.
         </p>

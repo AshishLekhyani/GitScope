@@ -8,16 +8,12 @@ const CSP = [
   "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
   // Tailwind generates runtime inline styles
   "style-src 'self' 'unsafe-inline'",
-  // All image sources the app uses (GitHub avatars, Google profile pics, etc.)
+  // All image sources the app uses (GitHub avatars, Dicebear identicons, etc.)
   [
     "img-src 'self' data: blob:",
     "https://avatars.githubusercontent.com",
     "https://github.com",
     "https://api.dicebear.com",
-    "https://lh3.googleusercontent.com",
-    "https://lh4.googleusercontent.com",
-    "https://lh5.googleusercontent.com",
-    "https://lh6.googleusercontent.com",
     "https://octodex.github.com",
     "https://em-content.zobj.net",
   ].join(" "),
@@ -83,10 +79,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "avatars.githubusercontent.com" },
       { protocol: "https", hostname: "github.com" },
       { protocol: "https", hostname: "api.dicebear.com" },
-      { protocol: "https", hostname: "lh3.googleusercontent.com" },
-      { protocol: "https", hostname: "lh4.googleusercontent.com" },
-      { protocol: "https", hostname: "lh5.googleusercontent.com" },
-      { protocol: "https", hostname: "lh6.googleusercontent.com" },
     ],
   },
 };

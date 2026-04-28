@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
 
   const plan = await resolveAiPlanFromSessionDb(session);
   if (plan === "free") {
-    return NextResponse.json({ error: "Discord integration requires Professional plan or higher." }, { status: 403 });
+    return NextResponse.json({ error: "Discord integration requires Developer plan." }, { status: 403 });
   }
 
   let body: { webhookUrl?: string; remove?: boolean };

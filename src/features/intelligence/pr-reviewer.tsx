@@ -325,7 +325,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
                 )}
               >
                 <MaterialIcon name={mode === "quick" ? "bolt" : "manage_search"} size={12} />
-                {mode === "deep" && !canDeepScan ? `${mode} (Pro+)` : mode}
+                {mode === "deep" && !canDeepScan ? `${mode} (Developer)` : mode}
               </button>
             ))}
           </div>
@@ -359,7 +359,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
             <div>
               <p className="text-xs font-black text-amber-400 mb-0.5">Private Repos</p>
               <p className="text-[11px] text-muted-foreground/60 leading-relaxed">
-                Private repositories are available on Professional plan and above. Connect your GitHub account in Settings to enable access.
+                Private repositories are available on the Developer plan. Connect your GitHub account in Settings to enable access.
               </p>
             </div>
           </div>

@@ -82,7 +82,7 @@ export function AiGenerator({ selectedRepo, isPro }: AiGeneratorProps) {
     return (
       <div className="rounded-none border border-amber-500/20 bg-amber-500/5 p-8 text-center space-y-3">
         <MaterialIcon name="auto_awesome" size={32} className="text-amber-400 mx-auto" />
-        <p className="font-black text-base text-foreground">AI Generators require Professional+</p>
+        <p className="font-black text-base text-foreground">AI Generators require Developer plan</p>
         <p className="text-sm text-muted-foreground max-w-sm mx-auto">
           Generate README files and changelogs from your repo with AI. Upgrade to unlock.
         </p>

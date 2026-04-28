@@ -872,6 +872,278 @@ const SECURITY_RULES: SecurityRule[] = [
       language: "typescript",
     },
   },
+  // ── JWT without expiration ────────────────────────────────────────────────
+  {
+    id: "jwt-no-expiry",
+    pattern: /jwt\.sign\s*\([^,]+,[^,)]+\)(?![^;]*expiresIn|[^;]*exp\s*:)/g,
+    severity: "high",
+    description: (_, file) =>
+      `JWT signed without expiration in ${file}. Non-expiring tokens are valid forever — once compromised, there's no way to revoke them without revoking all sessions.`,
+    suggestion: "Always set expiresIn: jwt.sign(payload, secret, { expiresIn: '15m' }) for access tokens; use refresh tokens for long sessions.",
+    category: "security",
+    confidence: 0.78,
+    fix: {
+      before: `const token = jwt.sign({ userId: user.id, role: user.role }, secret); // never expires!`,
+      after: `const accessToken = jwt.sign(\n  { userId: user.id, role: user.role },\n  process.env.JWT_SECRET!,\n  { expiresIn: "15m", algorithm: "HS256" } // short-lived access token\n);\nconst refreshToken = jwt.sign(\n  { userId: user.id },\n  process.env.JWT_REFRESH_SECRET!,\n  { expiresIn: "7d" } // longer-lived refresh token\n);`,
+      language: "typescript",
+    },
+  },
+  // ── bcrypt rounds too low ─────────────────────────────────────────────────
+  {
+    id: "bcrypt-weak-rounds",
+    pattern: /bcrypt(?:\.hash|js\.hash|\s*\.\s*hash)\s*\([^,]+,\s*[1-9]\s*\)/g,
+    severity: "medium",
+    description: (_, file) =>
+      `bcrypt with fewer than 10 rounds in ${file}. Low cost factor makes brute-force attacks significantly faster.`,
+    suggestion: "Use at least 12 rounds: bcrypt.hash(password, 12). Each increment doubles computation time. 12 rounds takes ~300ms on modern hardware — a good balance.",
+    category: "security",
+    confidence: 0.85,
+    fix: {
+      before: `const hashed = await bcrypt.hash(password, 6); // too fast — brute-forceable`,
+      after: `const hashed = await bcrypt.hash(password, 12); // ~300ms — resistant to GPU attacks`,
+      language: "typescript",
+    },
+  },
+  // ── Missing rate limiting ─────────────────────────────────────────────────
+  {
+    id: "missing-rate-limit",
+    pattern: /export\s+(?:async\s+)?function\s+(?:POST|PUT)\s*\([^)]*\)\s*\{(?![^}]*(?:ratelimit|rate_limit|rateLimiter|RateLimit|upstash|redis\.incr|checkRateLimit|limiter\.check))/g,
+    severity: "medium",
+    description: (_, file) =>
+      `POST/PUT handler in ${file} without visible rate limiting. Unprotected mutation endpoints are vulnerable to brute-force and abuse attacks.`,
+    suggestion: "Add rate limiting: use Upstash Rate Limit, express-rate-limit, or a Redis-backed limiter. For Next.js: @upstash/ratelimit with Redis.",
+    category: "security",
+    confidence: 0.55,
+    fix: {
+      before: `export async function POST(req: Request) {\n  const { email, password } = await req.json();\n  const user = await authenticate(email, password); // brute-forceable\n}`,
+      after: `import { Ratelimit } from "@upstash/ratelimit";\nimport { Redis } from "@upstash/redis";\nconst ratelimit = new Ratelimit({\n  redis: Redis.fromEnv(),\n  limiter: Ratelimit.slidingWindow(10, "60 s"), // 10 req/min per IP\n});\nexport async function POST(req: Request) {\n  const ip = req.headers.get("x-forwarded-for") ?? "anonymous";\n  const { success } = await ratelimit.limit(ip);\n  if (!success) return Response.json({ error: "Too many requests" }, { status: 429 });\n  const { email, password } = await req.json();\n  const user = await authenticate(email, password);\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Express without security headers (helmet) ─────────────────────────────
+  {
+    id: "express-no-helmet",
+    pattern: /express\s*\(\s*\)(?![^]*helmet)/g,
+    severity: "medium",
+    description: (_, file) =>
+      `Express app in ${file} without helmet middleware. Missing security headers (X-Frame-Options, CSP, HSTS, etc.) leave the app exposed to common browser attacks.`,
+    suggestion: "Add helmet at the top of your middleware stack: app.use(helmet()). It sets 11 security headers automatically.",
+    category: "security",
+    confidence: 0.60,
+    fix: {
+      before: `const app = express();\napp.use(express.json());\n// No security headers — X-Frame-Options, CSP, HSTS are all missing`,
+      after: `import helmet from "helmet";\nconst app = express();\napp.use(helmet()); // sets X-Frame-Options, CSP, HSTS, X-Content-Type-Options, etc.\napp.use(express.json({ limit: "10mb" })); // also limit body size`,
+      language: "typescript",
+    },
+  },
+  // ── Stripe webhook without signature verification ──────────────────────────
+  {
+    id: "stripe-webhook-no-verify",
+    pattern: /stripe\.webhooks(?!\.constructEvent)|(?:webhook|stripe_event)\s*=\s*(?:await\s+)?req\.json\s*\(\s*\)(?![^]*constructEvent)/gi,
+    severity: "critical",
+    description: (_, file) =>
+      `Stripe webhook endpoint in ${file} without signature verification. Without verifying the webhook signature, anyone can forge webhook events (fake payments, refunds, etc.).`,
+    suggestion: "Always verify the Stripe-Signature header: stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET)",
+    category: "security",
+    confidence: 0.75,
+    fix: {
+      before: `export async function POST(req: Request) {\n  const event = await req.json(); // anyone can POST fake events!\n  if (event.type === "payment_intent.succeeded") handlePayment(event);\n}`,
+      after: `export async function POST(req: Request) {\n  const rawBody = await req.text(); // need raw body for signature\n  const sig = req.headers.get("stripe-signature")!;\n  let event;\n  try {\n    event = stripe.webhooks.constructEvent(rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET!);\n  } catch (err) {\n    return Response.json({ error: "Invalid signature" }, { status: 400 });\n  }\n  if (event.type === "payment_intent.succeeded") await handlePayment(event.data.object);\n}`,
+      language: "typescript",
+    },
+  },
+  // ── CORS reflecting arbitrary Origin ─────────────────────────────────────
+  {
+    id: "cors-reflect-origin",
+    pattern: /(?:Access-Control-Allow-Origin|origin)\s*[:=]\s*(?:req\.headers\.origin|request\.headers\.get\s*\(\s*['"]origin['"]\s*\)|origin\s*\?\?\s*['"])/gi,
+    severity: "high",
+    description: (_, file) =>
+      `CORS blindly reflecting the request Origin header in ${file}. This is equivalent to a wildcard '*' with credentials — any site can make credentialed cross-origin requests to your API.`,
+    suggestion: "Validate origin against an explicit allowlist before reflecting it. Deny unknown origins with a 403.",
+    category: "security",
+    confidence: 0.82,
+    fix: {
+      before: `// VULNERABLE — mirrors any origin back, effectively wildcard\nres.setHeader("Access-Control-Allow-Origin", req.headers.origin);\nres.setHeader("Access-Control-Allow-Credentials", "true");`,
+      after: `const ALLOWED_ORIGINS = ["https://app.yourdomain.com", "https://yourdomain.com"];\nconst origin = req.headers.origin;\nif (origin && ALLOWED_ORIGINS.includes(origin)) {\n  res.setHeader("Access-Control-Allow-Origin", origin);\n  res.setHeader("Access-Control-Allow-Credentials", "true");\n  res.setHeader("Vary", "Origin");\n} else {\n  return res.status(403).json({ error: "Forbidden" });\n}`,
+      language: "typescript",
+    },
+  },
+  // ── window.postMessage without origin check ───────────────────────────────
+  {
+    id: "postmessage-no-origin",
+    pattern: /addEventListener\s*\(\s*['"]message['"]\s*,[^)]+\)(?![^}]*(?:origin|source|e\.origin|event\.origin|msg\.origin))/g,
+    severity: "high",
+    description: (_, file) =>
+      `window.postMessage listener in ${file} without origin validation. Without checking event.origin, malicious pages can send messages to your app and execute logic.`,
+    suggestion: "Always validate the sender: if (event.origin !== 'https://trusted.com') return; before processing postMessage data.",
+    category: "security",
+    confidence: 0.75,
+    fix: {
+      before: `window.addEventListener("message", (event) => {\n  processData(event.data); // executes for messages from ANY origin\n});`,
+      after: `const TRUSTED_ORIGIN = "https://your-partner-app.com";\nwindow.addEventListener("message", (event) => {\n  if (event.origin !== TRUSTED_ORIGIN) return; // reject unknown senders\n  processData(event.data);\n});`,
+      language: "typescript",
+    },
+  },
+  // ── Hardcoded GitHub/Stripe/Twilio tokens ────────────────────────────────
+  {
+    id: "hardcoded-service-token",
+    pattern: /(?:ghp_|github_pat_|ghs_|sk_live_|sk_test_|rk_live_|AC[a-z0-9]{32}|SK[a-z0-9]{32}|pk_live_)[a-zA-Z0-9_]{10,}/g,
+    severity: "critical",
+    description: (_, file) =>
+      `Service API token pattern detected in ${file}. This appears to be a real GitHub, Stripe, or Twilio secret — it is exposed in version control and must be rotated immediately.`,
+    suggestion: "Revoke this token NOW in the service's dashboard. Store tokens only in environment variables or a secrets manager.",
+    category: "security",
+    confidence: 0.97,
+    fix: {
+      before: `const stripe = new Stripe("sk_live_realKeyHere123456789012345"); // CRITICAL`,
+      after: `const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!); // in .env, never in code`,
+      language: "typescript",
+    },
+  },
+  // ── Next.js server action without auth ───────────────────────────────────
+  {
+    id: "nextjs-server-action-no-auth",
+    pattern: /"use server"(?:[^}]|\{[^}]*\}){0,300}(?:export\s+async\s+function|async\s+function)\s+\w+\s*\([^)]*\)\s*\{(?![^}]*(?:getServerSession|auth\(\)|currentUser|session\s*=|verifyToken))/g,
+    severity: "high",
+    description: (_, file) =>
+      `Next.js Server Action in ${file} without authentication check. Server actions are directly callable via POST — any user (or attacker) can invoke them without the auth guard.`,
+    suggestion: "Add auth at the top of every server action: const session = await getServerSession(authOptions); if (!session) throw new Error('Unauthorized');",
+    category: "security",
+    confidence: 0.70,
+    fix: {
+      before: `"use server";\nexport async function updateUserProfile(data: FormData) {\n  const userId = data.get("userId");\n  await prisma.user.update({ where: { id: userId }, data: ... }); // no auth!\n}`,
+      after: `"use server";\nimport { getServerSession } from "next-auth";\nimport { authOptions } from "@/lib/auth";\nexport async function updateUserProfile(data: FormData) {\n  const session = await getServerSession(authOptions);\n  if (!session?.user?.id) throw new Error("Unauthorized");\n  // Use session.user.id — never trust user-supplied userId\n  await prisma.user.update({ where: { id: session.user.id }, data: ... });\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Missing Content-Security-Policy header ────────────────────────────────
+  {
+    id: "missing-csp",
+    pattern: /next\.config(?:\.js|\.mjs|\.ts)[\s\S]{0,500}headers\s*(?:async\s*)?\(\s*\)[\s\S]{0,300}\{(?![^}]*content-security-policy)/gi,
+    severity: "medium",
+    description: (_, file) =>
+      `Next.js headers configuration in ${file} without Content-Security-Policy (CSP). Without CSP, a single XSS vulnerability can compromise the entire application.`,
+    suggestion: "Add a strict CSP: Content-Security-Policy: default-src 'self'; script-src 'self' 'nonce-{nonce}'; Connect it to the nonce in middleware.",
+    category: "security",
+    confidence: 0.58,
+    fix: {
+      before: `// next.config.js — missing CSP means XSS can load arbitrary scripts\nasync headers() {\n  return [{ source: "/(.*)", headers: [{ key: "X-Frame-Options", value: "DENY" }] }];\n}`,
+      after: `async headers() {\n  return [{\n    source: "/(.*)",\n    headers: [\n      { key: "X-Frame-Options", value: "DENY" },\n      { key: "X-Content-Type-Options", value: "nosniff" },\n      { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },\n      { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },\n      // Use nonce-based CSP with middleware for the best security:\n      { key: "Content-Security-Policy", value: "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline';" },\n    ],\n  }];\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Insecure file upload path ─────────────────────────────────────────────
+  {
+    id: "upload-path-user-controlled",
+    pattern: /(?:dest|uploadDir|directory)\s*:\s*(?:req\.|params\.|query\.|body\.|\w+Path\b)/gi,
+    severity: "critical",
+    description: (_, file) =>
+      `File upload destination controlled by user input in ${file}. Attackers can write files to arbitrary server paths, enabling remote code execution.`,
+    suggestion: "Hardcode the upload directory: dest: path.join(process.cwd(), 'uploads'). Never derive upload paths from user input.",
+    category: "security",
+    confidence: 0.80,
+    fix: {
+      before: `const upload = multer({ dest: req.body.uploadPath }); // RCE via path control`,
+      after: `import path from "path";\nconst UPLOAD_DIR = path.join(process.cwd(), "uploads"); // fixed, safe path\nconst upload = multer({ dest: UPLOAD_DIR, limits: { fileSize: 5 * 1024 * 1024 } });`,
+      language: "typescript",
+    },
+  },
+  // ── Missing database transaction ──────────────────────────────────────────
+  {
+    id: "missing-db-transaction",
+    pattern: /(?:prisma\.\w+\.create|prisma\.\w+\.update|prisma\.\w+\.delete)[^;]+;\s*(?:await\s+)?prisma\.\w+\.(?:create|update|delete)/g,
+    severity: "medium",
+    description: (_, file) =>
+      `Multiple database write operations in ${file} without a transaction. If the second write fails, the first is already committed — leaving data in an inconsistent state.`,
+    suggestion: "Wrap related writes in a transaction: await prisma.$transaction([prisma.user.update(...), prisma.account.create(...)]);",
+    category: "security",
+    confidence: 0.65,
+    fix: {
+      before: `await prisma.order.create({ data: orderData });\nawait prisma.inventory.update({ where: { id }, data: { stock: stock - 1 } });\n// If second line fails — order exists but stock not decremented!`,
+      after: `await prisma.$transaction(async (tx) => {\n  await tx.order.create({ data: orderData });\n  await tx.inventory.update({\n    where: { id: product.id },\n    data: { stock: { decrement: 1 } },\n  });\n}); // atomic — both succeed or both rollback`,
+      language: "typescript",
+    },
+  },
+  // ── GraphQL mutation without auth ─────────────────────────────────────────
+  {
+    id: "graphql-mutation-no-auth",
+    pattern: /Mutation\s*\{[\s\S]{0,500}resolve\s*:\s*(?:async\s*)?\([^)]*\)\s*=>\s*\{(?![^}]*(?:context\.user|ctx\.user|context\.auth|requireAuth|isAuthenticated|getUser))/g,
+    severity: "high",
+    description: (_, file) =>
+      `GraphQL mutation resolver in ${file} without visible authentication check. Any caller can execute this mutation without being authenticated.`,
+    suggestion: "Check auth in every mutation resolver: if (!context.user) throw new AuthenticationError('Must be logged in'). Or use a directive: @auth(requires: USER).",
+    category: "security",
+    confidence: 0.65,
+    fix: {
+      before: `const resolvers = {\n  Mutation: {\n    deleteAccount: async (_, { id }, context) => {\n      return prisma.user.delete({ where: { id } }); // no auth!\n    },\n  },\n};`,
+      after: `import { AuthenticationError, ForbiddenError } from "apollo-server";\nconst resolvers = {\n  Mutation: {\n    deleteAccount: async (_, { id }, context) => {\n      if (!context.user) throw new AuthenticationError("Must be logged in");\n      if (context.user.id !== id && context.user.role !== "ADMIN") {\n        throw new ForbiddenError("Can only delete your own account");\n      }\n      return prisma.user.delete({ where: { id } });\n    },\n  },\n};`,
+      language: "typescript",
+    },
+  },
+  // ── Kubernetes secrets in plaintext ──────────────────────────────────────
+  {
+    id: "k8s-plaintext-secret",
+    pattern: /kind\s*:\s*Secret[\s\S]{0,200}stringData\s*:|kind\s*:\s*ConfigMap[\s\S]{0,200}(?:password|secret|key|token)\s*:/gi,
+    severity: "high",
+    description: (_, file) =>
+      `Kubernetes Secret with plaintext data in ${file}. Kubernetes Secrets are base64-encoded, not encrypted — anyone with cluster access or in the Git history can read them.`,
+    suggestion: "Use Sealed Secrets, External Secrets Operator, or Vault Agent. Never store sensitive values in ConfigMaps or unencrypted Secrets in Git.",
+    category: "security",
+    confidence: 0.78,
+    fix: {
+      before: `# kubernetes/secret.yaml — checked into Git!\napiVersion: v1\nkind: Secret\nstringData:\n  DATABASE_URL: postgres://admin:mypassword@db:5432/prod`,
+      after: `# Use External Secrets Operator + AWS Secrets Manager / Vault:\napiVersion: external-secrets.io/v1beta1\nkind: ExternalSecret\nspec:\n  secretStoreRef: { name: vault-backend, kind: SecretStore }\n  target: { name: app-secrets }\n  data:\n    - secretKey: DATABASE_URL\n      remoteRef: { key: prod/app, property: database_url }`,
+      language: "yaml",
+    },
+  },
+  // ── Docker running as root ────────────────────────────────────────────────
+  {
+    id: "docker-root-user",
+    pattern: /FROM\s+\w[^\n]*(?:\n(?!USER\s)[^\n]*){0,20}CMD|FROM\s+\w[^\n]*(?:\n(?!USER\s)[^\n]*){0,20}ENTRYPOINT/gm,
+    severity: "medium",
+    description: (_, file) =>
+      `Dockerfile in ${file} runs as root (no USER instruction before CMD/ENTRYPOINT). Container escape vulnerabilities grant root on the host.`,
+    suggestion: "Add a non-root user: RUN addgroup -S appgroup && adduser -S appuser -G appgroup && USER appuser before your CMD.",
+    category: "security",
+    confidence: 0.58,
+    fix: {
+      before: `FROM node:20-alpine\nWORKDIR /app\nCOPY . .\nRUN npm install\nCMD ["node", "server.js"] # runs as root`,
+      after: `FROM node:20-alpine\nWORKDIR /app\nCOPY --chown=node:node . .\nRUN npm ci --production\n# Use the built-in 'node' non-root user\nUSER node\nCMD ["node", "server.js"]`,
+      language: "docker",
+    },
+  },
+  // ── Unsafe S3 bucket ACL ──────────────────────────────────────────────────
+  {
+    id: "s3-public-acl",
+    pattern: /ACL\s*:\s*['"]public-read(?:-write)?['"]|acl\s*:\s*['"]public/gi,
+    severity: "critical",
+    description: (_, file) =>
+      `S3 bucket or object set to public-read ACL in ${file}. Public-read makes ALL objects in the bucket accessible by anyone on the internet.`,
+    suggestion: "Remove ACL: 'public-read'. Use pre-signed URLs with short expiry for temporary access. Block public access at the S3 account level.",
+    category: "security",
+    confidence: 0.92,
+    fix: {
+      before: `await s3.putObject({\n  Bucket: "my-app-bucket",\n  Key: key,\n  Body: fileBuffer,\n  ACL: "public-read", // world-readable!`,
+      after: `await s3.putObject({\n  Bucket: "my-app-bucket",\n  Key: key,\n  Body: fileBuffer,\n  // No ACL — defaults to private (bucket owner only)\n});\n// For temporary access, generate a pre-signed URL:\nconst url = await getSignedUrl(s3, new GetObjectCommand({ Bucket, Key }), { expiresIn: 3600 });`,
+      language: "typescript",
+    },
+  },
+  // ── Regex injection via user input ────────────────────────────────────────
+  {
+    id: "regex-from-user-input",
+    pattern: /new RegExp\s*\(\s*(?:req\.|params\.|query\.|body\.|searchParams\.get|formData\.get)/g,
+    severity: "high",
+    description: (_, file) =>
+      `RegExp constructed from user-controlled input in ${file}. Malicious patterns like (a+)+ cause catastrophic backtracking (ReDoS), hanging the server for seconds or minutes.`,
+    suggestion: "Never build RegExp from user input. Escape the input and use it as a literal string match, or validate patterns with safe-regex before use.",
+    category: "security",
+    confidence: 0.90,
+    fix: {
+      before: `const pattern = new RegExp(req.query.search); // (a+)+ hangs server for minutes`,
+      after: `// SAFE — escape user input before using as a regex pattern\nconst escapeForRegex = (s: string) => s.replace(/[-[\\\\\\\\]^.*+?{}()|]/g, "\\\\\\\\$&");\nconst pattern = new RegExp(escapeForRegex(req.query.search), "i");\nconst results = content.filter(c => pattern.test(c));`,
+      language: "typescript",
+    },
+  },
 ];
 
 // ── Unified quality rules ─────────────────────────────────────────────────────
@@ -1256,6 +1528,201 @@ const QUALITY_RULES: QualityRule[] = [
       language: "typescript",
     },
   },
+  // ── Accessibility: img without alt ───────────────────────────────────────
+  {
+    id: "img-missing-alt",
+    pattern: /<img(?![^>]*\balt\s*=)[^>]*>/gi,
+    severity: "medium",
+    description: (file, count) =>
+      `${count} <img> element${count > 1 ? "s" : ""} without an alt attribute in ${file}. Screen readers cannot describe the image to visually-impaired users, and it fails WCAG 2.1 AA.`,
+    suggestion: "Add descriptive alt text: <img alt='Company logo' ... />. For decorative images use alt=\"\" to indicate it should be skipped by screen readers.",
+    scanLabel: "Images missing alt text — accessibility (WCAG 2.1 AA failure)",
+    fix: {
+      before: `<img src="/logo.png" className="h-8" /> {/* screen readers skip this */}`,
+      after: `<img src="/logo.png" className="h-8" alt="GitScope logo" />\n{/* For decorative images that add no information: */}\n<img src="/divider.svg" alt="" role="presentation" />`,
+      language: "tsx",
+    },
+  },
+  // ── Accessibility: button without type ───────────────────────────────────
+  {
+    id: "button-missing-type",
+    pattern: /<button(?![^>]*\btype\s*=)[^>]*>/gi,
+    severity: "low",
+    description: (file, count) =>
+      `${count} <button> element${count > 1 ? "s" : ""} in ${file} without an explicit type. Default type is "submit" — buttons inside forms will unintentionally submit the form.`,
+    suggestion: "Always specify type: <button type='button'> for non-submitting buttons, <button type='submit'> for form submit.",
+    scanLabel: "Buttons without explicit type — may unintentionally submit forms",
+    fix: {
+      before: `<button onClick={handleClear}>Clear</button> {/* inside a form, this submits! */}`,
+      after: `<button type="button" onClick={handleClear}>Clear</button>\n<button type="submit">Save Changes</button>`,
+      language: "tsx",
+    },
+  },
+  // ── Accessibility: interactive element without aria-label ─────────────────
+  {
+    id: "icon-button-no-label",
+    pattern: /<button[^>]*>(?:\s*<(?:svg|Icon|icon)[^>]*>|[\s]*<i\s)/gi,
+    severity: "medium",
+    description: (file) =>
+      `Icon-only button detected in ${file} without visible text. Screen readers will announce no useful label, making the control unusable for keyboard/screen reader users.`,
+    suggestion: "Add aria-label: <button aria-label='Close dialog' type='button'><CloseIcon /></button>. Or use visually-hidden text: <span className='sr-only'>Close</span>",
+    scanLabel: "Icon-only buttons without aria-label — WCAG 2.1 AA failure",
+    fix: {
+      before: `<button onClick={onClose}><XMarkIcon className="h-5 w-5" /></button>`,
+      after: `<button\n  type="button"\n  aria-label="Close dialog"\n  onClick={onClose}\n>\n  <XMarkIcon className="h-5 w-5" aria-hidden="true" />\n</button>`,
+      language: "tsx",
+    },
+  },
+  // ── Non-null assertion abuse ──────────────────────────────────────────────
+  {
+    id: "non-null-assertion-chain",
+    pattern: /\w+!(?:\.\w+!){2,}/g,
+    severity: "medium",
+    description: (file, count) =>
+      `${count} chained non-null assertion${count > 1 ? "s" : ""} (x!.y!.z!) in ${file}. Each ! suppresses a null-check TypeScript would otherwise enforce — chain failures cause unhandled runtime crashes.`,
+    suggestion: "Use optional chaining and provide a fallback: x?.y?.z ?? defaultValue. Only use ! when you are 100% certain a value cannot be null at that point.",
+    scanLabel: "Chained non-null assertions (!) suppress null safety checks",
+    fix: {
+      before: `const city = user!.address!.city!; // any null = runtime crash`,
+      after: `const city = user?.address?.city ?? "Unknown";\n// Or throw early with a clear message:\nif (!user?.address?.city) throw new Error(\`User \${userId} has no city\`);`,
+      language: "typescript",
+    },
+  },
+  // ── useState with array index as key ─────────────────────────────────────
+  {
+    id: "key-from-array-index",
+    pattern: /key\s*=\s*\{\s*(?:index|i|idx|_i|_idx)\s*\}/gi,
+    severity: "medium",
+    description: (file, count) =>
+      `${count} React list render${count > 1 ? "s" : ""} in ${file} using array index as key. When items are added, removed, or reordered, React re-uses wrong DOM nodes — causing incorrect UI state, animation bugs, and stale input values.`,
+    suggestion: "Use a stable unique ID from your data: key={item.id}. Never use index as key for sortable, filterable, or dynamic lists.",
+    scanLabel: "Array index used as React key — causes UI state bugs on reorder/delete",
+    fix: {
+      before: `{items.map((item, index) => (\n  <ListItem key={index} data={item} /> // stale state when list changes\n))}`,
+      after: `{items.map((item) => (\n  <ListItem key={item.id} data={item} /> // stable identity through changes\n))}`,
+      language: "tsx",
+    },
+  },
+  // ── TypeScript strict mode missing ────────────────────────────────────────
+  {
+    id: "tsconfig-no-strict",
+    pattern: /"strict"\s*:\s*false/g,
+    severity: "medium",
+    description: (file) =>
+      `TypeScript strict mode disabled in ${file}. Without strict mode, TypeScript misses null dereferences, implicit any, and unsafe function calls — these are the most common sources of runtime crashes.`,
+    suggestion: "Set \"strict\": true in tsconfig.json. It enables strictNullChecks, noImplicitAny, strictFunctionTypes, and 6 other checks. Fix type errors rather than disabling the check.",
+    scanLabel: "TypeScript strict mode disabled — misses null/any type errors",
+    fix: {
+      before: `{\n  "compilerOptions": {\n    "strict": false // null dereferences compile without error\n  }\n}`,
+      after: `{\n  "compilerOptions": {\n    "strict": true,          // enables all strict checks\n    "noUncheckedIndexedAccess": true, // array[i] is T | undefined\n    "exactOptionalPropertyTypes": true\n  }\n}`,
+      language: "json",
+    },
+  },
+  // ── Test without assertions ──────────────────────────────────────────────
+  {
+    id: "test-without-assertion",
+    pattern: /(?:it|test)\s*\(\s*['"`][^'"`]+['"`]\s*,\s*(?:async\s*)?\(\s*\)\s*=>\s*\{(?:[^}]|\{[^}]*\}){0,400}\}\s*\)(?![^)]*expect)/g,
+    severity: "medium",
+    description: (file) =>
+      `Test function in ${file} without any expect() assertion. A test with no assertions always passes, providing no actual validation — it's a false sense of safety.`,
+    suggestion: "Add at least one expect() assertion per test. If testing side effects, use expect(spy).toHaveBeenCalledWith(...).",
+    scanLabel: "Tests without assertions — always pass, provide false safety",
+    fix: {
+      before: `it("should process the order", async () => {\n  const result = await processOrder(orderData);\n  console.log(result); // no assertion — test always passes!\n});`,
+      after: `it("should process the order and return an orderId", async () => {\n  const result = await processOrder(orderData);\n  expect(result).toBeDefined();\n  expect(result.orderId).toMatch(/^ord_/);\n  expect(result.status).toBe("confirmed");\n});`,
+      language: "typescript",
+    },
+  },
+  // ── Missing default case in switch ────────────────────────────────────────
+  {
+    id: "switch-no-default",
+    pattern: /switch\s*\([^)]+\)\s*\{(?:[^{}]|\{[^{}]*\})*\}(?![^;]*default\s*:)/g,
+    severity: "low",
+    description: (file, count) =>
+      `${count} switch statement${count > 1 ? "s" : ""} in ${file} without a default case. Unhandled values produce no error — silent failures or undefined behavior when new enum values are added.`,
+    suggestion: "Add default: throw new Error(`Unhandled case: ${value}`) to catch unexpected values at runtime, or default: break with a comment if exhaustive is intended.",
+    scanLabel: "Switch statements without default case — silent failures on new values",
+    fix: {
+      before: `switch (action.type) {\n  case "increment": return state + 1;\n  case "decrement": return state - 1;\n  // no default — new action types silently return undefined\n}`,
+      after: `switch (action.type) {\n  case "increment": return state + 1;\n  case "decrement": return state - 1;\n  default:\n    // TypeScript exhaustive check:\n    const _exhaustive: never = action.type;\n    throw new Error(\`Unhandled action: \${action.type}\`);\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Prisma raw SQL ────────────────────────────────────────────────────────
+  {
+    id: "prisma-raw-sql",
+    pattern: /prisma\.\$(?:queryRaw|executeRaw)\s*`[^`]*\$\{/gi,
+    severity: "high",
+    description: (file) =>
+      `Prisma raw SQL with template literal interpolation in ${file}. Even in Prisma, interpolating values directly into raw SQL strings creates injection vulnerabilities — $queryRaw with template literals does NOT parameterize.`,
+    suggestion: "Use Prisma.sql tagged template: prisma.$queryRaw(Prisma.sql`SELECT * FROM users WHERE id = ${userId}`) — this parameterizes automatically.",
+    scanLabel: "Prisma.$queryRaw with direct interpolation — SQL injection risk",
+    fix: {
+      before: `// VULNERABLE — template literal interpolation is NOT parameterized in raw queries\nconst users = await prisma.$queryRaw\`SELECT * FROM users WHERE id = \${userId}\`;`,
+      after: `import { Prisma } from "@prisma/client";\n// SAFE — Prisma.sql automatically parameterizes\nconst users = await prisma.$queryRaw(Prisma.sql\`SELECT * FROM users WHERE id = \${userId}\`);\n// Or better: use the type-safe Prisma Client API instead of raw SQL`,
+      language: "typescript",
+    },
+  },
+  // ── Async event handler without error handling ────────────────────────────
+  {
+    id: "async-event-handler-no-catch",
+    pattern: /on(?:Click|Submit|Change|Blur|Focus|KeyDown|KeyUp)\s*=\s*\{\s*async\s*(?:\([^)]*\)|[^=]*)\s*=>\s*\{(?![^}]*try\s*\{)[^}]{10,}/g,
+    severity: "medium",
+    description: (file) =>
+      `Async event handler without try/catch in ${file}. Unhandled async errors in event handlers are swallowed by React — the UI appears to hang with no feedback to the user.`,
+    suggestion: "Wrap async event handler bodies in try/catch and update UI state: catch(err) { setError(err.message); toast.error('Something went wrong'); }",
+    scanLabel: "Async event handlers without try/catch — errors swallowed silently",
+    fix: {
+      before: `const handleSubmit = async (e) => {\n  e.preventDefault();\n  const data = await submitForm(formData); // error silently disappears\n  router.push("/success");\n};`,
+      after: `const handleSubmit = async (e: React.FormEvent) => {\n  e.preventDefault();\n  setLoading(true);\n  try {\n    const data = await submitForm(formData);\n    router.push("/success");\n  } catch (err) {\n    const msg = err instanceof Error ? err.message : "Something went wrong";\n    setError(msg); // show error in UI\n    toast.error(msg);\n  } finally {\n    setLoading(false);\n  }\n};`,
+      language: "typescript",
+    },
+  },
+  // ── Missing React error boundary ─────────────────────────────────────────
+  {
+    id: "no-error-boundary",
+    pattern: /ReactDOM\.createRoot|createRoot\s*\(/g,
+    severity: "low",
+    description: (file) =>
+      `React root rendered in ${file} without evidence of an Error Boundary. Runtime render errors crash the entire React tree with a blank white screen and no user feedback.`,
+    suggestion: "Wrap root-level components with an ErrorBoundary: <ErrorBoundary fallback={<ErrorPage />}><App /></ErrorBoundary>. Use react-error-boundary package.",
+    scanLabel: "React app without error boundary — crashes show blank screen",
+    fix: {
+      before: `createRoot(document.getElementById("root")!).render(<App />);`,
+      after: `import { ErrorBoundary } from "react-error-boundary";\ncreateRoot(document.getElementById("root")!).render(\n  <ErrorBoundary\n    fallback={<div>Something went wrong. <button onClick={() => window.location.reload()}>Reload</button></div>}\n    onError={(err) => console.error("[ErrorBoundary]", err)}\n  >\n    <App />\n  </ErrorBoundary>\n);`,
+      language: "tsx",
+    },
+  },
+  // ── Unused React import (React 17+) ──────────────────────────────────────
+  {
+    id: "unused-react-import",
+    pattern: /^import React from ['"]react['"]/gm,
+    severity: "low",
+    description: (file) =>
+      `Explicit \`import React from 'react'\` in ${file}. React 17+ with the new JSX transform doesn't require this import — it adds unnecessary bundle weight and signals an outdated codebase.`,
+    suggestion: "Remove the default React import unless you're using React.memo, React.forwardRef, or other React namespace APIs. Configure jsx: 'react-jsx' in tsconfig.",
+    scanLabel: "Unnecessary React default import — not needed with React 17+ JSX transform",
+    fix: {
+      before: `import React from "react"; // unnecessary with React 17+ new JSX transform\nimport { useState } from "react";`,
+      after: `import { useState } from "react"; // just import what you use\n// tsconfig: "jsx": "react-jsx" enables the automatic transform`,
+      language: "typescript",
+    },
+  },
+  // ── Direct mutation of state ──────────────────────────────────────────────
+  {
+    id: "state-direct-mutation",
+    pattern: /(?:this\.state\.|state\.)\w+\s*=(?!=)|(?:const|let)\s+\{[^}]+\}\s*=\s*(?:this\.)?state;[\s\S]{0,200}\w+\s*\.push\s*\(/g,
+    severity: "high",
+    description: (file) =>
+      `Direct state mutation detected in ${file}. Mutating state directly bypasses React's change detection — the component will not re-render and the UI will be out of sync with the data.`,
+    suggestion: "Never mutate state directly. Use setState or the useState setter with a new array/object: setState(prev => [...prev, newItem])",
+    scanLabel: "Direct state mutation — component will not re-render",
+    fix: {
+      before: `// Class component\nthis.state.items.push(newItem); // no re-render!\n// Functional component\nconst { items } = state;\nitems.push(newItem); // mutating ref — component won't update`,
+      after: `// Class component\nthis.setState(prev => ({ items: [...prev.items, newItem] }));\n// Functional component\nsetItems(prev => [...prev, newItem]); // new array reference triggers re-render`,
+      language: "typescript",
+    },
+  },
 ];
 
 // ── Performance rules ─────────────────────────────────────────────────────────
@@ -1466,6 +1933,156 @@ const PERFORMANCE_RULES: PerformanceRule[] = [
       before: `// SLOW — total time = t(user) + t(posts) + t(settings)\nconst user = await fetchUser(id);\nconst posts = await fetchPosts(id);\nconst settings = await fetchSettings(id);`,
       after: `// FAST — total time = max(t(user), t(posts), t(settings))\nconst [user, posts, settings] = await Promise.all([\n  fetchUser(id),\n  fetchPosts(id),\n  fetchSettings(id),\n]);\n// Only use sequential when each result depends on the previous one`,
       language: "typescript",
+    },
+  },
+  // ── fetch() without timeout ───────────────────────────────────────────────
+  {
+    id: "fetch-no-timeout",
+    pattern: /\bfetch\s*\(\s*(?!.*AbortController|.*AbortSignal|.*signal)/g,
+    severity: "medium",
+    description: (file) =>
+      `fetch() call in ${file} without an AbortController timeout. If the remote server hangs, the request runs forever — tying up Node.js resources and eventually exhausting the connection pool.`,
+    suggestion: "Add a timeout: const ctrl = new AbortController(); setTimeout(() => ctrl.abort(), 10_000); fetch(url, { signal: ctrl.signal });",
+    scanLabel: "fetch() without timeout — connection hangs indefinitely on slow servers",
+    fix: {
+      before: `const res = await fetch("https://api.example.com/data"); // no timeout`,
+      after: `const ctrl = new AbortController();\nconst timeout = setTimeout(() => ctrl.abort(), 10_000); // 10 second timeout\ntry {\n  const res = await fetch("https://api.example.com/data", { signal: ctrl.signal });\n  const data = await res.json();\n  return data;\n} finally {\n  clearTimeout(timeout);\n}`,
+      language: "typescript",
+    },
+  },
+  // ── img without lazy loading ──────────────────────────────────────────────
+  {
+    id: "img-no-lazy-load",
+    pattern: /<img(?![^>]*\bloading\s*=)[^>]*src\s*=/gi,
+    severity: "low",
+    description: (file, count) =>
+      `${count} <img> element${count > 1 ? "s" : ""} in ${file} without loading="lazy". All images load eagerly on page load — including ones below the fold — increasing initial payload and Time to Interactive.`,
+    suggestion: "Add loading='lazy' to below-the-fold images: <img loading='lazy' src={url} alt='...' />. Use loading='eager' only for hero/LCP images.",
+    scanLabel: "Images without lazy loading — increases initial page load",
+    fix: {
+      before: `<img src={product.imageUrl} className="w-full" alt={product.name} />`,
+      after: `{/* Hero/LCP image — eager load */}\n<img src={hero.imageUrl} loading="eager" fetchPriority="high" alt={hero.title} />\n{/* Below-fold images — lazy load */}\n<img src={product.imageUrl} loading="lazy" className="w-full" alt={product.name} />`,
+      language: "tsx",
+    },
+  },
+  // ── Large list without virtualization ────────────────────────────────────
+  {
+    id: "large-list-no-virtualization",
+    pattern: /\.map\s*\([^)]+\)\s*(?:\.filter\s*\([^)]+\)\s*)?\.map\s*\([^)]+\)|(?:const|let)\s+\w+\s*=\s*(?:await\s+)?\w+\.\w+Many\s*\([^)]*take\s*:\s*(?:[5-9]\d{2,}|\d{4,})/g,
+    severity: "medium",
+    description: (file) =>
+      `Potentially large list rendered without virtualization in ${file}. Rendering 1000+ DOM nodes simultaneously causes layout thrashing, scroll jank, and eventual memory pressure.`,
+    suggestion: "Use react-virtual or @tanstack/react-virtual: only render visible items. For tables: @tanstack/react-table with virtual rows.",
+    scanLabel: "Large list without virtualization — causes scroll jank at scale",
+    fix: {
+      before: `{allProducts.map(p => <ProductCard key={p.id} product={p} />)} // 10,000 DOM nodes`,
+      after: `import { useVirtualizer } from "@tanstack/react-virtual";\nconst rowVirtualizer = useVirtualizer({\n  count: allProducts.length,\n  getScrollElement: () => parentRef.current,\n  estimateSize: () => 72, // estimated row height\n});\nreturn (\n  <div ref={parentRef} style={{ overflow: "auto", height: "600px" }}>\n    <div style={{ height: rowVirtualizer.getTotalSize() }}>\n      {rowVirtualizer.getVirtualItems().map(virtualRow => (\n        <ProductCard\n          key={allProducts[virtualRow.index].id}\n          product={allProducts[virtualRow.index]}\n          style={{ position: "absolute", top: virtualRow.start }}\n        />\n      ))}\n    </div>\n  </div>\n);`,
+      language: "tsx",
+    },
+  },
+  // ── <img> instead of Next.js <Image> ─────────────────────────────────────
+  {
+    id: "img-not-next-image",
+    pattern: /<img\s+(?=[^>]*src\s*=\s*['"](?:\/|https?:\/\/))[^>]*>/gi,
+    severity: "medium",
+    description: (file) =>
+      `Plain <img> used for a local/CDN image in ${file}. Next.js <Image> provides automatic WebP conversion, responsive sizes, lazy loading, blur placeholder, and priority hints — all missing with plain <img>.`,
+    suggestion: "Replace with Next.js <Image>: import Image from 'next/image'; <Image src={url} width={800} height={600} alt='...' />",
+    scanLabel: "Plain <img> instead of Next.js <Image> — missing WebP, lazy load, responsive sizes",
+    fix: {
+      before: `<img src="/hero.jpg" className="w-full h-[400px] object-cover" alt="Hero" />`,
+      after: `import Image from "next/image";\n<Image\n  src="/hero.jpg"\n  width={1200}\n  height={400}\n  alt="Hero"\n  priority // hero images should load eagerly\n  className="w-full h-[400px] object-cover"\n/>`,
+      language: "tsx",
+    },
+  },
+  // ── JSON.stringify in render ──────────────────────────────────────────────
+  {
+    id: "json-stringify-in-render",
+    pattern: /JSON\.stringify\s*\([^)]+\)(?=[^;]*(?:return|<|=>))/g,
+    severity: "low",
+    description: (file) =>
+      `JSON.stringify() called in render in ${file}. JSON.stringify is O(n) and blocks the main thread — calling it on every render, especially with large objects, wastes CPU.`,
+    suggestion: "Memoize: const json = useMemo(() => JSON.stringify(bigObject), [bigObject]). For debugging only: don't ship JSON.stringify to production renders.",
+    scanLabel: "JSON.stringify in render path — CPU-intensive per render",
+    fix: {
+      before: `// Called on every render — slow for large state\nreturn <pre>{JSON.stringify(debugState, null, 2)}</pre>;`,
+      after: `const serialized = useMemo(\n  () => JSON.stringify(debugState, null, 2),\n  [debugState] // only re-serializes when state actually changes\n);\nreturn <pre>{serialized}</pre>;`,
+      language: "tsx",
+    },
+  },
+  // ── Missing debounce on input handler ─────────────────────────────────────
+  {
+    id: "input-no-debounce",
+    pattern: /onChange\s*=\s*\{[^}]*(?:fetch|axios|search|query|api)\s*\(/gi,
+    severity: "medium",
+    description: (file) =>
+      `API call directly in an onChange handler in ${file}. Every keystroke fires a request — 10 chars typed = 10 requests. This hammers your API and often returns results out of order.`,
+    suggestion: "Debounce the handler: const debouncedSearch = useMemo(() => debounce(search, 300), []). Cancel in-flight requests with AbortController.",
+    scanLabel: "API calls directly in onChange — fires on every keystroke",
+    fix: {
+      before: `<input onChange={(e) => fetchSearchResults(e.target.value)} /> // fires 10+ req/word`,
+      after: `import { useDebouncedCallback } from "use-debounce";\nconst handleSearch = useDebouncedCallback(async (value: string) => {\n  const results = await fetchSearchResults(value);\n  setResults(results);\n}, 300); // waits 300ms after last keystroke\n<input onChange={(e) => handleSearch(e.target.value)} />`,
+      language: "tsx",
+    },
+  },
+  // ── Missing database connection pool ─────────────────────────────────────
+  {
+    id: "db-no-connection-pool",
+    pattern: /new\s+(?:Client|Pool|Connection|MongoClient|mysql\.createConnection)\s*\([^)]*\)(?![^;]*pool|[^;]*Pool)/g,
+    severity: "high",
+    description: (file) =>
+      `Database client instantiated without pooling in ${file}. Creating a new connection per request is extremely slow (100-300ms per connect) and exhausts DB connection limits under load.`,
+    suggestion: "Create one connection pool at module level and reuse it: const pool = new Pool({ connectionString, max: 20 }). Export and reuse across requests.",
+    scanLabel: "Database connection created per request — exhausts connection limits",
+    fix: {
+      before: `// In API route — new connection on EVERY request!\nexport async function GET() {\n  const client = new Client({ connectionString: process.env.DATABASE_URL });\n  await client.connect(); // slow! 100-300ms\n  const data = await client.query("SELECT * FROM users");\n  await client.end();\n  return Response.json(data.rows);\n}`,
+      after: `// In db.ts — ONE pool shared across all requests\nimport { Pool } from "pg";\nexport const pool = new Pool({\n  connectionString: process.env.DATABASE_URL,\n  max: 20, // maximum connections\n  idleTimeoutMillis: 30_000,\n  connectionTimeoutMillis: 2_000,\n});\n// In API route:\nimport { pool } from "@/lib/db";\nexport async function GET() {\n  const { rows } = await pool.query("SELECT * FROM users"); // reuses pooled connection\n  return Response.json(rows);\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Regex created inside component/loop ──────────────────────────────────
+  {
+    id: "regex-in-render-or-loop",
+    pattern: /(?:for|while|\.map|\.filter|\.forEach)\s*\([^{]+\{[^}]*new RegExp\s*\(/g,
+    severity: "low",
+    description: (file) =>
+      `RegExp constructed inside a loop or map in ${file}. A new RegExp object is created on every iteration — hoist it outside the loop for a significant performance gain.`,
+    suggestion: "Move RegExp construction outside the loop: const pattern = /regex/; array.map(item => pattern.test(item));",
+    scanLabel: "RegExp created inside loop — should be hoisted to module scope",
+    fix: {
+      before: `const results = items.map(item => {\n  const emailRegex = new RegExp(EMAIL_PATTERN, "i"); // new object each iteration!\n  return emailRegex.test(item.email);\n});`,
+      after: `const EMAIL_REGEX = /^[^\\\\s@]+@[^\\\\s@]+\\\\.[^\\\\s@]+$/i; // created once, module scope\nconst results = items.map(item => EMAIL_REGEX.test(item.email));`,
+      language: "typescript",
+    },
+  },
+  // ── Unbounded in-memory cache ─────────────────────────────────────────────
+  {
+    id: "unbounded-cache",
+    pattern: /(?:const|let)\s+\w*[Cc]ache\w*\s*=\s*(?:new Map|new Set|\{\}|\[\])/g,
+    severity: "low",
+    description: (file) =>
+      `In-memory cache with no eviction policy in ${file}. Caches that grow without bound cause memory leaks — every unique key adds an entry that is never removed.`,
+    suggestion: "Use LRU cache with a max size: import { LRUCache } from 'lru-cache'; const cache = new LRUCache({ max: 500, ttl: 60_000 });",
+    scanLabel: "Unbounded in-memory Map/object used as cache — memory leak",
+    fix: {
+      before: `const cache = new Map<string, User>(); // grows without limit\nasync function getUser(id: string): Promise<User> {\n  if (cache.has(id)) return cache.get(id)!;\n  const user = await fetchUser(id);\n  cache.set(id, user); // never evicted!\n  return user;\n}`,
+      after: `import { LRUCache } from "lru-cache";\nconst cache = new LRUCache<string, User>({\n  max: 500,        // maximum 500 entries\n  ttl: 5 * 60_000, // expire after 5 minutes\n});\nasync function getUser(id: string): Promise<User> {\n  const cached = cache.get(id);\n  if (cached) return cached;\n  const user = await fetchUser(id);\n  cache.set(id, user);\n  return user;\n}`,
+      language: "typescript",
+    },
+  },
+  // ── Text search with leading wildcard ────────────────────────────────────
+  {
+    id: "sql-leading-wildcard",
+    pattern: /LIKE\s+['"]%[^%'"]+['"]/gi,
+    severity: "medium",
+    description: (file) =>
+      `SQL LIKE with leading % wildcard in ${file}. A leading wildcard forces a full table scan — no index can be used, causing O(n) latency that grows with table size.`,
+    suggestion: "Use full-text search instead: Postgres tsvector/tsquery, Elasticsearch, or a dedicated search index. If LIKE is needed, use a trailing wildcard LIKE 'prefix%' which CAN use an index.",
+    scanLabel: "SQL LIKE '%value' — leading wildcard prevents index usage, forces table scan",
+    fix: {
+      before: `// Full table scan — O(n) even with an index on name\nSELECT * FROM products WHERE name LIKE '%keyboard%';`,
+      after: `-- Option 1: Postgres full-text search (uses GIN index)\nSELECT * FROM products\nWHERE to_tsvector('english', name) @@ plainto_tsquery('english', 'keyboard');\n-- GIN index: CREATE INDEX idx_products_fts ON products USING gin(to_tsvector('english', name));\n\n-- Option 2: Trailing wildcard CAN use a B-tree index:\nSELECT * FROM products WHERE name LIKE 'keyboard%'; -- uses idx_products_name`,
+      language: "sql",
     },
   },
 ];
@@ -2453,7 +3070,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
 
     // ── Pattern 1: Unvalidated input flows into a file that does DB operations ──
     // Route/handler with raw req.body → imported into (or imports) a DB file without validation
-    for (const [file, content] of Object.entries(keyFileContents)) {
+    for (const [file] of Object.entries(keyFileContents)) {
       if (!fileHasRawInput.get(file)) continue;
       if (fileHasValidation.get(file)) continue; // validated at source ✓
 

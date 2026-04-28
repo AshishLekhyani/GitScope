@@ -116,14 +116,13 @@ const content: Record<Section, SectionContent> = {
     blocks: [
       {
         type: "paragraph",
-        text: "GitScope supports three authentication methods: email and password, Google OAuth, and GitHub OAuth. All three create a full GitScope account with saved preferences and access to your Activity Log. GitHub OAuth is the recommended method because it automatically provides the permissions needed for the Intelligence Hub and your personal event feed — no separate token configuration required for most features.",
+        text: "GitScope supports two authentication methods: email and password, and GitHub OAuth. Both create a full GitScope account with saved preferences and access to your Activity Log. GitHub OAuth is the recommended method because it automatically provides the permissions needed for the Intelligence Hub and your personal event feed — no separate token configuration required for most features.",
       },
       {
         type: "bullets",
         heading: "Sign-in methods compared",
         items: [
           "Email / Password — Create an account with any email address. Password resets are handled via a secure email link. Works for all standard features. You will still need to add a GitHub PAT manually to raise API rate limits.",
-          "Google OAuth — One-click sign-in via your Google account. Same feature set as email/password. Add a GitHub PAT in Settings if needed.",
           "GitHub OAuth (recommended) — Authenticates through GitHub and automatically grants GitScope access to your public profile and activity feed. Enables the Intelligence Hub without a separate PAT for most operations. This is the fastest path to full feature access.",
         ],
       },
@@ -749,7 +748,7 @@ X-RateLimit-Resource:  core`,
         heading: "Third-party services",
         items: [
           "GitHub — All repository data is sourced from the GitHub REST API. GitHub's Privacy Policy applies to data returned by their API.",
-          "Google OAuth — If you sign in with Google, Google's OAuth infrastructure handles authentication. GitScope receives only your email address and display name from Google.",
+          "AI Providers — Repository metadata (not source code) may be sent to the AI provider active for your session (Anthropic, OpenAI, Gemini, Groq, etc.). BYOK keys go to your personal provider account.",
           "Database — GitScope uses PostgreSQL (via Prisma) to store account data. The database is hosted in a private, network-isolated environment.",
         ],
       },
@@ -780,7 +779,7 @@ X-RateLimit-Resource:  core`,
         items: [
           "bcrypt password hashing with 12 salt rounds — industry standard for secure password storage",
           "GitHub OAuth with email verification via GitHub API — ensures email ownership before account linking",
-          "Google OAuth with verified email enforcement — only accepts emails verified by Google",
+          "Email verification flow — only accepts sign-ins from confirmed email addresses",
           "Automatic account linking with audit logging — tracks when OAuth accounts connect to existing users",
           "Instant session invalidation — deleted users are immediately logged out across all sessions",
           "Brute-force protection — 10 login attempts per 15 minutes per email address",

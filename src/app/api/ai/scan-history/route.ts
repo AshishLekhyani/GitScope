@@ -30,9 +30,9 @@ export async function GET(req: NextRequest) {
 
   if (caps.scanHistoryDays === 0) {
     return NextResponse.json({
-      error: "Scan history requires a Professional plan or higher.",
+      error: "Scan history requires a Developer plan.",
       upgradeRequired: true,
-      requiredPlan: "professional",
+      requiredPlan: "developer",
       plan,
     }, { status: 403 });
   }

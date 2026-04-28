@@ -44,8 +44,8 @@ export async function POST(req: NextRequest) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const plan = await resolveAiPlanFromSessionDb(session);
-  if (plan !== "team" && plan !== "enterprise") {
-    return NextResponse.json({ error: "Workspace creation requires a Team plan or higher.", upgradeRequired: true }, { status: 403 });
+  if (plan !== "developer") {
+    return NextResponse.json({ error: "Workspace creation requires a Developer plan.", upgradeRequired: true }, { status: 403 });
   }
 
   const body = await req.json() as { name?: string };
@@ -66,8 +66,8 @@ export async function POST(req: NextRequest) {
       name,
       slug,
       ownerId: session.user.id,
-      plan: plan === "enterprise" ? "enterprise" : "team",
-      maxSeats: plan === "enterprise" ? 999 : 10,
+      plan: "developer",
+      maxSeats: 999,
       members: {
         create: { userId: session.user.id, role: "owner" },
       },

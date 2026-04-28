@@ -36,15 +36,24 @@ export default async function OverviewPage() {
   const { name, email, image } = session.user;
   const displayName = name || email?.split("@")[0] || "Engineer";
 
-  // Fetch real search history from DB
+  // Fetch real search history + account creation date from DB
   let recentHistory: { query: string; type: string; avatar: string | null; timestamp: Date }[] = [];
+  let accountCreatedAt: Date | null = null;
   try {
     if (session.user.id) {
-      recentHistory = await prisma.searchHistory.findMany({
-        where: { userId: session.user.id },
-        orderBy: { timestamp: "desc" },
-        take: 6,
-      });
+      const [history, user] = await Promise.all([
+        prisma.searchHistory.findMany({
+          where: { userId: session.user.id },
+          orderBy: { timestamp: "desc" },
+          take: 6,
+        }),
+        prisma.user.findUnique({
+          where: { id: session.user.id },
+          select: { createdAt: true },
+        }),
+      ]);
+      recentHistory = history;
+      accountCreatedAt = user?.createdAt ?? null;
     }
   } catch {
     // Silently fail — DB may not be seeded yet
@@ -96,12 +105,17 @@ export default async function OverviewPage() {
     return `${Math.floor(secs / 86400)}d ago`;
   }
 
-  const isFirstTime = recentHistory.length === 0;
+  const recentHistoryIsEmpty = recentHistory.length === 0;
+  // Show onboarding only for accounts created in the last 2 hours (true first login)
+  const isNewAccount = accountCreatedAt
+    ? Date.now() - accountCreatedAt.getTime() < 2 * 60 * 60 * 1000
+    : false;
+  const isFirstTime = recentHistoryIsEmpty;
 
   return (
     <div className="flex-1 space-y-6 p-4 pt-4 sm:space-y-8 sm:p-8 sm:pt-6">
       {/* Onboarding tour: first-time users only, tracked per account in localStorage */}
-      {isFirstTime && <OnboardingTour userKey={session.user.id ?? session.user.email ?? "unknown-user"} />}
+      {isNewAccount && <OnboardingTour userKey={session.user.id ?? session.user.email ?? "unknown-user"} />}
       {/* Header section with radial glow */}
       <Card className="relative border border-border overflow-hidden">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_100%_0%,rgba(199,122,18,0.08),transparent_50%)] dark:bg-[radial-gradient(circle_at_100%_0%,rgba(251,191,36,0.05),transparent_50%)]" />

@@ -67,9 +67,9 @@ export async function GET(req: NextRequest) {
 
   if (!caps.benchmarkComparisonAllowed) {
     return NextResponse.json({
-      error: "Benchmark comparison requires a Professional plan or higher.",
+      error: "Benchmark comparison requires a Developer plan.",
       upgradeRequired: true,
-      requiredPlan: "professional",
+      requiredPlan: "developer",
     }, { status: 403 });
   }
 

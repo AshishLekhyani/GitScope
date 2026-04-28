@@ -34,9 +34,9 @@ export async function GET(req: NextRequest) {
 
   if (!caps.scheduledScansAllowed) {
     return NextResponse.json({
-      error: "Scheduled scans require a Professional plan or higher.",
+      error: "Scheduled scans require a Developer plan.",
       upgradeRequired: true,
-      requiredPlan: "professional",
+      requiredPlan: "developer",
       plan,
     }, { status: 403 });
   }
@@ -75,9 +75,9 @@ export async function POST(req: NextRequest) {
 
   if (!caps.scheduledScansAllowed) {
     return NextResponse.json({
-      error: "Scheduled scans require a Professional plan or higher.",
+      error: "Scheduled scans require a Developer plan.",
       upgradeRequired: true,
-      requiredPlan: "professional",
+      requiredPlan: "developer",
     }, { status: 403 });
   }
 
@@ -104,7 +104,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "scanMode must be quick | deep" }, { status: 400 });
   }
   if (scanMode === "deep" && !caps.deepScanAllowed) {
-    return NextResponse.json({ error: "Deep scan requires Team plan or higher." }, { status: 403 });
+    return NextResponse.json({ error: "Deep scan requires Developer plan." }, { status: 403 });
   }
   if (alertEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(alertEmail)) {
     return NextResponse.json({ error: "Invalid alert email" }, { status: 400 });

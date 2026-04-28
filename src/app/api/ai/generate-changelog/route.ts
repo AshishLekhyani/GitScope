@@ -8,6 +8,7 @@ import { getGitHubToken } from "@/lib/github-auth";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 import { callAI, hasAnyAIProvider } from "@/lib/ai-providers";
 import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { getUserBYOKKeys } from "@/lib/byok";
 import type { AIPlan } from "@/lib/ai-providers";
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -196,8 +197,10 @@ async function handler(req: NextRequest) {
   const clampedMax = Math.min(Math.max(Number(maxCommits) || 100, 10), 200);
 
   const plan = await resolveAiPlanFromSessionDb(session) as AIPlan;
-  if (plan === "free") {
-    return NextResponse.json({ error: "Changelog generation requires Professional plan or higher." }, { status: 403 });
+  const byokKeys = session.user.id ? await getUserBYOKKeys(session.user.id) : undefined;
+  const hasByok = !!(byokKeys?.anthropic || byokKeys?.openai || byokKeys?.gemini || byokKeys?.groq || byokKeys?.cerebras);
+  if (plan === "free" && !hasByok) {
+    return NextResponse.json({ error: "Changelog generation requires Developer plan or a BYOK key." }, { status: 403 });
   }
   const token = await getGitHubToken() ?? "";
 
@@ -260,8 +263,15 @@ async function handler(req: NextRequest) {
       ? `Use Conventional Commits changelog format. Group by type (feat, fix, perf, etc.) with scopes. Include breaking changes prominently at the top.`
       : `Write a narrative changelog — flowing prose paragraphs grouped by theme, not bullet lists. Make it readable like a blog post release note.`;
 
-  const systemPrompt =
-    "You are a senior developer writing professional, human-friendly changelogs. You transform raw commit data into clear, useful release notes that developers and users will actually read. You highlight breaking changes, new features, and important fixes. You never pad with filler.";
+  const systemPrompt = `You are a senior developer writing professional, human-friendly changelogs. You transform raw commit data into clear, useful release notes that developers and users will actually read.
+
+RULES:
+1. Lead with breaking changes — always put them first and highlight the migration path.
+2. Group related commits into meaningful themes. "Auth system overhaul" is better than listing 4 separate auth commits.
+3. Rewrite commit messages to be user-facing: "Fixed login redirect loop on OAuth callback" not "fix: redirect issue".
+4. Skip trivial commits (formatting, whitespace-only, "wip", "temp") entirely.
+5. Include specific version numbers, config keys, or API endpoints when commits mention them — these details matter to developers.
+6. Output ONLY raw changelog markdown — no preamble, no explanation, no "Here is your changelog:".`;
 
   const userPrompt = `Generate a professional CHANGELOG entry for the GitHub repository "${repo}".
 
@@ -294,6 +304,7 @@ ${breakingChanges.length > 0
   try {
     const result = await callAI({
       plan,
+      byokKeys,
       systemPrompt,
       userPrompt,
       maxTokens: 1024,

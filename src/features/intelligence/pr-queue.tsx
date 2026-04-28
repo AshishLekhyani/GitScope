@@ -158,8 +158,8 @@ export function PrQueue({ selectedRepo, isPro }: PrQueueProps) {
           <MaterialIcon name="lock" size={24} className="text-amber-400" />
         </div>
         <div>
-          <p className="font-black text-foreground/70">Professional plan required</p>
-          <p className="text-xs text-muted-foreground/50 mt-1">PR Queue bulk review requires a Professional plan or higher.</p>
+          <p className="font-black text-foreground/70">Developer plan required</p>
+          <p className="text-xs text-muted-foreground/50 mt-1">PR Queue bulk review requires a Developer plan.</p>
         </div>
         <a href="/pricing-settings" className="text-[10px] font-black px-4 py-2 rounded-none bg-amber-600 hover:bg-amber-500 text-white transition-colors">
           Upgrade Plan

@@ -3,12 +3,9 @@ import { authOptions } from "@/lib/auth";
 import { NextResponse } from "next/server";
 
 /**
- * Initiates an OAuth provider connection for an already-signed-in user.
- * The user clicks "Connect GitHub/Google" in settings → we redirect them to
- * NextAuth's sign-in flow with their current session preserved via state.
- *
- * On return, NextAuth's `signIn` callback (if provider account matches an
- * existing user email) automatically links the account in the DB via the adapter.
+ * Initiates a GitHub OAuth connection for an already-signed-in user.
+ * After OAuth completes, NextAuth links the account to the existing user
+ * if the email matches (via adapter logic).
  */
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions);
@@ -19,7 +16,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const provider = searchParams.get("provider");
 
-  if (!["github", "google"].includes(provider ?? "")) {
+  if (provider !== "github") {
     return NextResponse.json({ error: "Invalid provider" }, { status: 400 });
   }
 

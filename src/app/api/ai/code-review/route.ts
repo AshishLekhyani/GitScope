@@ -10,6 +10,7 @@ import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
 import { analyzeWithInternalAI } from "@/lib/internal-ai";
 import { callAI, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
+import { getUserBYOKKeys } from "@/lib/byok";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -414,6 +415,7 @@ export async function POST(req: NextRequest) {
   }
 
   const plan = await resolveAiPlanFromSessionDb(session);
+  const byokKeys = await getUserBYOKKeys(session.user.id);
   const caps = getCapabilitiesForPlan(plan);
 
   const budget = await consumeUsageBudget({
@@ -538,6 +540,7 @@ export async function POST(req: NextRequest) {
             try {
               const aiRes = await callAI({
                 plan: plan as AIPlan,
+                byokKeys,
                 systemPrompt: CODE_REVIEW_SYSTEM_PROMPT,
                 userPrompt: prompt,
                 maxTokens: 4096,
@@ -595,6 +598,7 @@ export async function POST(req: NextRequest) {
             try {
               const aiRes = await callAI({
                 plan: plan as AIPlan,
+                byokKeys,
                 systemPrompt: CODE_REVIEW_SYSTEM_PROMPT,
                 userPrompt: prompt,
                 maxTokens: 3072,

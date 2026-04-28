@@ -14,7 +14,7 @@ function isAdmin(email?: string | null) {
   return admins.has(email.toLowerCase());
 }
 
-const VALID_PLANS: AiPlan[] = ["free", "professional", "developer", "team", "enterprise"];
+const VALID_PLANS: AiPlan[] = ["free", "developer"];
 
 // GET /api/admin/users?q=email&page=1&limit=20
 export async function GET(req: NextRequest) {
@@ -73,16 +73,57 @@ export async function PATCH(req: NextRequest) {
   return NextResponse.json({ user: updated });
 }
 
-// DELETE /api/admin/users?userId=xxx&keyId=yyy — revoke any user's API key
+// DELETE /api/admin/users?userId=xxx — delete user account
+// DELETE /api/admin/users?userId=xxx&keyId=yyy — revoke specific API key only
 export async function DELETE(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id || !isAdmin(session.user.email))
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
+  const userId = searchParams.get("userId") ?? "";
   const keyId = searchParams.get("keyId") ?? "";
-  if (!keyId) return NextResponse.json({ error: "keyId required." }, { status: 400 });
 
-  await prisma.apiKey.delete({ where: { id: keyId } });
-  return NextResponse.json({ ok: true });
+  if (keyId) {
+    await prisma.apiKey.delete({ where: { id: keyId } });
+    return NextResponse.json({ ok: true });
+  }
+
+  if (!userId) return NextResponse.json({ error: "userId required." }, { status: 400 });
+  if (userId === session.user.id) return NextResponse.json({ error: "Cannot delete your own account." }, { status: 400 });
+
+  await prisma.user.delete({ where: { id: userId } });
+  return NextResponse.json({ ok: true, deleted: userId });
+}
+
+// POST /api/admin/users — send password reset email to any user
+export async function POST(req: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id || !isAdmin(session.user.email))
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+  const body = await req.json() as { userId?: string };
+  const targetId = (body.userId ?? "").trim();
+  if (!targetId) return NextResponse.json({ error: "userId required." }, { status: 400 });
+
+  const user = await prisma.user.findUnique({ where: { id: targetId }, select: { email: true, name: true } });
+  if (!user?.email) return NextResponse.json({ error: "User not found or has no email." }, { status: 404 });
+
+  // Dynamic import to avoid circular deps at module level
+  const { sendEmail } = await import("@/lib/email");
+  const crypto = await import("crypto");
+
+  await prisma.verificationToken.deleteMany({ where: { identifier: `reset:${user.email}` } });
+  const token = crypto.randomBytes(32).toString("hex");
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+  await prisma.verificationToken.create({ data: { identifier: `reset:${user.email}`, token, expires } });
+
+  const resetUrl = `${process.env.NEXTAUTH_URL ?? "http://localhost:3000"}/reset-password?token=${token}`;
+  await sendEmail({
+    to: user.email,
+    subject: "Password Reset — GitScope",
+    html: `<p>Hi ${user.name ?? "there"},</p><p>An admin has sent you a password reset link. Click below to reset your password (expires in 1 hour):</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+  });
+
+  return NextResponse.json({ ok: true, email: user.email });
 }

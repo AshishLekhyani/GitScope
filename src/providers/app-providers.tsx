@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryProvider } from "@/providers/query-provider";
 import { StoreProvider } from "@/store/StoreProvider";
 import { AuthProvider } from "@/components/providers/AuthProvider";
+import { UsageLimitToast } from "@/components/ui/usage-limit-toast";
 import { Session } from "next-auth";
 
 export function AppProviders({
@@ -17,7 +18,10 @@ export function AppProviders({
     <AuthProvider session={session}>
       <StoreProvider>
         <QueryProvider>
-          <TooltipProvider>{children}</TooltipProvider>
+          <TooltipProvider>
+            {children}
+            <UsageLimitToast />
+          </TooltipProvider>
         </QueryProvider>
       </StoreProvider>
     </AuthProvider>

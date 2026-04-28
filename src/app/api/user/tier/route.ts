@@ -8,7 +8,7 @@ import {
   updateUserAiPlan,
 } from "@/lib/ai-plan";
 
-const VALID_PLANS: AiPlan[] = ["free", "professional", "developer", "team", "enterprise"];
+const VALID_PLANS: AiPlan[] = ["free", "developer"];
 
 function parseAdminEmails() {
   return new Set(
@@ -71,7 +71,7 @@ export async function PATCH(req: Request) {
   const plan = (body.plan ?? "").trim().toLowerCase() as AiPlan;
   if (!VALID_PLANS.includes(plan)) {
     return NextResponse.json(
-      { error: "Invalid plan. Use free, professional, team, or enterprise." },
+      { error: "Invalid plan. Use free or developer." },
       { status: 400 }
     );
   }

@@ -86,8 +86,18 @@ Beyond browsing, GitScope monitors your repositories continuously: connect Slack
 - 🏅 **Health Badge API** — Embed a live health-score badge: `![health](https://git-scope-pi.vercel.app/api/badge?repo=owner/repo)`
 - 🌙 **Dark Mode First** — System-aware theming with localStorage persistence
 
+### AI & BYOK (Bring Your Own Key)
+- 🤖 **9-Provider AI Cascade** — Anthropic → OpenAI → Gemini → Groq → Cerebras → DeepSeek → Mistral → Moonshot → HuggingFace (always-on fallback)
+- 🔑 **BYOK Support** — Add your own API keys in Settings → API Keys. Groq, Gemini, and Cerebras are FREE for all tiers
+- 💡 **Context-Aware Agents** — AI calibrates finding severity to project scale (college project vs. production repo)
+- 🆓 **HuggingFace Fallback** — Open-source LLMs always available, even with zero keys configured
+
+### Plans
+- 🆓 **Free** — Core analytics, BYOK AI features, 10 chat messages/hr, OSV scanner, basic code review
+- 👨‍💻 **Developer** ($10–20/mo, PPP-priced) — All AI features, unlimited scans, scheduled scans, Slack/Discord/email digest, private repo access, 1-year scan history
+
 ### Security & Auth
-- 🔐 **Multi-Provider Auth** — GitHub OAuth, Google OAuth, or email/password with verification
+- 🔐 **Multi-Provider Auth** — GitHub OAuth or email/password with verification
 - 🛡️ **CSRF Protection** — Double Submit Cookie with HMAC-SHA256, `__Host-` prefix
 - 🚦 **Rate Limiting** — IP-based with exponential backoff for abusive clients
 - 🔑 **Token Encryption** — AES-256-GCM for stored GitHub PATs
@@ -103,10 +113,10 @@ Beyond browsing, GitScope monitors your repositories continuously: connect Slack
 | **Styling** | [Tailwind CSS v4](https://tailwindcss.com) + [shadcn/ui](https://ui.shadcn.com) |
 | **Animations** | [GSAP](https://gsap.com) + [Framer Motion](https://www.framer.com/motion/) |
 | **State Management** | [Redux Toolkit](https://redux-toolkit.js.org) |
-| **Authentication** | [NextAuth.js](https://next-auth.js.org) — GitHub, Google, credentials providers |
+| **Authentication** | [NextAuth.js](https://next-auth.js.org) — GitHub OAuth, credentials providers |
 | **Database** | [PostgreSQL](https://www.postgresql.org) via [Prisma ORM](https://www.prisma.io) |
 | **API** | [GitHub REST API v3](https://docs.github.com/en/rest) + Octokit |
-| **AI** | [Anthropic Claude](https://anthropic.com) via `@anthropic-ai/sdk` |
+| **AI** | 9-provider cascade: Anthropic · OpenAI · Gemini · Groq · Cerebras · DeepSeek · Mistral · Moonshot · HuggingFace |
 | **Email** | Nodemailer (SMTP/Gmail) |
 | **Icons** | [Material Symbols](https://fonts.google.com/icons) + [Lucide React](https://lucide.dev) |
 | **Fonts** | Space Grotesk, Inter, JetBrains Mono |
@@ -127,7 +137,7 @@ src/
 │   ├── settings/              # Settings panel with integrations
 │   └── trending/              # Trending repos with language filter
 ├── lib/                       # Shared utilities
-│   ├── ai-providers.ts        # callAI() wrapper for Anthropic + OpenAI
+│   ├── ai-providers.ts        # callAI() 9-provider cascade with safeCall fallback
 │   ├── discord.ts             # Discord webhook helpers
 │   ├── slack.ts               # Slack webhook helpers
 │   ├── email.ts               # Nodemailer email sender
@@ -189,10 +199,6 @@ NEXTAUTH_SECRET=               # openssl rand -base64 32
 GITHUB_ID=                     # github.com/settings/developers
 GITHUB_SECRET=
 
-# --- Google OAuth (optional) ---
-GOOGLE_ID=
-GOOGLE_SECRET=
-
 # --- Database ---
 DATABASE_URL=postgresql://user:password@localhost:5432/gitscope
 
@@ -212,25 +218,34 @@ SMTP_USER=your_email@gmail.com
 SMTP_PASS=                     # 16-char Gmail App Password
 EMAIL_FROM=GitScope <your_email@gmail.com>
 
-# --- AI: Anthropic Claude ---
+# --- AI Providers (at least one required for AI features) ---
+# Server-side keys — used when no user BYOK key is configured
 ANTHROPIC_API_KEY=             # console.anthropic.com
+OPENAI_API_KEY=                # platform.openai.com
+GEMINI_API_KEY=                # aistudio.google.com
+GROQ_API_KEY=                  # console.groq.com (free tier available)
+CEREBRAS_API_KEY=              # inference.cerebras.ai (free tier)
+DEEPSEEK_API_KEY=              # platform.deepseek.com
+MISTRAL_API_KEY=               # console.mistral.ai
+HF_API_KEY=                    # huggingface.co/settings/tokens (optional, raises HF limits)
 
 # --- AI tiering ---
-AI_PROVIDER=anthropic
-AI_TIER_OVERRIDES=             # email:plan,email2:plan
-AI_TEAM_DOMAINS=
-AI_ENTERPRISE_DOMAINS=
+# Plan: free | developer
+AI_TIER_OVERRIDES=             # email:developer,email2:free  (override per user)
+AI_DEVELOPER_DOMAINS=          # comma-separated domains auto-upgraded to developer
+AI_TIER_ADMIN_EMAILS=          # comma-separated admin email addresses
 
 # --- AI async jobs cron ---
-AI_JOBS_CRON_SECRET=           # optional; falls back to x-vercel-cron header
-CRON_SECRET=
-AI_JOBS_CRON_BATCH=2
+CRON_SECRET=                   # openssl rand -base64 32
 
 # --- GitHub App (optional, for webhook + PR auto-review) ---
 GITHUB_APP_ID=
 GITHUB_APP_PRIVATE_KEY=        # multiline PEM, wrap in quotes
 GITHUB_WEBHOOK_SECRET=
 GITHUB_APP_INSTALL_URL=
+
+# --- Notifications (optional) ---
+# Slack and Discord webhook URLs are stored per-user in the database via Settings → Integrations
 ```
 
 **Setting up GitHub OAuth:**

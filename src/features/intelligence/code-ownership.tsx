@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 
@@ -25,47 +25,59 @@ interface CodeOwnershipProps {
   repos: string[];
 }
 
+type RepoState = OwnershipData | "loading" | "error" | "empty" | "no-token" | "computing";
+
 const PALETTE = [
   "#f59e0b", "#f59e0b", "#f59e0b", "#f43f5e", "#f97316",
   "#eab308", "#22c55e", "#14b8a6", "#06b6d4", "#f59e0b",
 ];
 
 export function CodeOwnership({ repos }: CodeOwnershipProps) {
-  const [data, setData] = useState<Record<string, OwnershipData | "loading" | "error">>({});
+  const [data, setData] = useState<Record<string, RepoState>>({});
+  const fetchedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     repos.forEach((repo) => {
-      setData((prev) => {
-        if (prev[repo]) return prev;
-        fetchOwnership(repo);
-        return { ...prev, [repo]: "loading" };
-      });
+      if (fetchedRef.current.has(repo)) return;
+      fetchedRef.current.add(repo);
+      setData((prev) => ({ ...prev, [repo]: "loading" }));
+      fetchOwnership(repo);
     });
-  // fetchOwnership is stable (defined in component body, no deps that change)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [repos]);
 
-  async function fetchOwnership(repo: string, retry = false) {
+  async function fetchOwnership(repo: string, attempt = 0) {
     try {
       const res = await fetch(`/api/github/contributors?repo=${encodeURIComponent(repo)}`);
-      if (res.status === 202 && !retry) {
-        await new Promise((r) => setTimeout(r, 3500));
-        return fetchOwnership(repo, true);
+      if (res.status === 202) {
+        // GitHub is computing stats — retry with backoff up to 8 times
+        if (attempt < 8) {
+          const delay = Math.min(2000 + attempt * 1500, 10000);
+          await new Promise((r) => setTimeout(r, delay));
+          return fetchOwnership(repo, attempt + 1);
+        }
+        // Still computing after 8 retries — show a "still computing" state with retry
+        setData((prev) => ({ ...prev, [repo]: "computing" }));
+        return;
       }
       if (!res.ok) {
         setData((prev) => ({ ...prev, [repo]: "error" }));
         return;
       }
-      const raw = await res.json();
-      processStats(repo, raw);
+      const raw = await res.json() as Record<string, unknown>;
+      if (raw.noToken) {
+        setData((prev) => ({ ...prev, [repo]: "no-token" }));
+        return;
+      }
+      processStats(repo, Array.isArray(raw) ? raw : []);
     } catch {
       setData((prev) => ({ ...prev, [repo]: "error" }));
     }
   }
 
-  function processStats(repo: string, raw: unknown) {
-    if (!Array.isArray(raw) || raw.length === 0) {
-      setData((prev) => ({ ...prev, [repo]: "error" }));
+  function processStats(repo: string, raw: unknown[]) {
+    if (raw.length === 0) {
+      setData((prev) => ({ ...prev, [repo]: "empty" }));
       return;
     }
 
@@ -131,14 +143,53 @@ export function CodeOwnership({ repos }: CodeOwnershipProps) {
               </div>
             )}
 
-            {state === "error" && (
-              <div className="flex items-center gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
-                <MaterialIcon name="error" size={16} className="shrink-0" />
-                Failed to load contributor stats — repo may be private, empty, or does not exist.
+            {state === "no-token" && (
+              <div className="flex items-center gap-3 p-4 rounded-none bg-amber-500/10 border border-amber-500/20 text-sm text-amber-300">
+                <MaterialIcon name="link_off" size={16} className="shrink-0" />
+                <span>Connect your GitHub account to see contributor data. Go to <a href="/settings" className="underline hover:text-amber-200">Settings → Connected Accounts</a>.</span>
               </div>
             )}
 
-            {state && state !== "loading" && state !== "error" && (() => {
+            {state === "computing" && (
+              <div className="flex items-center justify-between gap-3 p-4 rounded-none bg-surface-container/30 border border-outline-variant/15 text-sm text-muted-foreground/70">
+                <div className="flex items-center gap-3">
+                  <MaterialIcon name="hourglass_top" size={16} className="shrink-0 text-amber-400/60" />
+                  GitHub is still computing contributor stats for this repo. This can take a minute for large repos.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { fetchedRef.current.delete(repo); setData((prev) => ({ ...prev, [repo]: "loading" })); fetchOwnership(repo); }}
+                  className="shrink-0 text-[10px] font-black px-3 py-1.5 rounded-none border border-amber-500/20 text-amber-400 hover:bg-amber-500/10 transition-all"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {state === "error" && (
+              <div className="flex items-center justify-between gap-3 p-4 rounded-none bg-red-500/10 border border-red-500/20 text-sm text-red-400">
+                <div className="flex items-center gap-3">
+                  <MaterialIcon name="error" size={16} className="shrink-0" />
+                  Failed to load contributor stats — repo may be private, or GitHub API is temporarily unavailable.
+                </div>
+                <button
+                  type="button"
+                  onClick={() => { fetchedRef.current.delete(repo); setData((prev) => ({ ...prev, [repo]: "loading" })); fetchOwnership(repo); }}
+                  className="shrink-0 text-[10px] font-black px-3 py-1.5 rounded-none border border-red-500/20 text-red-400 hover:bg-red-500/10 transition-all"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+
+            {state === "empty" && (
+              <div className="flex items-center gap-3 p-4 rounded-none bg-surface-container border border-outline-variant/15 text-sm text-muted-foreground">
+                <MaterialIcon name="group_off" size={16} className="shrink-0 text-amber-400/60" />
+                No contributor history available — this repo may be new, empty, or GitHub is still computing its stats. Try again in a minute.
+              </div>
+            )}
+
+            {state && state !== "loading" && state !== "error" && state !== "empty" && state !== "no-token" && state !== "computing" && (() => {
               const d = state as OwnershipData;
               const busRisk =
                 d.busFactor === 1 ? "CRITICAL" :

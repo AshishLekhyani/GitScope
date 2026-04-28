@@ -5,7 +5,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { getGitHubToken } from "@/lib/github-auth";
-import { getUserAiPlan } from "@/lib/ai-plan";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 // Google OSV batch query — up to 1000 packages per request
@@ -51,11 +50,6 @@ function normalizeSeverity(vuln: OsvVuln): "critical" | "high" | "medium" | "low
 async function handler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const plan = await getUserAiPlan(session.user.id);
-  if (plan === "free") {
-    return NextResponse.json({ error: "OSV scanning requires Professional plan or higher." }, { status: 403 });
-  }
 
   let body: { repo?: string };
   try { body = await req.json(); } catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }

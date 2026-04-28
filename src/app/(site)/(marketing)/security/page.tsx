@@ -48,7 +48,7 @@ export default function SecurityPage() {
             {
               icon: <Key className="size-5 text-emerald-400" />,
               title: "OAuth 2.0 Authentication",
-              body: "We authenticate users via GitHub and Google OAuth 2.0. GitScope never handles or stores passwords for OAuth accounts. Sessions are managed with secure, HTTP-only, SameSite=Strict cookies.",
+              body: "We authenticate users via GitHub OAuth 2.0 or email/password with bcrypt hashing. GitScope never handles or stores passwords for OAuth accounts. Sessions are managed with secure, HTTP-only, SameSite=Strict cookies.",
             },
             {
               icon: <Eye className="size-5 text-amber-400" />,
@@ -98,11 +98,10 @@ export default function SecurityPage() {
               <ul className="space-y-2">
                 {[
                   "Your email address and display name",
-                  "Your GitHub / Google OAuth provider ID",
+                  "Your GitHub OAuth provider ID",
                   "Repository metadata: names, star counts, language stats, commit frequency",
                   "Your tracked repository list and dashboard preferences",
                   "Session identifiers (in a secure cookie, not our DB)",
-                  "Stripe customer ID and subscription status",
                 ].map((item, i) => (
                   <li key={i} className="flex items-start gap-2 text-xs text-stone-400">
                     <span className="mt-1 size-1.5 shrink-0 rounded-full bg-emerald-500/60" />
@@ -120,8 +119,7 @@ export default function SecurityPage() {
                 {[
                   "Your source code or file contents",
                   "GitHub OAuth access tokens after the request completes",
-                  "Your GitHub or Google password (we never see it)",
-                  "Raw payment card numbers (Stripe handles all card data)",
+                  "Your GitHub password (we never see it)",
                   "Private repository contents beyond metadata",
                   "Your commit diffs or pull request bodies",
                 ].map((item, i) => (
@@ -224,7 +222,7 @@ export default function SecurityPage() {
               {[
                 "Denial-of-service attacks",
                 "Social engineering of GitScope staff",
-                "Vulnerabilities in third-party services (GitHub, Stripe, Vercel) — report those directly to them",
+                "Vulnerabilities in third-party services (GitHub, Vercel) — report those directly to them",
                 "Missing security headers without demonstrated exploit",
                 "Self-XSS or issues requiring physical device access",
                 "Rate-limit bypass without demonstrated harm",

@@ -43,7 +43,7 @@ export default function TermsPage() {
             GitScope is a GitHub analytics platform that connects to the GitHub API via OAuth to
             provide repository metrics, contributor insights, dependency analysis, AI-generated
             summaries, and related engineering intelligence tools. The Service is provided on a
-            subscription basis with Free, Pro, and Enterprise tiers, each carrying different
+            subscription basis with Free and Developer tiers, each carrying different
             feature limits described on our{" "}
             <Link href="/pricing" className="text-amber-400 hover:underline">
               Pricing page
@@ -240,7 +240,7 @@ export default function TermsPage() {
         <h1 className="font-heading text-4xl font-black tracking-tight text-white sm:text-5xl">
           Terms of Service
         </h1>
-        <p className="mt-3 text-sm text-stone-500">Last updated: April 1, 2026</p>
+        <p className="mt-3 text-sm text-stone-500">Last updated: April 28, 2026</p>
         <p className="mt-4 max-w-2xl text-base text-stone-400">
           Please read these terms carefully before using GitScope. By creating an account or
           accessing the Service you agree to be bound by them.

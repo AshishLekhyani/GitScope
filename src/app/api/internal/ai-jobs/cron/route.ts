@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { processAnalysisJob } from "@/lib/ai-jobs";
+import { prunePublicScanCache } from "@/lib/scan-cache";
 
 function getCronSecret(): string | null {
   return process.env.AI_JOBS_CRON_SECRET ?? process.env.CRON_SECRET ?? null;
@@ -125,6 +126,10 @@ export async function GET(req: Request) {
     } catch { digestResult = { skipped: true }; }
   }
 
+  // ── Prune expired scan cache entries (maintenance, runs every cron tick) ─────
+  let pruned = 0;
+  try { pruned = await prunePublicScanCache(); } catch { /* non-fatal */ }
+
   return NextResponse.json({
     ok: true,
     batchSize,
@@ -132,6 +137,7 @@ export async function GET(req: Request) {
     processed,
     scheduledQueued,
     digest: digestResult,
+    pruned,
     timestamp: new Date().toISOString(),
   });
 }

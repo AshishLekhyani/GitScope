@@ -8,6 +8,7 @@ import { getGitHubToken } from "@/lib/github-auth";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 import { callAI, hasAnyAIProvider } from "@/lib/ai-providers";
 import { resolveAiPlanFromSessionDb } from "@/lib/ai-plan";
+import { getUserBYOKKeys } from "@/lib/byok";
 import type { AIPlan } from "@/lib/ai-providers";
 
 // ── GitHub helpers ─────────────────────────────────────────────────────────
@@ -118,8 +119,9 @@ async function handler(req: NextRequest) {
   }
 
   const plan = await resolveAiPlanFromSessionDb(session) as AIPlan;
-  if (plan === "free") {
-    return NextResponse.json({ error: "README generation requires Professional plan or higher." }, { status: 403 });
+  const byokKeys = session.user.id ? await getUserBYOKKeys(session.user.id) : undefined;
+  if (plan === "free" && !byokKeys?.anthropic && !byokKeys?.openai && !byokKeys?.gemini && !byokKeys?.groq && !byokKeys?.cerebras) {
+    return NextResponse.json({ error: "README generation requires Developer plan or a BYOK key." }, { status: 403 });
   }
   const token = await getGitHubToken() ?? "";
 
@@ -262,6 +264,7 @@ Output ONLY the raw markdown for the README.md file. No preamble, no explanation
   try {
     const result = await callAI({
       plan,
+      byokKeys,
       systemPrompt,
       userPrompt,
       maxTokens: style === "detailed" ? 2048 : 1024,

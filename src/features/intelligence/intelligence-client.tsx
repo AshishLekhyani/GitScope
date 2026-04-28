@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { MaterialIcon } from "@/components/material-icon";
 import { DependencyRadar } from "@/features/intelligence/dependency-radar";
@@ -13,7 +13,7 @@ import { CiStatus } from "@/features/intelligence/ci-status";
 import { cn } from "@/lib/utils";
 
 interface CapabilitiesResponse {
-  plan: "free" | "professional" | "developer" | "team" | "enterprise";
+  plan: "free" | "developer";
   capabilities: {
     label: string;
     maxReposInWorkspace: number;
@@ -28,8 +28,6 @@ interface CapabilitiesResponse {
   };
 }
 
-const STORAGE_KEY = "intelligence-page-state-v2";
-
 interface OrgHealthEntry {
   repo: string;
   lastScore: number | null;
@@ -42,7 +40,8 @@ interface PageState {
   activeTab: "radar" | "velocity" | "risk" | "codelens" | "orghealth" | "ownership" | "ci";
 }
 
-export function IntelligenceClient() {
+export function IntelligenceClient({ userId }: { userId: string }) {
+  const storageKey = `intelligence-page-state-v2:${userId}`;
   const searchParams = useSearchParams();
   const [selectedRepos, setSelectedRepos] = useState<string[]>([]);
   const [activeTab, setActiveTab] = useState<"radar" | "velocity" | "risk" | "codelens" | "orghealth" | "ownership" | "ci">("codelens");
@@ -51,6 +50,7 @@ export function IntelligenceClient() {
   const [caps, setCaps] = useState<CapabilitiesResponse | null>(null);
   const [capsLoading, setCapsLoading] = useState(true);
   const [limitNotice, setLimitNotice] = useState<string | null>(null);
+  const outerTabScrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -78,7 +78,7 @@ export function IntelligenceClient() {
   // Load saved state on mount, then apply ?repo= URL param (URL wins)
   useEffect(() => {
     try {
-      const saved = localStorage.getItem(STORAGE_KEY);
+      const saved = localStorage.getItem(storageKey);
       if (saved) {
         const state: PageState = JSON.parse(saved);
         if (state.selectedRepos?.length > 0) {
@@ -105,7 +105,7 @@ export function IntelligenceClient() {
   useEffect(() => {
     try {
       const state: PageState = { selectedRepos, activeTab };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+      localStorage.setItem(storageKey, JSON.stringify(state));
     } catch {
       // Ignore storage errors
     }
@@ -163,31 +163,51 @@ export function IntelligenceClient() {
           </p>
         </div>
 
-        <div className="flex items-center gap-1 sm:gap-2 p-1.5 bg-surface-container/30 backdrop-blur-md rounded-none border border-outline-variant/10 shadow-sm overflow-x-auto scrollbar-none">
-          {[
-            { id: "codelens",  icon: "rate_review",    label: "Code Lens"  },
-            { id: "orghealth", icon: "corporate_fare", label: "Org Health" },
-            { id: "ownership", icon: "group",          label: "Ownership"  },
-            { id: "ci",        icon: "rocket_launch",  label: "CI/CD"      },
-            { id: "radar",     icon: "scatter_plot",   label: "Radar"      },
-            { id: "velocity",  icon: "speed",          label: "Velocity"   },
-            { id: "risk",      icon: "security",       label: "AI Risk"    },
-          ].map((tab) => (
-            <button
-               key={tab.id}
-               type="button"
-               onClick={() => setActiveTab(tab.id as PageState["activeTab"])}
-               className={cn(
-                 "flex items-center gap-2 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-widest transition-all",
-                 activeTab === tab.id
-                 ? "bg-amber-500 text-white shadow-xl scale-105"
-                 : "text-muted-foreground hover:bg-surface-container-highest"
-               )}
-            >
-               <MaterialIcon name={tab.icon} size={16} />
-               {tab.label}
-            </button>
-          ))}
+        {/* Tab bar — always scrollable so chevron always works */}
+        <div className="relative overflow-hidden w-full max-w-150">
+          <div ref={outerTabScrollRef}
+            className="flex items-center gap-1 p-1 bg-surface-container/30 backdrop-blur-md border border-outline-variant/10 shadow-sm overflow-x-auto scrollbar-none scroll-smooth pr-10">
+            {[
+              { id: "codelens",  icon: "rate_review",    label: "Code Lens"  },
+              { id: "orghealth", icon: "corporate_fare", label: "Org Health" },
+              { id: "ownership", icon: "group",          label: "Ownership"  },
+              { id: "ci",        icon: "rocket_launch",  label: "CI/CD"      },
+              { id: "radar",     icon: "scatter_plot",   label: "Radar"      },
+              { id: "velocity",  icon: "speed",          label: "Velocity"   },
+              { id: "risk",      icon: "security",       label: "AI Risk"    },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => {
+                  setActiveTab(tab.id as PageState["activeTab"]);
+                  setTimeout(() => {
+                    outerTabScrollRef.current?.querySelector(`[data-tab="${tab.id}"]`)?.scrollIntoView({ behavior: "smooth", inline: "nearest", block: "nearest" });
+                  }, 50);
+                }}
+                data-tab={tab.id}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-2 text-[10px] font-black uppercase tracking-widest transition-all shrink-0",
+                  activeTab === tab.id
+                  ? "bg-amber-500 text-white shadow-lg"
+                  : "text-muted-foreground hover:bg-surface-container-highest"
+                )}
+              >
+                <MaterialIcon name={tab.icon} size={14} />
+                <span className="whitespace-nowrap">{tab.label}</span>
+              </button>
+            ))}
+          </div>
+          {/* Always-visible right fade + scroll chevron */}
+          <div className="pointer-events-none absolute right-0 top-0 bottom-0 w-12 bg-linear-to-l from-background via-background/70 to-transparent" />
+          <button
+            type="button"
+            aria-label="Scroll tabs right"
+            onClick={() => outerTabScrollRef.current?.scrollBy({ left: 160, behavior: "smooth" })}
+            className="absolute right-0 top-0 bottom-0 z-10 w-9 flex items-center justify-center bg-surface-container/80 border-l border-outline-variant/20 text-muted-foreground/60 hover:text-amber-400 transition-colors"
+          >
+            <MaterialIcon name="chevron_right" size={16} />
+          </button>
         </div>
       </div>
 
@@ -233,7 +253,7 @@ export function IntelligenceClient() {
             </div>
             {caps && (caps.plan === "free") && (
               <span className="text-[9px] font-black px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 text-amber-400">
-                History requires Pro — scores shown from current session only
+                History requires Developer plan — scores shown from current session only
               </span>
             )}
           </div>

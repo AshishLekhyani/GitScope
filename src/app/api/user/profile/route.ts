@@ -26,14 +26,17 @@ async function patchHandler(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  let body: { displayName?: string; bio?: string; gitHandle?: string; avatarUrl?: string };
+  let body: {
+    displayName?: string; bio?: string; gitHandle?: string; avatarUrl?: string;
+    profileMeta?: { location?: string; website?: string; role?: string; company?: string; timezone?: string; primaryStack?: string };
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { displayName, bio, gitHandle, avatarUrl } = body;
+  const { displayName, bio, gitHandle, avatarUrl, profileMeta } = body;
 
   // Avatar URL: https only, trusted image CDN hosts only, image extension only.
   // github.com is intentionally excluded — it can serve HTML pages, not just images.
@@ -62,6 +65,20 @@ async function patchHandler(req: Request) {
     }
   }
 
+  // Sanitize profileMeta fields
+  let sanitizedMeta: string | undefined;
+  if (profileMeta) {
+    const safe = {
+      location:     (profileMeta.location     ?? "").slice(0, 100),
+      website:      (profileMeta.website      ?? "").slice(0, 200),
+      role:         (profileMeta.role         ?? "").slice(0, 100),
+      company:      (profileMeta.company      ?? "").slice(0, 100),
+      timezone:     (profileMeta.timezone     ?? "").slice(0, 60),
+      primaryStack: (profileMeta.primaryStack ?? "").slice(0, 200),
+    };
+    sanitizedMeta = JSON.stringify(safe);
+  }
+
   await prisma.user.update({
     where: { id: session.user.id },
     data: {
@@ -69,6 +86,7 @@ async function patchHandler(req: Request) {
       ...(bio !== undefined && { bio: bio.slice(0, 500) }),
       ...(gitHandle !== undefined && { githubHandle: gitHandle.slice(0, 50) }),
       ...(sanitizedAvatar !== undefined && { image: sanitizedAvatar }),
+      ...(sanitizedMeta !== undefined && { profileMeta: sanitizedMeta }),
     },
   });
 

@@ -98,6 +98,12 @@ model User {
   byokAnthropicKey  String?  @map("byok_anthropic_key") @db.Text
   byokOpenAIKey     String?  @map("byok_openai_key") @db.Text
   byokGeminiKey     String?  @map("byok_gemini_key") @db.Text
+  // Extended BYOK keys — stored as encrypted JSON: { groq, deepseek, mistral, moonshot, cerebras, ollama }
+  byokExtendedKeys     String?  @map("byok_extended_keys") @db.Text
+  // When true, prefer GitScope's managed keys even if BYOK keys are present
+  byokPreferPlatform   Boolean  @default(false) @map("byok_prefer_platform")
+  // Extra profile metadata — JSON: { location, website, role, company, timezone, stack }
+  profileMeta          String?  @map("profile_meta") @db.Text
 
   accounts        Account[]
   sessions        Session[]
@@ -262,7 +268,7 @@ model CodeReviewScan {
 
 // ── Codebase Memory System ─────────────────────────────────────────────────────
 // Stores AI-generated knowledge about repositories, plan-gated by TTL.
-// Free: ephemeral (1h), Professional: 7d, Team: 30d + org-shared, Enterprise: 90d + team patterns
+// Free: ephemeral (1h), Developer: 30d
 model RepoKnowledge {
   id            String   @id @default(cuid())
   userId        String   @map("user_id")
@@ -288,7 +294,6 @@ model RepoKnowledge {
 
 // ── Scan History ───────────────────────────────────────────────────────────────
 // One row per completed repo scan. Used for health trend charts.
-// Pro: 30d retention  |  Team: 90d  |  Enterprise: unlimited
 model RepoScanHistory {
   id               String   @id @default(cuid())
   userId           String   @map("user_id")
@@ -315,7 +320,7 @@ model RepoScanHistory {
 }
 
 // ── Scheduled Scans ────────────────────────────────────────────────────────────
-// Pro+ feature: run scans on a schedule and email alerts on score drops.
+// Developer feature: run scans on a schedule and email alerts on score drops.
 model ScheduledScan {
   id          String            @id @default(cuid())
   userId      String            @map("user_id")
@@ -338,7 +343,7 @@ model ScheduledScan {
 }
 
 // ── Custom Scan Rules ──────────────────────────────────────────────────────────
-// Team+ feature: user-defined regex rules applied during static analysis.
+// Developer feature: user-defined regex rules applied during static analysis.
 model CustomScanRule {
   id          String   @id @default(cuid())
   userId      String   @map("user_id")
@@ -418,7 +423,7 @@ model PublicScanCache {
   @@map("public_scan_cache")
 }
 
-// ── Team / Workspace Seat Management ──────────────────────────────────────────
+// ── Workspace / Org Seat Management ───────────────────────────────────────────
 enum OrgRole {
   owner
   admin
@@ -474,7 +479,7 @@ model OrgInvite {
 }
 
 // ── Outbound Webhook Automation Rules ─────────────────────────────────────────
-// Team+ feature: fire Slack/Discord/GitHub Issue/custom webhook when a metric crosses a threshold.
+// Developer feature: fire Slack/Discord/GitHub Issue/custom webhook when a metric crosses a threshold.
 model WebhookRule {
   id               String    @id @default(cuid())
   userId           String    @map("user_id")
@@ -500,7 +505,7 @@ model WebhookRule {
 }
 
 // ── Public API Keys ───────────────────────────────────────────────────────────
-// Team+ feature: machine-readable API keys for the /api/v1/ public REST namespace.
+// Developer feature: machine-readable API keys for the /api/v1/ public REST namespace.
 // Keys are stored as SHA-256 hash only — the raw key is shown once at creation.
 model ApiKey {
   id         String    @id @default(cuid())

@@ -7,7 +7,7 @@ export type AuthTier = "none" | "credentials" | "github";
 /**
  * Returns the current user's auth tier:
  *   "github"      — signed in via GitHub OAuth (accessToken present, provider === "github")
- *   "credentials" — signed in via email/password or Google
+ *   "credentials" — signed in via email/password
  *   "none"        — not authenticated
  */
 export async function getSessionTier(): Promise<AuthTier> {

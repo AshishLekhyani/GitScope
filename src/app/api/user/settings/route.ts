@@ -22,11 +22,8 @@ interface SettingsResponse {
     hasGithubApiKey: boolean;
   };
   // BYOK key presence (never return actual keys)
-  byok: {
-    hasAnthropic: boolean;
-    hasOpenAI: boolean;
-    hasGemini: boolean;
-  };
+  byok: Record<string, boolean | undefined>;
+  profileMeta: Record<string, string>;
   // Connected OAuth providers
   connectedProviders: string[];
   // AI tier info
@@ -94,6 +91,9 @@ async function getHandler() {
         byokAnthropicKey: true,
         byokOpenAIKey: true,
         byokGeminiKey: true,
+        byokExtendedKeys: true,
+        byokPreferPlatform: true,
+        profileMeta: true,
       },
     }),
     // Connected OAuth providers
@@ -140,6 +140,25 @@ async function getHandler() {
         .map((e) => e.trim().toLowerCase())
         .includes(session.user.email.toLowerCase()));
 
+  // Parse extended BYOK keys presence (never return actual key values)
+  let extByokPresence: Record<string, boolean> = {};
+  if (user.byokExtendedKeys) {
+    try {
+      const { safeDecrypt } = await import("@/lib/encrypt");
+      const decrypted = safeDecrypt(user.byokExtendedKeys);
+      if (decrypted) {
+        const parsed = JSON.parse(decrypted) as Record<string, string>;
+        extByokPresence = Object.fromEntries(Object.keys(parsed).map((k) => [k, true]));
+      }
+    } catch { /* ignore */ }
+  }
+
+  // Parse profileMeta JSON
+  let profileMeta: Record<string, string> = {};
+  if (user.profileMeta) {
+    try { profileMeta = JSON.parse(user.profileMeta) as Record<string, string>; } catch { /* ignore */ }
+  }
+
   const response: SettingsResponse = {
     profile: {
       name: user.name,
@@ -154,7 +173,13 @@ async function getHandler() {
       hasAnthropic: !!user.byokAnthropicKey,
       hasOpenAI:    !!user.byokOpenAIKey,
       hasGemini:    !!user.byokGeminiKey,
+      anthropic: !!user.byokAnthropicKey,
+      openai:    !!user.byokOpenAIKey,
+      gemini:    !!user.byokGeminiKey,
+      preferPlatform: user.byokPreferPlatform ?? false,
+      ...extByokPresence,
     },
+    profileMeta,
     connectedProviders: accounts.map((a: { provider: string }) => a.provider),
     aiTier: {
       resolvedPlan,

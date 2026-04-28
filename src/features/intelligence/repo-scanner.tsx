@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import { MaterialIcon } from "@/components/material-icon";
 import { cn } from "@/lib/utils";
 import { getCsrfToken } from "@/lib/csrf-client";
@@ -631,6 +631,16 @@ export function RepoScanner({
   // Badge copy state
   const [badgeCopied, setBadgeCopied] = useState(false);
 
+  // File picker state
+  const [effort, setEffort] = useState<"quick" | "balanced" | "thorough" | "maximum">("balanced");
+  const [scanTarget, setScanTarget] = useState<"whole" | "pick">("whole");
+  const [treeFiles, setTreeFiles] = useState<{ path: string; type: string; size?: number }[]>([]);
+  const [treeLoading, setTreeLoading] = useState(false);
+  const [treeError, setTreeError] = useState<string | null>(null);
+  const [selectedPaths, setSelectedPaths] = useState<Set<string>>(new Set());
+  const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
+  const [treeFilter, setTreeFilter] = useState("");
+
   // OSV CVE scanner state
   const [osvVulns, setOsvVulns] = useState<{
     id: string; package: string; version: string; ecosystem: string;
@@ -711,6 +721,40 @@ export function RepoScanner({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedRepo]);
 
+  const loadFileTree = useCallback(async () => {
+    if (!targetRepo || !/^[\w.-]+\/[\w.-]+$/.test(targetRepo)) {
+      setTreeError("Enter a valid repository (owner/repo) first.");
+      return;
+    }
+    setTreeLoading(true);
+    setTreeError(null);
+    setTreeFiles([]);
+    setSelectedPaths(new Set());
+    setExpandedDirs(new Set());
+    try {
+      const params = new URLSearchParams({ repo: targetRepo });
+      if (branch.trim()) params.set("branch", branch.trim());
+      const res = await fetch(`/api/ai/repo-tree?${params}`);
+      const data = await res.json() as { files?: { path: string; type: string; size?: number }[]; error?: string; truncated?: boolean };
+      if (!res.ok || data.error) { setTreeError(data.error ?? "Failed to fetch file tree"); return; }
+      const files = data.files ?? [];
+      setTreeFiles(files);
+      // Auto-expand top-level dirs
+      const topDirs = new Set(files
+        .filter((f) => f.type === "tree" && !f.path.includes("/"))
+        .map((f) => f.path)
+      );
+      setExpandedDirs(topDirs);
+      // Pre-select all blobs
+      setSelectedPaths(new Set(files.filter((f) => f.type === "blob").map((f) => f.path)));
+    } catch {
+      setTreeError("Network error — check your connection");
+    } finally {
+      setTreeLoading(false);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [targetRepo, branch]);
+
   const runScan = useCallback(async () => {
     if (!targetRepo || !/^[\w.-]+\/[\w.-]+$/.test(targetRepo)) {
       setError("Enter a valid repository (owner/repo).");
@@ -724,12 +768,22 @@ export function RepoScanner({
     setResult(null);
     setError(null);
 
+    const pickedPaths = scanTarget === "pick" && selectedPaths.size > 0
+      ? [...selectedPaths]
+      : undefined;
+
     try {
       const csrfToken = await getCsrfToken();
       const res = await fetch("/api/ai/repo-scan", {
         method: "POST",
         headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
-        body: JSON.stringify({ repo: targetRepo, scanMode, ...(branch.trim() ? { branch: branch.trim() } : {}) }),
+        body: JSON.stringify({
+          repo: targetRepo,
+          scanMode: effort === "thorough" || effort === "maximum" ? "deep" : "quick",
+          effort,
+          ...(branch.trim() ? { branch: branch.trim() } : {}),
+          ...(pickedPaths ? { selectedPaths: pickedPaths } : {}),
+        }),
         signal: abortRef.current.signal,
       });
 
@@ -781,7 +835,7 @@ export function RepoScanner({
       setError(err instanceof Error ? err.message : "Scan failed");
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [targetRepo, scanMode]);
+  }, [targetRepo, effort, scanTarget, selectedPaths]);
 
   const reset = () => {
     abortRef.current?.abort();
@@ -894,7 +948,7 @@ export function RepoScanner({
               style={{ width: `${progress.percent}%` }} />
           </div>
           <p className="text-center text-[10px] font-bold text-muted-foreground/40 uppercase tracking-widest">
-            {progress.percent}% · {scanMode === "deep" ? "Full Codebase Scan" : "Quick Health Check"}
+            {progress.percent}% · {effort === "maximum" ? "Maximum Depth Scan" : effort === "thorough" ? "Full Codebase Scan" : effort === "balanced" ? "Balanced Scan" : "Quick Health Check"}
           </p>
         </div>
         <button type="button" onClick={reset}
@@ -2061,25 +2115,303 @@ export function RepoScanner({
         </div>
       )}
 
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="flex items-center gap-1 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10">
-          {(["quick", "deep"] as const).map((mode) => (
-            <button key={mode} type="button" onClick={() => setScanMode(mode)}
-              disabled={mode === "deep" && !canDeepScan}
+      {/* ── Effort level selector ── */}
+      <div className="space-y-2">
+        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Scan Depth</p>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5">
+          {([
+            { id: "quick",    icon: "flash_on",     label: "Quick",    desc: "50 files · ~30s",   pro: false  },
+            { id: "balanced", icon: "balance",       label: "Balanced", desc: "90 files · ~60s",   pro: false  },
+            { id: "thorough", icon: "manage_search", label: "Thorough", desc: "200 files · ~90s",  pro: true   },
+            { id: "maximum",  icon: "radar",         label: "Maximum",  desc: "All files · ~2min", pro: true   },
+          ] as const).map((e) => {
+            const locked = e.pro && !canDeepScan;
+            return (
+              <button key={e.id} type="button"
+                onClick={() => { if (!locked) setEffort(e.id); }}
+                disabled={locked}
+                className={cn(
+                  "relative flex flex-col items-start gap-1 px-3 py-2.5 rounded-none border text-left transition-all",
+                  effort === e.id
+                    ? "bg-amber-500 text-white border-amber-500 shadow-md"
+                    : locked
+                    ? "opacity-40 cursor-not-allowed bg-surface-container/20 border-outline-variant/10 text-muted-foreground"
+                    : "bg-surface-container/20 border-outline-variant/10 text-muted-foreground hover:border-amber-500/30 hover:text-foreground"
+                )}>
+                <div className="flex items-center gap-1.5">
+                  <MaterialIcon name={e.icon} size={12} />
+                  <span className="text-[10px] font-black uppercase tracking-wider">{e.label}</span>
+                  {locked && <MaterialIcon name="lock" size={10} className="ml-auto text-amber-400/50" />}
+                </div>
+                <span className={cn("text-[9px]", effort === e.id ? "text-white/70" : "text-muted-foreground/40")}>{e.desc}</span>
+              </button>
+            );
+          })}
+        </div>
+        {!canDeepScan && (
+          <p className="text-[9px] text-muted-foreground/40 flex items-center gap-1.5">
+            <MaterialIcon name="lock" size={10} className="text-amber-400/40" />
+            Thorough &amp; Maximum require <span className="text-amber-400/60 font-black">Professional</span>
+          </p>
+        )}
+      </div>
+
+      {/* ── Scan target: Whole repo vs Pick files ── */}
+      <div className="space-y-3">
+        <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">Files to Scan</p>
+        <div className="flex items-center gap-2 p-1 bg-surface-container/30 rounded-none border border-outline-variant/10 w-fit">
+          {([
+            { id: "whole", icon: "all_inclusive", label: "Whole Repo" },
+            { id: "pick",  icon: "checklist",     label: "Pick Files" },
+          ] as const).map((t) => (
+            <button key={t.id} type="button"
+              onClick={() => setScanTarget(t.id)}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2.5 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
-                scanMode === mode ? "bg-amber-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground",
-                mode === "deep" && !canDeepScan && "opacity-40 cursor-not-allowed"
+                "flex items-center gap-1.5 px-4 py-2 rounded-none text-[10px] font-black uppercase tracking-wider transition-all",
+                scanTarget === t.id ? "bg-amber-500 text-white shadow-md" : "text-muted-foreground hover:text-foreground"
               )}>
-              <MaterialIcon name={mode === "quick" ? "flash_on" : "manage_search"} size={12} />
-              {mode === "quick" ? "Quick Health Check" : canDeepScan ? "Full Codebase Scan" : "Full Scan (Pro+)"}
+              <MaterialIcon name={t.icon} size={12} /> {t.label}
             </button>
           ))}
         </div>
-        {!canDeepScan && (
-          <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground/40">
-            <MaterialIcon name="lock" size={11} className="text-amber-400/40" />
-            <span>Full scan requires <span className="text-amber-400/60 font-black">Professional</span></span>
+
+        {/* File picker panel */}
+        {scanTarget === "pick" && (
+          <div className="rounded-none border border-outline-variant/15 bg-surface-container/20 overflow-hidden animate-in fade-in duration-200">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b border-outline-variant/10 bg-surface-container/30">
+              <div className="flex items-center gap-2">
+                <MaterialIcon name="folder_open" size={14} className="text-amber-400" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-foreground/70">
+                  {treeLoading ? "Loading…" : treeFiles.length === 0 ? "Browse repo files" : `${selectedPaths.size} / ${treeFiles.filter((f) => f.type === "blob").length} files selected`}
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                {treeFiles.length > 0 && (
+                  <>
+                    <button type="button"
+                      onClick={() => setSelectedPaths(new Set(treeFiles.filter((f) => f.type === "blob").map((f) => f.path)))}
+                      className="text-[9px] font-black text-amber-400/70 hover:text-amber-400 transition-colors">
+                      All
+                    </button>
+                    <span className="text-muted-foreground/20">·</span>
+                    <button type="button"
+                      onClick={() => setSelectedPaths(new Set())}
+                      className="text-[9px] font-black text-muted-foreground/40 hover:text-foreground/60 transition-colors">
+                      None
+                    </button>
+                    <span className="text-muted-foreground/20">·</span>
+                  </>
+                )}
+                <button type="button"
+                  onClick={loadFileTree}
+                  disabled={treeLoading}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-none bg-amber-500/10 border border-amber-500/20 text-[9px] font-black text-amber-400 hover:bg-amber-500 hover:text-white hover:border-amber-500 transition-all disabled:opacity-50">
+                  <MaterialIcon name={treeLoading ? "sync" : treeFiles.length > 0 ? "refresh" : "cloud_download"} size={11} className={treeLoading ? "animate-spin" : ""} />
+                  {treeLoading ? "Loading…" : treeFiles.length > 0 ? "Refresh" : "Fetch Tree"}
+                </button>
+              </div>
+            </div>
+
+            {/* Error */}
+            {treeError && (
+              <div className="px-4 py-3 text-xs text-red-400 border-b border-red-500/10 bg-red-500/5 flex items-center gap-2">
+                <MaterialIcon name="error" size={13} />
+                {treeError}
+              </div>
+            )}
+
+            {/* Search */}
+            {treeFiles.length > 0 && (
+              <div className="px-3 py-2 border-b border-outline-variant/10 bg-surface-container/20">
+                <div className="relative">
+                  <MaterialIcon name="search" size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/30 pointer-events-none" />
+                  <input
+                    value={treeFilter}
+                    onChange={(e) => setTreeFilter(e.target.value)}
+                    placeholder="Filter files…"
+                    className="w-full pl-7 pr-3 py-1.5 bg-transparent text-[11px] placeholder:text-muted-foreground/25 focus:outline-none text-foreground/70"
+                  />
+                </div>
+              </div>
+            )}
+
+            {/* File tree */}
+            {treeFiles.length > 0 && (() => {
+              // Build virtual directory structure
+              const filtered = treeFilter
+                ? treeFiles.filter((f) => f.path.toLowerCase().includes(treeFilter.toLowerCase()))
+                : treeFiles;
+
+              // Get top-level entries
+              const topLevel = filtered.filter((f) => !f.path.includes("/"));
+              const topDirs = treeFiles
+                .filter((f) => f.type === "tree" && !f.path.includes("/"))
+                .filter((f) => !treeFilter || filtered.some((ff) => ff.path.startsWith(f.path + "/")));
+
+              const toggleDir = (dirPath: string) => {
+                setExpandedDirs((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(dirPath)) next.delete(dirPath); else next.add(dirPath);
+                  return next;
+                });
+              };
+
+              const toggleFile = (filePath: string) => {
+                setSelectedPaths((prev) => {
+                  const next = new Set(prev);
+                  if (next.has(filePath)) next.delete(filePath); else next.add(filePath);
+                  return next;
+                });
+              };
+
+              const toggleDirFiles = (dirPath: string) => {
+                const children = treeFiles.filter((f) => f.type === "blob" && f.path.startsWith(dirPath + "/"));
+                const allSelected = children.every((f) => selectedPaths.has(f.path));
+                setSelectedPaths((prev) => {
+                  const next = new Set(prev);
+                  if (allSelected) { children.forEach((f) => next.delete(f.path)); }
+                  else { children.forEach((f) => next.add(f.path)); }
+                  return next;
+                });
+              };
+
+              const getDirState = (dirPath: string): "all" | "none" | "partial" => {
+                const children = treeFiles.filter((f) => f.type === "blob" && f.path.startsWith(dirPath + "/"));
+                if (children.length === 0) return "none";
+                const selected = children.filter((f) => selectedPaths.has(f.path)).length;
+                if (selected === children.length) return "all";
+                if (selected === 0) return "none";
+                return "partial";
+              };
+
+              // Render a directory node recursively
+              const renderDir = (dirPath: string, depth: number): React.ReactNode => {
+                const isExpanded = expandedDirs.has(dirPath);
+                const dirState = getDirState(dirPath);
+                const dirName = dirPath.split("/").pop() ?? dirPath;
+                const children = treeFiles.filter((f) => {
+                  const relativePath = f.path.slice(dirPath.length + 1);
+                  return f.path.startsWith(dirPath + "/") && !relativePath.includes("/");
+                });
+                const childDirs = children.filter((f) => f.type === "tree");
+                const childFiles = children.filter((f) => f.type === "blob");
+                const filteredChildFiles = treeFilter
+                  ? childFiles.filter((f) => f.path.toLowerCase().includes(treeFilter.toLowerCase()))
+                  : childFiles;
+
+                if (treeFilter && filteredChildFiles.length === 0 && !childDirs.some((d) =>
+                  treeFiles.some((f) => f.path.startsWith(d.path + "/") && f.path.toLowerCase().includes(treeFilter.toLowerCase()))
+                )) return null;
+
+                return (
+                  <div key={dirPath}>
+                    <div className="flex items-center gap-0 hover:bg-surface-container/40 transition-colors"
+                      style={{ paddingLeft: `${depth * 12 + 12}px` }}>
+                      <button type="button" onClick={() => toggleDir(dirPath)}
+                        className="flex items-center gap-1.5 flex-1 py-1.5 pr-2 text-left min-w-0">
+                        <MaterialIcon name={isExpanded ? "expand_more" : "chevron_right"} size={12} className="text-muted-foreground/30 shrink-0" />
+                        <MaterialIcon name={isExpanded ? "folder_open" : "folder"} size={12} className="text-amber-400/60 shrink-0" />
+                        <span className="text-[10px] font-mono text-foreground/65 truncate">{dirName}</span>
+                      </button>
+                      <button type="button" onClick={() => toggleDirFiles(dirPath)}
+                        className={cn(
+                          "shrink-0 mr-3 size-3.5 rounded border transition-colors flex items-center justify-center",
+                          dirState === "all" ? "bg-amber-500 border-amber-500" :
+                          dirState === "partial" ? "bg-amber-500/30 border-amber-500/50" :
+                          "border-outline-variant/30 hover:border-amber-500/40"
+                        )}>
+                        {(dirState === "all" || dirState === "partial") && (
+                          <MaterialIcon name={dirState === "all" ? "check" : "remove"} size={9} className="text-white" />
+                        )}
+                      </button>
+                    </div>
+                    {isExpanded && (
+                      <div>
+                        {childDirs.map((d) => renderDir(d.path, depth + 1))}
+                        {filteredChildFiles.map((f) => (
+                          <div key={f.path} className="flex items-center gap-0 hover:bg-surface-container/40 transition-colors"
+                            style={{ paddingLeft: `${(depth + 1) * 12 + 12}px` }}>
+                            <button type="button" onClick={() => toggleFile(f.path)}
+                              className="flex items-center gap-1.5 flex-1 py-1 pr-2 text-left min-w-0">
+                              <span className="size-2 shrink-0" />
+                              <MaterialIcon name="insert_drive_file" size={11} className="text-muted-foreground/25 shrink-0" />
+                              <span className={cn("text-[10px] font-mono truncate", selectedPaths.has(f.path) ? "text-foreground/75" : "text-muted-foreground/35")}>
+                                {f.path.split("/").pop()}
+                              </span>
+                            </button>
+                            <button type="button" onClick={() => toggleFile(f.path)}
+                              className={cn(
+                                "shrink-0 mr-3 size-3.5 rounded border transition-colors flex items-center justify-center",
+                                selectedPaths.has(f.path) ? "bg-amber-500 border-amber-500" : "border-outline-variant/30 hover:border-amber-500/40"
+                              )}>
+                              {selectedPaths.has(f.path) && <MaterialIcon name="check" size={9} className="text-white" />}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              };
+
+              // Top-level files (not in any dir)
+              const topLevelFiles = treeFilter
+                ? filtered.filter((f) => f.type === "blob" && !f.path.includes("/"))
+                : topLevel.filter((f) => f.type === "blob");
+
+              return (
+                <div className="max-h-72 overflow-y-auto overscroll-contain font-mono">
+                  {topLevelFiles.map((f) => (
+                    <div key={f.path} className="flex items-center gap-0 hover:bg-surface-container/40 transition-colors px-3">
+                      <button type="button" onClick={() => toggleFile(f.path)}
+                        className="flex items-center gap-1.5 flex-1 py-1 pr-2 text-left min-w-0">
+                        <MaterialIcon name="insert_drive_file" size={11} className="text-muted-foreground/25 shrink-0" />
+                        <span className={cn("text-[10px] font-mono truncate", selectedPaths.has(f.path) ? "text-foreground/75" : "text-muted-foreground/35")}>
+                          {f.path}
+                        </span>
+                      </button>
+                      <button type="button" onClick={() => toggleFile(f.path)}
+                        className={cn(
+                          "shrink-0 mr-1 size-3.5 rounded border transition-colors flex items-center justify-center",
+                          selectedPaths.has(f.path) ? "bg-amber-500 border-amber-500" : "border-outline-variant/30 hover:border-amber-500/40"
+                        )}>
+                        {selectedPaths.has(f.path) && <MaterialIcon name="check" size={9} className="text-white" />}
+                      </button>
+                    </div>
+                  ))}
+                  {(treeFilter ? topDirs.filter((d) => filtered.some((f) => f.path.startsWith(d.path + "/"))) : topDirs)
+                    .map((d) => renderDir(d.path, 0))}
+                  {treeFilter && filtered.length === 0 && (
+                    <p className="px-4 py-6 text-center text-[10px] text-muted-foreground/40">No files match &ldquo;{treeFilter}&rdquo;</p>
+                  )}
+                </div>
+              );
+            })()}
+
+            {/* Empty state */}
+            {!treeLoading && treeFiles.length === 0 && !treeError && (
+              <div className="flex flex-col items-center gap-3 py-8 text-center">
+                <MaterialIcon name="folder_open" size={24} className="text-muted-foreground/20" />
+                <div>
+                  <p className="text-[11px] font-black text-foreground/50">No files loaded</p>
+                  <p className="text-[10px] text-muted-foreground/35 mt-0.5">Click &ldquo;Fetch Tree&rdquo; to browse the repository</p>
+                </div>
+              </div>
+            )}
+
+            {/* Footer with selected count */}
+            {treeFiles.length > 0 && (
+              <div className="px-4 py-2 border-t border-outline-variant/10 bg-surface-container/20 flex items-center justify-between">
+                <span className="text-[9px] font-mono text-muted-foreground/35">
+                  {treeFiles.filter((f) => f.type === "blob").length} files in repo
+                </span>
+                <span className={cn("text-[9px] font-black uppercase tracking-wider",
+                  selectedPaths.size === 0 ? "text-red-400/60" : "text-amber-400/70")}>
+                  {selectedPaths.size} selected
+                </span>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -2099,13 +2431,13 @@ export function RepoScanner({
         ))}
       </div>
 
-      {scanMode === "deep" && (
+      {(effort === "thorough" || effort === "maximum") && (
         <div className="p-4 rounded-none bg-amber-500/5 border border-amber-500/10 flex items-start gap-3">
           <MaterialIcon name="manage_search" size={16} className="shrink-0 mt-0.5 text-amber-400" />
           <div>
-            <p className="text-xs font-black text-amber-400">Full Codebase Scan</p>
+            <p className="text-xs font-black text-amber-400">{effort === "maximum" ? "Maximum Depth Scan" : "Full Codebase Scan"}</p>
             <p className="text-[11px] text-muted-foreground/60 mt-0.5 leading-relaxed">
-              Reads key configuration files, README, and package manifests for deeper context. Uses 3× your hourly budget.
+              Reads {effort === "maximum" ? "all" : "up to 200"} source files for comprehensive analysis. Uses 3× your hourly budget.
               {!allowsPrivateRepo && " Private repos require Professional plan."}
             </p>
           </div>
@@ -2120,15 +2452,26 @@ export function RepoScanner({
       )}
 
       <button type="button" onClick={runScan}
-        disabled={!targetRepo || !/^[\w.-]+\/[\w.-]+$/.test(targetRepo)}
+        disabled={
+          !targetRepo || !/^[\w.-]+\/[\w.-]+$/.test(targetRepo) ||
+          (scanTarget === "pick" && selectedPaths.size === 0)
+        }
         className={cn(
           "w-full py-4 rounded-none text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2",
-          targetRepo && /^[\w.-]+\/[\w.-]+$/.test(targetRepo)
+          targetRepo && /^[\w.-]+\/[\w.-]+$/.test(targetRepo) && !(scanTarget === "pick" && selectedPaths.size === 0)
             ? "bg-amber-500 text-white hover:bg-amber-600 shadow-xl shadow-amber-500/20"
             : "bg-surface-container-highest text-muted-foreground/40 cursor-not-allowed"
         )}>
         <MaterialIcon name="radar" size={16} />
-        {scanMode === "deep" ? "Launch Full Codebase Scan" : "Launch Quick Health Scan"}
+        {scanTarget === "pick"
+          ? selectedPaths.size === 0
+            ? "Select files to scan"
+            : `Scan ${selectedPaths.size} selected file${selectedPaths.size === 1 ? "" : "s"} · ${effort}`
+          : effort === "maximum" ? "Launch Maximum Depth Scan"
+          : effort === "thorough" ? "Launch Full Codebase Scan"
+          : effort === "balanced" ? "Launch Balanced Scan"
+          : "Launch Quick Health Scan"
+        }
       </button>
     </div>
   );
