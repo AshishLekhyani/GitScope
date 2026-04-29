@@ -14,10 +14,12 @@ async function getHandler(req: NextRequest) {
     return NextResponse.json({ error: "Missing path parameter" }, { status: 400 });
   }
 
-  // Keep this public proxy narrow: repo metadata only. Other GitHub data has
+  // Keep this public proxy narrow: repo endpoints only. Other GitHub data has
   // dedicated API routes with their own auth/rate-limit behavior.
   const apiPath = path.startsWith("/") ? path : `/${path}`;
-  if (path.startsWith("http") || path.includes("..") || !/^\/repos\/[\w.-]+\/[\w.-]+$/.test(apiPath)) {
+  // Strip query string for path validation
+  const pathWithoutQuery = apiPath.split("?")[0];
+  if (path.startsWith("http") || path.includes("..") || !/^\/repos\/[\w.-]+\/[\w.-]+/.test(pathWithoutQuery)) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 
