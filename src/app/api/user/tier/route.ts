@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -7,6 +7,7 @@ import {
   type AiPlan,
   updateUserAiPlan,
 } from "@/lib/ai-plan";
+import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
 
 const VALID_PLANS: AiPlan[] = ["free", "developer"];
 
@@ -19,19 +20,22 @@ function parseAdminEmails() {
   );
 }
 
-function canManageTiers(email?: string | null) {
-  if (process.env.NODE_ENV !== "production") return true;
+function isAdmin(email?: string | null): boolean {
   if (!email) return false;
-  const admins = parseAdminEmails();
-  return admins.has(email.toLowerCase());
+  const adminEnv = (process.env.AI_TIER_ADMIN_EMAILS ?? "").trim();
+  // Dev-only bypass: only when NODE_ENV is strictly "development" AND no admin
+  // list is configured. This prevents staging/preview envs from being open.
+  if (!adminEnv && process.env.NODE_ENV === "development") return true;
+  if (!adminEnv) return false;
+  return parseAdminEmails().has(email.toLowerCase());
 }
 
-export async function GET() {
+async function getHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  const canManage = canManageTiers(session.user.email);
+  const canManage = isAdmin(session.user.email);
 
   const [resolvedPlan, user] = await Promise.all([
     resolveAiPlanFromSessionDb(session),
@@ -49,14 +53,14 @@ export async function GET() {
   });
 }
 
-export async function PATCH(req: Request) {
+async function patchHandler(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  if (!canManageTiers(session.user.email)) {
+  if (!isAdmin(session.user.email)) {
     return NextResponse.json(
-      { error: "Tier updates are restricted in production." },
+      { error: "Tier updates require admin privileges." },
       { status: 403 }
     );
   }
@@ -76,9 +80,19 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const targetUserId = (body.userId ?? session.user.id).trim();
-  if (!targetUserId) {
-    return NextResponse.json({ error: "Missing target user id." }, { status: 400 });
+  // Only allow targeting another user if the requester is a configured admin
+  // (not just the dev-mode bypass). Self-update is always allowed.
+  const requestedUserId = (body.userId ?? "").trim();
+  const targetUserId = requestedUserId && requestedUserId !== session.user.id
+    ? requestedUserId
+    : session.user.id;
+
+  const hasConfiguredAdmin = (process.env.AI_TIER_ADMIN_EMAILS ?? "").trim().length > 0;
+  if (targetUserId !== session.user.id && !hasConfiguredAdmin) {
+    return NextResponse.json(
+      { error: "Cross-user tier updates require AI_TIER_ADMIN_EMAILS to be configured." },
+      { status: 403 }
+    );
   }
 
   const updated = await updateUserAiPlan(targetUserId, plan);
@@ -87,3 +101,6 @@ export async function PATCH(req: Request) {
     message: "AI tier updated.",
   });
 }
+
+export const GET  = withRouteSecurity(getHandler,  { ...SecurityPresets.authenticated, csrf: false });
+export const PATCH = withRouteSecurity(patchHandler, SecurityPresets.authenticated);

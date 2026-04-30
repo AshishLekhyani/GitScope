@@ -54,6 +54,58 @@ import type { UserBYOKKeys, AIPlan } from "@/lib/ai-providers";
 // Delay utility for making analysis feel more thorough
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+function normalizeJsonText(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/```(?:json)?\s*\n([\s\S]*?)```/gi, "$1")
+    .trim();
+}
+
+function extractBalancedJson(text: string, openChar: "{" | "[", closeChar: "}" | "]"): string | null {
+  let depth = 0;
+  let start = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === openChar) {
+      if (start === -1) start = i;
+      depth++;
+    } else if (ch === closeChar && depth > 0) {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseJsonFromText(text: string | undefined): unknown {
+  if (!text) return undefined;
+  const normalized = normalizeJsonText(text);
+
+  try {
+    return JSON.parse(normalized);
+  } catch {
+    // ignore
+  }
+
+  for (const candidate of [
+    extractBalancedJson(normalized, "{", "}"),
+    extractBalancedJson(normalized, "[", "]"),
+  ]) {
+    if (!candidate) continue;
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
+
 // ── Effort Mode ──────────────────────────────────────────────────────────────
 
 export type AgentEffort = "quick" | "balanced" | "thorough" | "maximum";
@@ -155,32 +207,44 @@ interface ProviderConfig {
   supportsTools: boolean;
 }
 
+/** Returns an ordered list of all available providers for cascade fallback. */
+function resolveProviderCascade(
+  plan: AIPlan,
+  effort: AgentEffort = "balanced",
+  byokKeys?: UserBYOKKeys
+): ProviderConfig[] {
+  const models = modelsForEffort(effort, plan);
+  const cascade: ProviderConfig[] = [];
+
+  // BYOK first (user's own API keys — highest priority)
+  if (byokKeys?.anthropic) cascade.push({ provider: "anthropic", apiKey: byokKeys.anthropic, model: models.anthropic, supportsTools: true });
+  if (byokKeys?.openai)    cascade.push({ provider: "openai",    apiKey: byokKeys.openai,    model: models.openai,    supportsTools: true });
+  if (byokKeys?.gemini)    cascade.push({ provider: "gemini",    apiKey: byokKeys.gemini,    model: models.gemini,    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", supportsTools: true });
+  if (byokKeys?.groq)      cascade.push({ provider: "groq",      apiKey: byokKeys.groq,      model: models.groq,      baseURL: "https://api.groq.com/openai/v1", supportsTools: false });
+  if (byokKeys?.cerebras)  cascade.push({ provider: "cerebras",  apiKey: byokKeys.cerebras,  model: models.cerebras,  baseURL: "https://api.cerebras.ai/v1",     supportsTools: false });
+  if (byokKeys?.deepseek)  cascade.push({ provider: "deepseek",  apiKey: byokKeys.deepseek,  model: models.deepseek,  baseURL: "https://api.deepseek.com/v1",    supportsTools: false });
+  if (byokKeys?.mistral)   cascade.push({ provider: "mistral",   apiKey: byokKeys.mistral,   model: models.mistral,   baseURL: "https://api.mistral.ai/v1",      supportsTools: false });
+
+  // Server-side keys (skip if BYOK already covers the same provider)
+  const haveProv = new Set(cascade.map((c) => c.provider));
+  if (!haveProv.has("anthropic") && process.env.ANTHROPIC_API_KEY) cascade.push({ provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY, model: models.anthropic, supportsTools: true });
+  if (!haveProv.has("openai")    && process.env.OPENAI_API_KEY)    cascade.push({ provider: "openai",    apiKey: process.env.OPENAI_API_KEY,    model: models.openai,    supportsTools: true });
+  if (!haveProv.has("gemini")    && process.env.GEMINI_API_KEY)    cascade.push({ provider: "gemini",    apiKey: process.env.GEMINI_API_KEY,    model: models.gemini,    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", supportsTools: true });
+  if (!haveProv.has("groq")      && process.env.GROQ_API_KEY)      cascade.push({ provider: "groq",      apiKey: process.env.GROQ_API_KEY,      model: models.groq,      baseURL: "https://api.groq.com/openai/v1", supportsTools: false });
+  if (!haveProv.has("cerebras")  && process.env.CEREBRAS_API_KEY)  cascade.push({ provider: "cerebras",  apiKey: process.env.CEREBRAS_API_KEY,  model: models.cerebras,  baseURL: "https://api.cerebras.ai/v1",     supportsTools: false });
+  if (!haveProv.has("deepseek")  && process.env.DEEPSEEK_API_KEY)  cascade.push({ provider: "deepseek",  apiKey: process.env.DEEPSEEK_API_KEY,  model: models.deepseek,  baseURL: "https://api.deepseek.com/v1",    supportsTools: false });
+  if (!haveProv.has("mistral")   && process.env.MISTRAL_API_KEY)   cascade.push({ provider: "mistral",   apiKey: process.env.MISTRAL_API_KEY,   model: models.mistral,   baseURL: "https://api.mistral.ai/v1",      supportsTools: false });
+
+  return cascade; // empty → HuggingFace fallback (handled in runAgent)
+}
+
 function resolveProvider(
   plan: AIPlan,
   effort: AgentEffort = "balanced",
   byokKeys?: UserBYOKKeys
 ): ProviderConfig | null {
-  const models = modelsForEffort(effort, plan);
-
-  // BYOK takes priority
-  if (byokKeys?.anthropic) return { provider: "anthropic", apiKey: byokKeys.anthropic, model: models.anthropic, supportsTools: true };
-  if (byokKeys?.openai)    return { provider: "openai",    apiKey: byokKeys.openai,    model: models.openai,    supportsTools: true };
-  if (byokKeys?.gemini)    return { provider: "gemini",    apiKey: byokKeys.gemini,    model: models.gemini,    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", supportsTools: true };
-  if (byokKeys?.groq)      return { provider: "groq",      apiKey: byokKeys.groq,      model: models.groq,      baseURL: "https://api.groq.com/openai/v1", supportsTools: false };
-  if (byokKeys?.cerebras)  return { provider: "cerebras",  apiKey: byokKeys.cerebras,  model: models.cerebras,  baseURL: "https://api.cerebras.ai/v1",     supportsTools: false };
-  if (byokKeys?.deepseek)  return { provider: "deepseek",  apiKey: byokKeys.deepseek,  model: models.deepseek,  baseURL: "https://api.deepseek.com/v1",    supportsTools: false };
-  if (byokKeys?.mistral)   return { provider: "mistral",   apiKey: byokKeys.mistral,   model: models.mistral,   baseURL: "https://api.mistral.ai/v1",      supportsTools: false };
-
-  // Server-side keys
-  if (process.env.ANTHROPIC_API_KEY) return { provider: "anthropic", apiKey: process.env.ANTHROPIC_API_KEY, model: models.anthropic, supportsTools: true };
-  if (process.env.OPENAI_API_KEY)    return { provider: "openai",    apiKey: process.env.OPENAI_API_KEY,    model: models.openai,    supportsTools: true };
-  if (process.env.GEMINI_API_KEY)    return { provider: "gemini",    apiKey: process.env.GEMINI_API_KEY,    model: models.gemini,    baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/", supportsTools: true };
-  if (process.env.GROQ_API_KEY)      return { provider: "groq",      apiKey: process.env.GROQ_API_KEY,      model: models.groq,      baseURL: "https://api.groq.com/openai/v1", supportsTools: false };
-  if (process.env.CEREBRAS_API_KEY)  return { provider: "cerebras",  apiKey: process.env.CEREBRAS_API_KEY,  model: models.cerebras,  baseURL: "https://api.cerebras.ai/v1",     supportsTools: false };
-  if (process.env.DEEPSEEK_API_KEY)  return { provider: "deepseek",  apiKey: process.env.DEEPSEEK_API_KEY,  model: models.deepseek,  baseURL: "https://api.deepseek.com/v1",    supportsTools: false };
-  if (process.env.MISTRAL_API_KEY)   return { provider: "mistral",   apiKey: process.env.MISTRAL_API_KEY,   model: models.mistral,   baseURL: "https://api.mistral.ai/v1",      supportsTools: false };
-
-  return null; // HuggingFace fallback
+  const cascade = resolveProviderCascade(plan, effort, byokKeys);
+  return cascade[0] ?? null;
 }
 
 // ── Anthropic agent runner (native tool_use, multi-turn) ─────────────────────
@@ -254,11 +318,7 @@ async function runAnthropicAgent(
     }
   }
 
-  let parsedOutput: Record<string, unknown> | undefined;
-  try {
-    const jsonMatch = finalText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) parsedOutput = JSON.parse(jsonMatch[0]);
-  } catch { /* non-JSON output is fine */ }
+  const parsedOutput = parseJsonFromText(finalText) as Record<string, unknown> | undefined;
 
   return {
     agentId: config.id,
@@ -344,12 +404,7 @@ async function runOpenAICompatAgent(
     }
   }
 
-  let parsedOutput: Record<string, unknown> | undefined;
-  try {
-    const jsonMatch = finalText.match(/\{[\s\S]*\}/);
-    if (jsonMatch) parsedOutput = JSON.parse(jsonMatch[0]);
-  } catch { /* fine */ }
-
+  const parsedOutput = parseJsonFromText(finalText) as Record<string, unknown> | undefined;
   return {
     agentId: config.id,
     agentName: config.name,
@@ -420,7 +475,23 @@ After analyzing with tools, provide your final output in the required JSON forma
     tier, messages, maxNewTokens: config.maxTokens ?? 2048, temperature: 0.2,
     apiKey: config.byokKeys?.huggingface ?? undefined,
   });
-  let output = result?.text ?? "Analysis unavailable — configure an API key in Settings → API Keys for full AI analysis.";
+  
+  if (!result?.text) {
+    // Return undefined parsedOutput so the route's all-agents-empty check correctly
+    // detects this failure and falls back to internal AI (not a false 100 score).
+    return {
+      agentId: config.id,
+      agentName: config.name,
+      output: "",
+      parsedOutput: undefined,
+      toolCallCount: 0,
+      tokens: { input: 0, output: 0 },
+      durationMs: Date.now() - start,
+      provider: "huggingface",
+      model: "mistralai/Mistral-7B-Instruct-v0.3",
+    };
+  }
+  let output = result.text;
   
   onProgress?.("Processing analysis...", 50);
 
@@ -471,14 +542,9 @@ After analyzing with tools, provide your final output in the required JSON forma
   onProgress?.("Finalizing analysis...", 95);
   await delay(300);
   
-  let parsedOutput: Record<string, unknown> | undefined;
-  try {
-    const jsonMatch = output.match(/\{[\s\S]*\}/);
-    if (jsonMatch) parsedOutput = JSON.parse(jsonMatch[0]);
-  } catch { /* fine */ }
-
+  const parsedOutput = parseJsonFromText(output) as Record<string, unknown> | undefined;
   onProgress?.("Analysis complete", 100);
-  
+
   return {
     agentId: config.id,
     agentName: config.name,
@@ -497,14 +563,27 @@ After analyzing with tools, provide your final output in the required JSON forma
 async function runAgent(
   config: AgentConfig,
   prompt: string,
-  providerCfg: ProviderConfig | null,
+  providerCascade: ProviderConfig[],
   toolCtx: ToolContext,
   maxRounds?: number,
   onProgress?: (step: string, percent: number) => void
 ): Promise<AgentResult> {
-  if (!providerCfg) return runHFAgent(config, prompt, toolCtx, onProgress);
-  if (providerCfg.provider === "anthropic") return runAnthropicAgent(config, prompt, providerCfg, toolCtx, maxRounds);
-  return runOpenAICompatAgent(config, prompt, providerCfg, toolCtx, maxRounds);
+  // Try each provider in cascade order until one succeeds
+  for (const providerCfg of providerCascade) {
+    try {
+      if (providerCfg.provider === "anthropic") {
+        return await runAnthropicAgent(config, prompt, providerCfg, toolCtx, maxRounds);
+      }
+      return await runOpenAICompatAgent(config, prompt, providerCfg, toolCtx, maxRounds);
+    } catch (err) {
+      console.warn(`[Agent ${config.id}] ${providerCfg.provider} failed: ${err instanceof Error ? err.message : String(err)} — trying next provider`);
+    }
+  }
+  // All configured providers failed — try HuggingFace as last resort
+  if (providerCascade.length > 0) {
+    console.warn(`[Agent ${config.id}] All ${providerCascade.length} providers failed — falling back to HuggingFace`);
+  }
+  return runHFAgent(config, prompt, toolCtx, onProgress);
 }
 
 // ── Orchestrator ──────────────────────────────────────────────────────────────
@@ -517,7 +596,12 @@ export async function runAgentOrchestrator(
   const overallStart = Date.now();
   const effort: AgentEffort = cfg.effort ?? "balanced";
   const effortProfile = EFFORT_PROFILES[effort];
-  const providerCfg = resolveProvider(cfg.plan, effort, cfg.byokKeys);
+  const providerCascade = resolveProviderCascade(cfg.plan, effort, cfg.byokKeys);
+  const providerCfg = providerCascade[0] ?? null; // kept for legacy use in sub-functions
+
+  // ── LOGGING: Report which provider cascade was resolved ──
+  console.log(`[Orchestrator] Provider cascade (${providerCascade.length}): ${providerCascade.map((p) => p.provider).join(" → ") || "NONE (HF fallback)"} | Effort: ${effort}`);
+  
   const totalTokens = { input: 0, output: 0 };
   const providers = new Set<string>();
   const agentResults: AgentResult[] = [];
@@ -540,13 +624,14 @@ export async function runAgentOrchestrator(
     const results = await Promise.all(
       agents.map((agent, i) => {
         cfg.onProgress?.(`Running ${agent.name}…`, agent.name, 10 + (i / agents.length) * 60);
-        return runAgent(agent, basePrompt, providerCfg, toolCtx, effectiveMaxRounds, (step, pct) => {
+        return runAgent(agent, basePrompt, providerCascade, toolCtx, effectiveMaxRounds, (step, pct) => {
           cfg.onProgress?.(`${agent.name}: ${step}`, agent.name, 10 + (i / agents.length) * 60 + (pct * 0.4));
         });
       })
     );
 
     for (const r of results) {
+      console.log(`[Orchestrator] Agent ${r.agentId} completed: ${r.output?.length ?? 0} chars, provider=${r.provider}`);
       agentResults.push(r);
       totalTokens.input += r.tokens.input;
       totalTokens.output += r.tokens.output;
@@ -557,7 +642,7 @@ export async function runAgentOrchestrator(
       cfg.onProgress?.("Supervisor synthesizing findings…", cfg.supervisor.name, 82);
       const supervisor = { ...cfg.supervisor, maxTokens: effortProfile.supervisorTokens };
       const mergePrompt = buildMergePrompt(basePrompt, agentResults, effort);
-      const supervisorResult = await runAgent(supervisor, mergePrompt, providerCfg, toolCtx);
+      const supervisorResult = await runAgent(supervisor, mergePrompt, providerCascade, toolCtx);
       totalTokens.input += supervisorResult.tokens.input;
       totalTokens.output += supervisorResult.tokens.output;
       providers.add(supervisorResult.provider);
@@ -585,7 +670,7 @@ export async function runAgentOrchestrator(
     const phase1Results = await Promise.all(
       agents.map((agent, i) => {
         cfg.onProgress?.(`${agent.name} analyzing…`, agent.name, 8 + (i / agents.length) * 45);
-        return runAgent(agent, basePrompt, providerCfg, toolCtx, effectiveMaxRounds, (step, pct) => {
+        return runAgent(agent, basePrompt, providerCascade, toolCtx, effectiveMaxRounds, (step, pct) => {
           cfg.onProgress?.(`${agent.name}: ${step}`, agent.name, 8 + (i / agents.length) * 45 + (pct * 0.35));
         });
       })
@@ -600,7 +685,7 @@ export async function runAgentOrchestrator(
     // Phase 2: Cross-agent debate round
     if (effortProfile.runDebate && phase1Results.length > 1) {
       cfg.onProgress?.("Phase 2: Cross-agent debate…", "Orchestrator", 55);
-      const debateResults = await runDebateRound(phase1Results, providerCfg, toolCtx, cfg.onProgress);
+      const debateResults = await runDebateRound(phase1Results, providerCascade, toolCtx, cfg.onProgress);
       for (const d of debateResults) {
         if (d.votes) {
           // Inject debate results as synthetic agent outputs for the supervisor
@@ -621,7 +706,7 @@ export async function runAgentOrchestrator(
     // Phase 3: Sub-agent specialist deep dives on critical findings
     if (effortProfile.runSubAgents) {
       cfg.onProgress?.("Phase 3: Sub-agent specialist deep dives…", "Orchestrator", 75);
-      const subResults = await runSubAgentDives(phase1Results, providerCfg, toolCtx, effort, cfg.onProgress);
+      const subResults = await runSubAgentDives(phase1Results, providerCascade, toolCtx, effort, cfg.onProgress);
       for (const r of subResults) {
         agentResults.push(r);
         totalTokens.input += r.tokens.input;
@@ -634,7 +719,7 @@ export async function runAgentOrchestrator(
     cfg.onProgress?.("Phase 4: Lead Principal Engineer synthesizing…", cfg.supervisor.name, 88);
     const supervisor = { ...cfg.supervisor, maxTokens: effortProfile.supervisorTokens };
     const mergePrompt = buildMergePrompt(basePrompt, agentResults, effort);
-    const supervisorResult = await runAgent(supervisor, mergePrompt, providerCfg, toolCtx);
+    const supervisorResult = await runAgent(supervisor, mergePrompt, providerCascade, toolCtx);
     totalTokens.input += supervisorResult.tokens.input;
     totalTokens.output += supervisorResult.tokens.output;
     providers.add(supervisorResult.provider);
@@ -661,7 +746,7 @@ export async function runAgentOrchestrator(
         ? basePrompt
         : `${basePrompt}\n\n## Prior Agent Output (${agents[i - 1].name})\n${agentResults[agentResults.length - 1]?.output ?? ""}`;
 
-      const result = await runAgent(agent, prompt, providerCfg, toolCtx, effectiveMaxRounds);
+      const result = await runAgent(agent, prompt, providerCascade, toolCtx, effectiveMaxRounds);
       agentResults.push(result);
       totalTokens.input += result.tokens.input;
       totalTokens.output += result.tokens.output;
@@ -688,7 +773,7 @@ export async function runAgentOrchestrator(
       cfg.onProgress?.(`Round ${round + 1}/${maxSupervisedRounds} — Running agents…`, "Orchestrator", pctBase);
 
       const roundResults = await Promise.all(
-        agents.map((agent) => runAgent(agent, basePrompt, providerCfg, toolCtx, Math.ceil(effectiveMaxRounds / maxSupervisedRounds)))
+        agents.map((agent) => runAgent(agent, basePrompt, providerCascade, toolCtx, Math.ceil(effectiveMaxRounds / maxSupervisedRounds)))
       );
 
       for (const r of roundResults) {
@@ -706,7 +791,7 @@ export async function runAgentOrchestrator(
         ? buildMergePrompt(basePrompt, roundResults, effort)
         : buildEvalPrompt(basePrompt, roundResults);
 
-      const supervisorResult = await runAgent(supervisor, supervisorPrompt, providerCfg, toolCtx);
+      const supervisorResult = await runAgent(supervisor, supervisorPrompt, providerCascade, toolCtx);
       totalTokens.input += supervisorResult.tokens.input;
       totalTokens.output += supervisorResult.tokens.output;
       providers.add(supervisorResult.provider);
@@ -834,7 +919,7 @@ Output JSON (no markdown fences):
 
 async function runDebateRound(
   agentResults: AgentResult[],
-  providerCfg: ProviderConfig | null,
+  providerCascade: ProviderConfig[],
   toolCtx: ToolContext,
   onProgress?: OrchestratorConfig["onProgress"]
 ): Promise<DebateResult[]> {
@@ -854,7 +939,7 @@ async function runDebateRound(
     };
 
     onProgress?.(`${agent.agentName} reviewing peers…`, agent.agentName, 65 + (i / agentResults.length) * 15);
-    const result = await runAgent(debateConfig, debatePrompt, providerCfg, toolCtx, 1);
+    const result = await runAgent(debateConfig, debatePrompt, providerCascade, toolCtx, 1);
 
     let votes: DebateVote | null = null;
     try {
@@ -958,7 +1043,7 @@ Output JSON: { "findings": [{ "type": "re-render|missing-memo|expensive-render|c
 
 async function runSubAgentDives(
   primaryResults: AgentResult[],
-  providerCfg: ProviderConfig | null,
+  providerCascade: ProviderConfig[],
   toolCtx: ToolContext,
   effort: AgentEffort,
   onProgress?: OrchestratorConfig["onProgress"]
@@ -999,7 +1084,7 @@ async function runSubAgentDives(
       systemPrompt: spec.systemPrompt,
     };
 
-    return runAgent(subConfig, subPrompt, providerCfg, toolCtx, 4);
+    return runAgent(subConfig, subPrompt, providerCascade, toolCtx, 4);
   });
 
   const results = await Promise.all(tasks);

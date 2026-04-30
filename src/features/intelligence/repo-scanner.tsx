@@ -602,6 +602,7 @@ export function RepoScanner({
   const [secFilter, setSecFilter] = useState<"all" | "critical" | "high" | "medium" | "low">("all");
   const [recsPage, setRecsPage] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
+  const forceRescanRef = useRef(false);
 
   // History state
   const [history, setHistory] = useState<ScanHistoryEntry[]>([]);
@@ -702,20 +703,28 @@ export function RepoScanner({
       .finally(() => setRulesLoading(false));
   }, [customRulesAllowed]);
 
-  // Restore last scan result from sessionStorage on mount
+  // Restore last scan result from sessionStorage on mount.
+  // Skip results that look like empty-agent failures (score=100, zero issues).
   useEffect(() => {
     const repo = selectedRepo ?? repoInput;
     if (!repo) return;
     for (const mode of ["quick", "deep"] as const) {
       try {
         const raw = sessionStorage.getItem(scanCacheKey(repo, mode));
-        if (raw) {
-          const cached = JSON.parse(raw) as RepoScanResult;
-          setResult(cached);
-          setState("done");
-          setScanMode(mode);
-          return;
+        if (!raw) continue;
+        const cached = JSON.parse(raw) as RepoScanResult;
+        const hasIssues = (cached.security?.issues?.length ?? 0) > 0 ||
+          (cached.codeQuality?.issues?.length ?? 0) > 0 ||
+          (cached.performance?.issues?.length ?? 0) > 0;
+        if (cached.healthScore === 100 && !hasIssues) {
+          // Looks like a stale failed-agent result — discard it and let user run fresh scan
+          sessionStorage.removeItem(scanCacheKey(repo, mode));
+          continue;
         }
+        setResult(cached);
+        setState("done");
+        setScanMode(mode);
+        return;
       } catch { /* ignore */ }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -772,6 +781,10 @@ export function RepoScanner({
       ? [...selectedPaths]
       : undefined;
 
+    // Consume the force flag (set by reset/rescan — bypasses server-side public cache)
+    const forceFlag = forceRescanRef.current;
+    forceRescanRef.current = false;
+
     try {
       const csrfToken = await getCsrfToken();
       const res = await fetch("/api/ai/repo-scan", {
@@ -781,6 +794,7 @@ export function RepoScanner({
           repo: targetRepo,
           scanMode: effort === "thorough" || effort === "maximum" ? "deep" : "quick",
           effort,
+          ...(forceFlag ? { force: true } : {}),
           ...(branch.trim() ? { branch: branch.trim() } : {}),
           ...(pickedPaths ? { selectedPaths: pickedPaths } : {}),
         }),
@@ -848,6 +862,7 @@ export function RepoScanner({
     setResult(null);
     setError(null);
     setProgress({ step: "", percent: 0 });
+    forceRescanRef.current = true; // bypass server-side public cache on next scan
     try {
       sessionStorage.removeItem(scanCacheKey(targetRepo, "quick"));
       sessionStorage.removeItem(scanCacheKey(targetRepo, "deep"));

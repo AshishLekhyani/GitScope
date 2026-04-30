@@ -19,6 +19,81 @@ import { sendDiscordScanAlert } from "@/lib/discord";
 import { triggerWebhookRules } from "@/lib/webhook-rules-trigger";
 import { checkPublicScanCache, savePublicScanCache } from "@/lib/scan-cache";
 
+function normalizeJsonText(text: string): string {
+  return text
+    .replace(/\r\n/g, "\n")
+    .replace(/```(?:json)?\s*\n([\s\S]*?)```/gi, "$1")
+    .trim();
+}
+
+function extractBalancedJson(text: string, openChar: "{" | "[", closeChar: "}" | "]"): string | null {
+  let depth = 0;
+  let start = -1;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (ch === openChar) {
+      if (start === -1) start = i;
+      depth++;
+    } else if (ch === closeChar && depth > 0) {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        return text.slice(start, i + 1);
+      }
+    }
+  }
+
+  return null;
+}
+
+function parseJsonFromText(text: string | undefined): unknown {
+  if (!text) return undefined;
+  const normalized = normalizeJsonText(text);
+
+  try {
+    return JSON.parse(normalized);
+  } catch {
+    // ignore
+  }
+
+  for (const candidate of [
+    extractBalancedJson(normalized, "{", "}"),
+    extractBalancedJson(normalized, "[", "]"),
+  ]) {
+    if (!candidate) continue;
+    try {
+      return JSON.parse(candidate);
+    } catch {
+      continue;
+    }
+  }
+
+  return undefined;
+}
+
+function safeNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = Number(value.trim());
+    return Number.isFinite(n) ? n : undefined;
+  }
+  return undefined;
+}
+
+function safeStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === "string");
+}
+
+function safeObjectArray(value: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is Record<string, unknown> => item !== null && typeof item === "object");
+}
+
+function safeObject(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface RepoScanFinding {
@@ -379,7 +454,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  let body: { repo?: string; scanMode?: string; branch?: string; selectedPaths?: string[]; effort?: string };
+  let body: { repo?: string; scanMode?: string; branch?: string; selectedPaths?: string[]; effort?: string; force?: boolean };
   try {
     body = await req.json();
   } catch {
@@ -389,7 +464,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const { repo, branch, selectedPaths, effort = "balanced" } = body;
+  const { repo, branch, selectedPaths, effort = "balanced", force = false } = body;
   // Map effort to scanMode for backward compat:
   // quick/balanced → quick scan caps; thorough/maximum → deep (reads all files)
   const scanMode = (effort === "thorough" || effort === "maximum") ? "deep" : (body.scanMode ?? "quick");
@@ -656,23 +731,38 @@ export async function POST(req: NextRequest) {
         // ── Public scan cache — serve cached LLM result if available ─────────
         // Skips the LLM call entirely for public repos scanned recently by any user.
         // Private repos are NEVER cached here (safety: no cross-user data leakage).
+        // force=true bypasses the cache so users always get a fresh scan.
         const isPrivateRepo = Boolean(meta.private);
-        if (!isPrivateRepo && hasAnyAIProvider(byokKeys)) {
+        if (!isPrivateRepo && !force && hasAnyAIProvider(byokKeys)) {
           const cached = await checkPublicScanCache(repo, scanMode, isPrivateRepo);
           if (cached) {
-            emit({ type: "progress", step: "Serving cached analysis…", percent: 90 });
-            result = { ...(cached as Partial<RepoScanResult>), fromCache: true } as RepoScanResult;
-            done(result);
-            return;
+            const cachedScore = (cached as Record<string, unknown>).healthScore as number | undefined;
+            // Skip cache entries that look like empty-agent failures (score=100 with no issues)
+            const cachedSecurity = (cached as Record<string, unknown>).security as Record<string, unknown> | undefined;
+            const cachedIssues = Array.isArray(cachedSecurity?.["issues"]) ? (cachedSecurity?.["issues"] as unknown[]).length : 0;
+            const looksStale = cachedScore === 100 && cachedIssues === 0;
+            if (!looksStale) {
+              emit({ type: "progress", step: "Serving cached analysis…", percent: 90 });
+              result = { ...(cached as Partial<RepoScanResult>), fromCache: true } as RepoScanResult;
+              done(result);
+              return;
+            }
+            // Cache looks like a false-positive 100/no-issues result — skip it and re-scan
+            emit({ type: "progress", step: "Stale cache detected — running fresh analysis…", percent: 14 });
           }
         }
 
         // ── Daily LLM cost gate ───────────────────────────────────────────────
         // BYOK users bypass this check entirely — they pay their own API bills.
         // For server-key users: check the daily LLM budget before calling the provider.
+        const hasAnyProvider = hasAnyAIProvider(byokKeys) || 
+          process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY ||
+          process.env.GROQ_API_KEY || process.env.CEREBRAS_API_KEY || process.env.DEEPSEEK_API_KEY ||
+          process.env.MISTRAL_API_KEY || process.env.HUGGINGFACE_API_KEY;
+
         let useLlm: boolean;
 
-        if (!hasAnyAIProvider(byokKeys)) {
+        if (!hasAnyProvider) {
           // No API keys at all — internal AI only
           useLlm = false;
         } else if (userHasByok) {
@@ -763,96 +853,313 @@ export async function POST(req: NextRequest) {
               { repo, fileContents: keyFileContents }
             );
 
-            if (orchestratorRes) {
-              // Merge agent outputs into RepoScanResult format
-              const securityOutput = orchestratorRes.agentResults.find(r => r.agentId === "security")?.parsedOutput as Record<string, unknown> | undefined;
-              const archOutput = orchestratorRes.agentResults.find(r => r.agentId === "architecture")?.parsedOutput as Record<string, unknown> | undefined;
-              const perfOutput = orchestratorRes.agentResults.find(r => r.agentId === "performance")?.parsedOutput as Record<string, unknown> | undefined;
-              const testOutput = orchestratorRes.agentResults.find(r => r.agentId === "testing")?.parsedOutput as Record<string, unknown> | undefined;
-              const depOutput = orchestratorRes.agentResults.find(r => r.agentId === "dependency")?.parsedOutput as Record<string, unknown> | undefined;
-              const debtOutput = orchestratorRes.agentResults.find(r => r.agentId === "debt")?.parsedOutput as Record<string, unknown> | undefined;
+            // Helper: detect agent outputs that are empty/failed (avoids false 100 scores)
+            const isAgentOutputEmpty = (r: { parsedOutput?: Record<string, unknown>; output?: string }): boolean => {
+              if (!r.parsedOutput) return true;
+              if (Object.keys(r.parsedOutput).length === 0) return true;
+              if (!r.output || r.output.trim() === "" || r.output === "{}") return true;
+              if (r.output.includes("unavailable") || r.output.includes("Analysis unavailable")) return true;
+              return false;
+            };
 
-              // Calculate scores based on findings - if no issues found, score is 100
-              const securityFindings = (securityOutput?.["findings"] as RepoScanFinding[]) ?? [];
-              const archConcerns = (archOutput?.["concerns"] as string[]) ?? [];
-              const perfIssues = (perfOutput?.["issues"] as RepoScanFinding[]) ?? [];
-              const testGaps = (testOutput?.["gaps"] as string[]) ?? [];
-              
-              const securityScore = securityOutput?.["securityScore"] as number ?? Math.max(0, 100 - securityFindings.length * 10);
-              const archScore = archOutput?.["architectureScore"] as number ?? Math.max(0, 100 - archConcerns.length * 5);
-              const perfScore = perfOutput?.["performanceScore"] as number ?? Math.max(0, 100 - perfIssues.length * 8);
-              const testScore = testOutput?.["testabilityScore"] as number ?? Math.max(0, 100 - testGaps.length * 5);
-              
+            if (!orchestratorRes || orchestratorRes.agentResults.length === 0) {
+              emit({ type: "progress", step: "AI agents returned no results — falling back to static analysis…", percent: 80 });
+              internalScanResult = scanRepoWithInternalAI({
+                repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+                realLoc, realLocByExt, totalCodeFiles, importGraph,
+              });
+              result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+            } else if (orchestratorRes.agentResults.every(isAgentOutputEmpty)) {
+              // All agents failed or returned empty/error — fall back to internal AI
+              emit({ type: "progress", step: "AI agents failed — falling back to static analysis…", percent: 80 });
+              internalScanResult = scanRepoWithInternalAI({
+                repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+                realLoc, realLocByExt, totalCodeFiles, importGraph,
+              });
+              result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+            } else {
+              // Successfully extracted results from agents - process and compile
+              emit({ type: "progress", step: "Compiling multi-agent findings…", percent: 82 });
+
+              // ── Helper: extract agent output robustly ──────────────────────
+              const safeParsedOutput = (agentId: string) => {
+                const agent = orchestratorRes.agentResults.find((r) => r.agentId === agentId);
+                const parsed = safeObject(agent?.parsedOutput) ?? (parseJsonFromText(agent?.output) as Record<string, unknown> | undefined);
+                if (Array.isArray(parsed)) return { findings: parsed };
+                return safeObject(parsed);
+              };
+
+              const securityOutput = safeParsedOutput("security");
+              const archOutput    = safeParsedOutput("architecture");
+              const perfOutput    = safeParsedOutput("performance");
+              const testOutput    = safeParsedOutput("testing");
+              const depOutput     = safeParsedOutput("dependency");
+              const debtOutput    = safeParsedOutput("debt");
+
+              // Which agents actually produced real data (not null/empty)?
+              const hasRealPerf = !!perfOutput && Object.keys(perfOutput).length > 0;
+              const hasRealTest = !!testOutput && Object.keys(testOutput).length > 0;
+              const hasRealDep  = !!depOutput  && Object.keys(depOutput).length  > 0;
+
+              // ── Security findings — normalize from agent-specific schema ─────
+              // The security agent returns { title, description, fix: string,
+              // vulnerableCode, attackScenario, impact } — map to RepoScanFinding.
+              const guessLang = (file?: string) => {
+                if (!file) return undefined;
+                const ext = file.split(".").pop()?.toLowerCase();
+                const map: Record<string, string> = {
+                  ts: "typescript", tsx: "typescript", js: "javascript", jsx: "javascript",
+                  py: "python", go: "go", rs: "rust", java: "java", rb: "ruby",
+                  php: "php", cs: "csharp", swift: "swift", kt: "kotlin",
+                };
+                return map[ext ?? ""] ?? ext;
+              };
+
+              const normalizeSecFinding = (f: Record<string, unknown>): RepoScanFinding => {
+                const title       = String(f.title       ?? "");
+                const desc        = String(f.description ?? "");
+                const fixText     = typeof f.fix === "string" ? f.fix : String(f.remediation ?? f.recommendation ?? "");
+                const vulnCode    = String(f.vulnerableCode ?? f.code ?? f.before ?? "");
+                const attackScen  = String(f.attackScenario ?? "");
+                const impact      = String(f.impact ?? "");
+                const file        = typeof f.file === "string" ? f.file : undefined;
+
+                const fullDesc = [title, desc].filter(Boolean).join(": ")
+                  || (attackScen ? `Attack: ${attackScen}` : "Security issue detected");
+
+                const suggestion = [fixText, attackScen ? `Attack vector: ${attackScen}` : "", impact ? `Impact: ${impact}` : ""]
+                  .filter(Boolean).join(" | ") || "Review and remediate this security finding.";
+
+                return {
+                  severity: (f.severity as RepoScanFinding["severity"]) ?? "medium",
+                  category: "security" as const,
+                  file,
+                  description: fullDesc,
+                  suggestion,
+                  fix: vulnCode && fixText ? { before: vulnCode, after: fixText, language: guessLang(file) } : undefined,
+                };
+              };
+
+              const rawSecFindings = safeObjectArray(
+                securityOutput?.["findings"] ?? securityOutput?.["issues"] ??
+                securityOutput?.["vulnerabilities"] ?? securityOutput?.["problems"] ?? []
+              );
+              const securityFindings: RepoScanFinding[] = rawSecFindings.slice(0, 14).map(normalizeSecFinding);
+
+              // ── Architecture concerns — the agent returns OBJECTS not strings ─
+              // Schema: { severity, category, file, title, description, evidence, recommendation, effort }
+              const archConcernObjects = safeObjectArray(archOutput?.["concerns"] ?? archOutput?.["issues"] ?? []);
+
+              // String representation for the architecture tab
+              const archConcernStrings: string[] = archConcernObjects.length > 0
+                ? archConcernObjects.map((c) => [c.title as string, c.description as string].filter(Boolean).join(": ") || String(c))
+                : safeStringArray(archOutput?.["concerns"] ?? archOutput?.["findings"] ?? []);
+
+              // Code quality findings — use arch concerns + debt agent output
+              const archQualityFindings: RepoScanFinding[] = archConcernObjects.slice(0, 8).map((c) => ({
+                severity: (c.severity as RepoScanFinding["severity"]) ?? "medium",
+                category: "architecture" as const,
+                file: typeof c.file === "string" ? c.file : undefined,
+                description: [c.title as string, c.description as string].filter(Boolean).join(": ")
+                  || "Architectural concern detected",
+                suggestion: String(c.recommendation ?? c.evidence ?? "Review and address this architectural concern."),
+              }));
+
+              // ── Performance issues ────────────────────────────────────────────
+              const rawPerfIssues = safeObjectArray(
+                perfOutput?.["issues"] ?? perfOutput?.["findings"] ?? perfOutput?.["results"] ?? []
+              );
+              const perfFindings: RepoScanFinding[] = rawPerfIssues.slice(0, 14).map((f) => ({
+                severity: (f.severity as RepoScanFinding["severity"]) ?? "medium",
+                category: "performance" as const,
+                file: typeof f.file === "string" ? f.file : undefined,
+                description: [f.title as string, f.description as string].filter(Boolean).join(": ")
+                  || String(f),
+                suggestion: String(f.recommendation ?? f.fix ?? f.suggestion ?? "Review this performance concern."),
+              }));
+
+              // ── Test gaps — may be strings or objects ─────────────────────────
+              const rawTestGaps = testOutput?.["gaps"] ?? testOutput?.["testGaps"] ?? testOutput?.["coverageGaps"] ?? [];
+              const testGaps: string[] = Array.isArray(rawTestGaps)
+                ? rawTestGaps.map((g) => typeof g === "string" ? g : String((g as Record<string,unknown>).description ?? g))
+                : [];
+
+              // ── Scores — clamp 0-100, use agent value or compute from findings ─
+              const securityScore = Math.min(100, Math.max(5,
+                safeNumber(securityOutput?.["securityScore"]) ??
+                safeNumber(securityOutput?.["score"])         ??
+                safeNumber(securityOutput?.["rating"])        ??
+                Math.max(5, 100 - securityFindings.filter((f) => f.severity === "critical").length * 20
+                              - securityFindings.filter((f) => f.severity === "high").length * 10
+                              - securityFindings.filter((f) => f.severity === "medium").length * 5)
+              ));
+
+              const archScore = Math.min(100, Math.max(5,
+                safeNumber(archOutput?.["architectureScore"]) ??
+                safeNumber(archOutput?.["score"])             ??
+                Math.max(5, 100 - archConcernObjects.filter((c) => c.severity === "high").length * 10
+                              - archConcernObjects.length * 4)
+              ));
+
+              // For dimensions where no agent ran, do NOT default to 100 — use the
+              // internal AI estimate instead (conservative mid-range).
+              const perfScore = hasRealPerf ? Math.min(100, Math.max(5,
+                safeNumber(perfOutput?.["performanceScore"]) ??
+                safeNumber(perfOutput?.["score"])            ??
+                Math.max(5, 100 - rawPerfIssues.length * 8)
+              )) : 70; // conservative default when no perf agent ran
+
+              const testScore = hasRealTest ? Math.min(100, Math.max(5,
+                safeNumber(testOutput?.["testabilityScore"]) ??
+                safeNumber(testOutput?.["score"])            ??
+                Math.max(5, 100 - testGaps.length * 8)
+              )) : 60; // conservative default — assume limited tests until proven otherwise
+
+              const depScore = hasRealDep ? Math.min(100, Math.max(5,
+                safeNumber(depOutput?.["dependencyScore"]) ??
+                safeNumber(depOutput?.["score"])           ?? 85
+              )) : 75; // conservative default when no dep agent ran
+
+              // ── healthScore: weights sum exactly to 1.0, adjust for missing agents
+              let wsec = 0.35, warch = 0.25, wperf = 0.18, wtest = 0.12, wdep = 0.10;
+              if (!hasRealPerf && !hasRealTest && !hasRealDep) {
+                // Quick scan: only sec + arch
+                wsec = 0.62; warch = 0.38; wperf = 0; wtest = 0; wdep = 0;
+              } else if (!hasRealDep) {
+                // Balanced: sec + arch + perf + test
+                wsec = 0.40; warch = 0.27; wperf = 0.18; wtest = 0.15; wdep = 0;
+              }
+              const healthScore = Math.min(100, Math.max(0, Math.round(
+                securityScore * wsec + archScore * warch + perfScore * wperf + testScore * wtest + depScore * wdep
+              )));
+
+              const grade = (s: number): "A" | "B" | "C" | "D" | "F" =>
+                s >= 90 ? "A" : s >= 75 ? "B" : s >= 60 ? "C" : s >= 40 ? "D" : "F";
+
+              // ── Code quality score: only use arch if no perf agent ran ────────
+              const codeQualityScore = Math.min(100, Math.max(0,
+                hasRealPerf ? Math.round(archScore * 0.55 + perfScore * 0.45) : archScore
+              ));
+
+              // ── Code quality issues: debt agent → arch concerns → empty ───────
+              const qualityIssues: RepoScanFinding[] = safeObjectArray(debtOutput?.["issues"] ?? []).length > 0
+                ? safeObjectArray(debtOutput?.["issues"] ?? []).slice(0, 10).map((f) => ({
+                    severity: (f.severity as RepoScanFinding["severity"]) ?? "medium",
+                    category: "quality" as const,
+                    file: typeof f.file === "string" ? f.file : undefined,
+                    description: String(f.description ?? f.title ?? ""),
+                    suggestion: String(f.suggestion ?? f.recommendation ?? f.fix ?? ""),
+                  }))
+                : archQualityFindings; // arch concerns serve as quality issues for quick scans
+
+              // ── Dependency count from package.json when no dep agent ran ─────
+              let depTotalCount = safeNumber(depOutput?.["totalCount"]) ?? 0;
+              if (depTotalCount === 0 && keyFileContents["package.json"]) {
+                try {
+                  const pkg = JSON.parse(keyFileContents["package.json"]) as Record<string, unknown>;
+                  const deps = Object.keys((pkg.dependencies ?? {}) as object).length;
+                  const devDeps = Object.keys((pkg.devDependencies ?? {}) as object).length;
+                  depTotalCount = deps + devDeps;
+                } catch { /* ignore parse errors */ }
+              }
+
+              // ── Recommendations: gather from all agents ────────────────────────
+              type Rec = { priority: "immediate" | "short-term" | "long-term"; title: string; description: string; effort: "low" | "medium" | "high" };
+              const allRecs: Rec[] = (orchestratorRes.parsedFinal?.recommendations as Rec[]) ?? [];
+              if (allRecs.length === 0) {
+                const gatherRecs = (out?: Record<string, unknown>) =>
+                  safeObjectArray(out?.["recommendations"] ?? out?.["actions"] ?? out?.["quickWins"] ?? [])
+                    .map((r) => ({
+                      priority: (r.priority as Rec["priority"]) ?? "short-term",
+                      title: String(r.title ?? r.name ?? ""),
+                      description: String(r.description ?? r.detail ?? ""),
+                      effort: (r.effort as Rec["effort"]) ?? "medium",
+                    }))
+                    .filter((r) => r.title);
+                allRecs.push(...gatherRecs(securityOutput), ...gatherRecs(archOutput),
+                  ...gatherRecs(perfOutput), ...gatherRecs(testOutput), ...gatherRecs(depOutput), ...gatherRecs(debtOutput));
+              }
+
               result = {
-                healthScore: Math.round((securityScore + archScore + perfScore + testScore) / 4),
-                summary: orchestratorRes.parsedFinal?.summary as string ?? orchestratorRes.finalOutput.slice(0, 500),
+                healthScore,
+                summary: (orchestratorRes.parsedFinal?.summary as string)
+                  ?? (securityOutput?.["summary"] as string)
+                  ?? (archOutput?.["summary"] as string)
+                  ?? (securityFindings.length === 0
+                    ? `${repo} scanned — no critical issues detected. Security score: ${securityScore}/100.`
+                    : `${repo} has ${securityFindings.filter((f) => f.severity === "critical" || f.severity === "high").length} high/critical and ${securityFindings.length} total security findings.`),
                 architecture: {
-                  summary: archOutput?.["summary"] as string ?? "Architecture analysis completed.",
-                  patterns: (archOutput?.["patterns"] as string[]) ?? [],
-                  strengths: (archOutput?.["positives"] as string[]) ?? [],
-                  concerns: (archOutput?.["concerns"] as string[]) ?? [],
+                  summary: String(archOutput?.["summary"] ?? "Architecture analysis completed."),
+                  patterns: safeStringArray(archOutput?.["detectedPatterns"] ?? archOutput?.["patterns"] ?? []),
+                  strengths: safeStringArray(archOutput?.["strengths"] ?? archOutput?.["positives"] ?? []),
+                  concerns: archConcernStrings,
                 },
                 security: {
                   score: securityScore,
-                  grade: securityScore >= 90 ? "A" : securityScore >= 75 ? "B" : securityScore >= 60 ? "C" : securityScore >= 40 ? "D" : "F",
+                  grade: grade(securityScore),
                   issues: securityFindings,
-                  positives: (securityOutput?.["positives"] as string[]) ?? [],
+                  positives: safeStringArray(securityOutput?.["positives"] ?? securityOutput?.["complianceNotes"] ?? []),
                 },
                 codeQuality: {
-                  score: Math.round((securityScore + archScore + perfScore + testScore) / 4), // Derived from overall
-                  grade: (securityScore + archScore + perfScore + testScore) / 4 >= 90 ? "A" : (securityScore + archScore + perfScore + testScore) / 4 >= 75 ? "B" : (securityScore + archScore + perfScore + testScore) / 4 >= 60 ? "C" : (securityScore + archScore + perfScore + testScore) / 4 >= 40 ? "D" : "F",
-                  issues: (debtOutput?.["issues"] as RepoScanFinding[]) ?? [],
-                  strengths: (debtOutput?.["positives"] as string[]) ?? [],
+                  score: codeQualityScore,
+                  grade: grade(codeQualityScore),
+                  issues: qualityIssues,
+                  strengths: safeStringArray(
+                    debtOutput?.["strengths"] ?? debtOutput?.["positives"] ??
+                    archOutput?.["quickWins"] ?? archOutput?.["strengths"] ?? []
+                  ),
                 },
                 performance: {
                   score: perfScore,
-                  grade: perfScore >= 90 ? "A" : perfScore >= 75 ? "B" : perfScore >= 60 ? "C" : perfScore >= 40 ? "D" : "F",
-                  issues: perfIssues,
-                  positives: (perfOutput?.["positives"] as string[]) ?? [],
+                  grade: grade(perfScore),
+                  issues: perfFindings,
+                  positives: safeStringArray(perfOutput?.["positives"] ?? perfOutput?.["strengths"] ?? []),
                 },
                 testability: {
                   score: testScore,
-                  grade: testScore >= 90 ? "A" : testScore >= 75 ? "B" : testScore >= 60 ? "C" : testScore >= 40 ? "D" : "F",
-                  hasTestFramework: (testOutput?.["hasTestFramework"] as boolean) ?? false,
-                  coverageEstimate: testOutput?.["coverageEstimate"] as string ?? "unknown",
+                  grade: grade(testScore),
+                  hasTestFramework: Boolean(testOutput?.["hasTestFramework"] ?? false),
+                  coverageEstimate: String(testOutput?.["coverageEstimate"] ?? (hasRealTest ? "unknown" : "Not analyzed")),
                   gaps: testGaps,
                 },
                 dependencies: {
-                  score: depOutput?.["dependencyScore"] as number ?? 85,
-                  totalCount: (depOutput?.["totalCount"] as number) ?? 0,
-                  risks: (depOutput?.["risks"] as string[]) ?? [],
-                  outdatedSignals: (depOutput?.["outdatedSignals"] as string[]) ?? [],
+                  score: depScore,
+                  totalCount: depTotalCount,
+                  risks: safeStringArray(depOutput?.["risks"] ?? depOutput?.["vulnerabilities"] ?? []),
+                  outdatedSignals: safeStringArray(depOutput?.["outdatedSignals"] ?? depOutput?.["outdated"] ?? []),
                 },
                 techDebt: {
-                  score: debtOutput?.["techDebtScore"] as number ?? 75,
-                  level: (debtOutput?.["debtLevel"] as "minimal" | "manageable" | "significant" | "severe") ?? "manageable",
-                  hotspots: (debtOutput?.["hotspots"] as string[]) ?? [],
-                  estimatedHours: debtOutput?.["estimatedHours"] as string ?? "Unknown",
+                  score: Math.min(100, safeNumber(debtOutput?.["techDebtScore"] ?? debtOutput?.["score"]) ?? 75),
+                  level: (debtOutput?.["debtLevel"] ?? debtOutput?.["level"]) as "minimal" | "manageable" | "significant" | "severe" ?? "manageable",
+                  hotspots: safeStringArray(debtOutput?.["hotspots"] ?? debtOutput?.["files"] ?? []),
+                  estimatedHours: String(debtOutput?.["estimatedHours"] ?? "Not analyzed"),
                 },
-                recommendations: (orchestratorRes.parsedFinal?.recommendations as Array<{
-                  priority: "immediate" | "short-term" | "long-term";
-                  title: string;
-                  description: string;
-                  effort: "low" | "medium" | "high";
-                }>) ?? [],
+                recommendations: allRecs,
                 metrics: {
-                  primaryLanguage: (meta as Record<string, unknown>).language as string ?? "unknown",
+                  primaryLanguage: String((meta as Record<string, unknown>).language ?? "Unknown"),
                   fileCount: fileTree.length,
                   estimatedLoc: `${realLoc}`,
-                  contributors: Array.isArray(contributors) ? contributors.length : 0,
+                  contributors: typeof contributors === "number" ? contributors : 0,
                   repoAge: (meta as Record<string, unknown>).created_at
-                    ? `${Math.round((Date.now() - Date.parse((meta as Record<string, unknown>).created_at as string)) / (1000 * 60 * 60 * 24))} days`
+                    ? `${Math.round((Date.now() - Date.parse(String((meta as Record<string, unknown>).created_at))) / (1000 * 60 * 60 * 24))} days`
                     : "unknown",
-                  openIssues: (meta as Record<string, unknown>).open_issues_count as number ?? 0,
-                  stars: (meta as Record<string, unknown>).stargazers_count as number ?? 0,
+                  openIssues: safeNumber((meta as Record<string, unknown>).open_issues_count) ?? 0,
+                  stars: safeNumber((meta as Record<string, unknown>).stargazers_count) ?? 0,
                 },
                 model: orchestratorRes.providers[0] ?? "multi-agent-v2",
                 isDemo: false,
               };
 
-              // Populate public cache so the next user gets this result instantly
-              savePublicScanCache(repo, scanMode, result as unknown as Record<string, unknown>, isPrivateRepo)
-                .catch(() => { /* non-blocking */ });
+              // Only cache results that look real: either there are actual issues found,
+              // or the health score is below 95 (a perfect 100 with zero findings
+              // usually means all agents failed silently — don't poison the cache).
+              const hasRealFindings = (result.security?.issues?.length ?? 0) > 0 ||
+                (result.codeQuality?.issues?.length ?? 0) > 0 ||
+                (result.performance?.issues?.length ?? 0) > 0;
+              if (!isPrivateRepo && (hasRealFindings || result.healthScore < 95)) {
+                savePublicScanCache(repo, scanMode, result as unknown as Record<string, unknown>, isPrivateRepo)
+                  .catch(() => { /* non-blocking */ });
+              }
 
               await Promise.all([
                 prisma.codeReviewScan.create({
@@ -876,14 +1183,6 @@ export async function POST(req: NextRequest) {
                   tokensUsed: orchestratorRes.totalTokens.input + orchestratorRes.totalTokens.output,
                 }),
               ]);
-            } else {
-              // Multi-agent returned null — fallback to internal AI
-              emit({ type: "progress", step: "AI agents unavailable — falling back to static analysis…", percent: 80 });
-              internalScanResult = scanRepoWithInternalAI({
-                repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-                realLoc, realLocByExt, totalCodeFiles, importGraph,
-              });
-              result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
             }
           } catch (aiErr) {
             // AI agents failed — fall back to internal AI as last resort
@@ -900,6 +1199,18 @@ export async function POST(req: NextRequest) {
         }
 
         emit({ type: "progress", step: "Compiling report…", percent: 95 });
+
+        // ── Safety check: ensure result is always defined ──────────────────
+        if (!result) {
+          emit({ type: "progress", step: "Fallback analysis…", percent: 90 });
+          if (!internalScanResult) {
+            internalScanResult = scanRepoWithInternalAI({
+              repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
+              realLoc, realLocByExt, totalCodeFiles, importGraph,
+            });
+          }
+          result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+        }
 
         // ── Save scan history (Pro+ only) ─────────────────────────────────
         if (caps.scanHistoryDays > 0) {
