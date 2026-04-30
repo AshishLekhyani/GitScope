@@ -303,6 +303,14 @@ export const SecurityPresets = {
     requireSignature: false,
   },
   
+  /** Authenticated API endpoints - session required */
+  authenticated: {
+    csrf: true,
+    rateLimit: "sensitive" as const,
+    requireSignature: false,
+    auditAuth: true,
+  },
+
   /** Authentication endpoints - strict rate limiting */
   auth: {
     csrf: true,
