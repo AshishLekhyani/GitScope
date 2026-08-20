@@ -225,6 +225,7 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
       if (!reader) throw new Error("No response stream");
       const decoder = new TextDecoder();
       let buffer = "";
+      let receivedDone = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -247,16 +248,25 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
             if (data.type === "progress" && data.step) {
               setProgress({ step: data.step, percent: data.percent ?? 0 });
             } else if (data.type === "done") {
+              receivedDone = true;
               if (data.error) {
                 setState("error");
                 setError(data.error);
               } else if (data.result) {
                 setState("done");
                 setResult(data.result);
+              } else {
+                setState("error");
+                setError("The review finished without returning a report. Please retry.");
               }
             }
           } catch { /* skip malformed line */ }
         }
+      }
+      // A stream that ends without a terminal event (provider timeout, function
+      // limit) would otherwise leave the UI spinning forever.
+      if (!receivedDone) {
+        throw new Error("Review connection closed before the report was ready. The provider likely timed out; please retry or use a smaller scan.");
       }
     } catch (err) {
       if ((err as Error).name === "AbortError") return;

@@ -338,14 +338,22 @@ function mergeJSON(primary: string, secondary: string, primaryModel: string, sec
 
 // ── Main exported function ─────────────────────────────────────────────────────
 
-// Catches 401/403 "invalid key" from a provider and returns null so the cascade
-// continues to the next provider. Re-throws everything else (rate limits, network).
-async function safeCall(fn: () => Promise<AICallResult | null>): Promise<AICallResult | null> {
+// Any provider failure (bad key, rate limit, timeout, network) returns null so the
+// cascade continues to the next provider. The provider name and error message are
+// logged, because a null result is otherwise indistinguishable from "no key set" —
+// which made a wrong BYOK key impossible to diagnose from the outside.
+async function safeCall(
+  provider: string,
+  fn: () => Promise<AICallResult | null>,
+): Promise<AICallResult | null> {
   try {
-    return await withTimeout(fn(), "AI provider");
+    return await withTimeout(fn(), `AI provider ${provider}`);
   } catch (err: unknown) {
     const status = (err as { status?: number })?.status;
-    console.warn(`[AI] Provider error ${status ?? "(network/timeout)"} — trying next provider`);
+    const message = err instanceof Error ? err.message : String(err);
+    console.warn(
+      `[AI] ${provider} failed (${status ?? "network/timeout"}): ${message} — trying next provider`,
+    );
     return null;
   }
 }
@@ -364,28 +372,28 @@ export async function callAI(opts: AICallOptions): Promise<AICallResult | null> 
       const hasServerKey = !!(process.env.ANTHROPIC_API_KEY || process.env.OPENAI_API_KEY || process.env.GEMINI_API_KEY);
       if (hasServerKey) {
         const freeOpts: AICallOptions = { ...opts, byokKeys: undefined };
-        const result = await safeCall(() => callAnthropic(freeOpts))
-          ?? await safeCall(() => callOpenAI(freeOpts))
-          ?? await safeCall(() => callGemini(freeOpts));
+        const result = await safeCall("anthropic", () => callAnthropic(freeOpts))
+          ?? await safeCall("openai", () => callOpenAI(freeOpts))
+          ?? await safeCall("gemini", () => callGemini(freeOpts));
         if (result) return result;
       }
       // No server key (or all server keys invalid) — try community free providers
-      return await safeCall(() => callGroq(opts))
-        ?? await safeCall(() => callCerebras(opts))
+      return await safeCall("groq", () => callGroq(opts))
+        ?? await safeCall("cerebras", () => callCerebras(opts))
         ?? null;
     }
 
     // ── All plans: BYOK first, then server keys, then free community providers ──
     // Priority: Anthropic → OpenAI → Gemini → Groq → DeepSeek → Mistral → Moonshot → Cerebras → Ollama
-    return await safeCall(() => callAnthropic(opts))
-      ?? await safeCall(() => callOpenAI(opts))
-      ?? await safeCall(() => callGemini(opts))
-      ?? await safeCall(() => callGroq(opts))
-      ?? await safeCall(() => callDeepSeek(opts))
-      ?? await safeCall(() => callMistral(opts))
-      ?? await safeCall(() => callMoonshot(opts))
-      ?? await safeCall(() => callCerebras(opts))
-      ?? await safeCall(() => callOllama(opts));
+    return await safeCall("anthropic", () => callAnthropic(opts))
+      ?? await safeCall("openai", () => callOpenAI(opts))
+      ?? await safeCall("gemini", () => callGemini(opts))
+      ?? await safeCall("groq", () => callGroq(opts))
+      ?? await safeCall("deepseek", () => callDeepSeek(opts))
+      ?? await safeCall("mistral", () => callMistral(opts))
+      ?? await safeCall("moonshot", () => callMoonshot(opts))
+      ?? await safeCall("cerebras", () => callCerebras(opts))
+      ?? await safeCall("ollama", () => callOllama(opts));
   } catch (err) {
     console.error("[AI] Unexpected cascade failure:", err);
     return null;
