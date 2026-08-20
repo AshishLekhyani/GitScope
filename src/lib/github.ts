@@ -1,4 +1,7 @@
 const GITHUB_API = "https://api.github.com";
+
+/** Marks an error as already-final so the retry loop re-throws instead of retrying. */
+const FINAL = Symbol("githubFetch.final");
 const MAX_RETRIES = 3;
 const RETRY_DELAY_MS = 1000;
 
@@ -84,9 +87,12 @@ export async function githubFetch<T>(
             : res.status === 403
               ? "GitHub API rate limit or forbidden. Add GITHUB_TOKEN for higher limits."
               : `GitHub API error: ${res.status}`
-        ) as Error & { status?: number; body?: string };
+        ) as Error & { status?: number; body?: string; [FINAL]?: true };
         err.status = res.status;
         err.body = text;
+        // Mark as non-retryable so the catch block below re-throws immediately
+        // instead of burning the full backoff schedule on a 404/403/422.
+        err[FINAL] = true;
         throw err;
       }
 
@@ -94,7 +100,10 @@ export async function githubFetch<T>(
       return { data, rateLimitRemaining };
     } catch (error) {
       lastError = error as Error;
-      
+
+      // HTTP errors we already decided not to retry (4xx) must not be retried here.
+      if ((error as { [FINAL]?: true })?.[FINAL]) throw error;
+
       // Network errors or timeouts - retry if we have attempts left
       if (attempt < retries) {
         const delay = RETRY_DELAY_MS * Math.pow(2, attempt);

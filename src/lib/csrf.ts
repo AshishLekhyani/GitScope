@@ -63,7 +63,12 @@ function timingSafeEqual(a: string, b: string): boolean {
 /**
  * CSRF cookie name
  */
-export const CSRF_COOKIE_NAME = "__Host-csrf";
+// The `__Host-` prefix requires the Secure attribute, which we can't set over
+// plain http://localhost — browsers would silently drop the cookie in dev and
+// double-submit validation could never succeed. Use the hardened name only
+// where the connection is actually https.
+export const CSRF_COOKIE_NAME =
+  process.env.NODE_ENV === "production" ? "__Host-csrf" : "csrf-token";
 
 /**
  * Check if request method requires CSRF validation
@@ -103,8 +108,11 @@ export async function validateCsrfForRequest(
   const referer = req.headers.get("referer");
   const host = req.headers.get("host");
   
-  // Allow if request is from same origin (Origin header matches host)
-  if (origin && host && new URL(origin).host === host) {
+  // Allow if request is from same origin (Origin header matches host).
+  // `Origin` can legitimately be the opaque string "null" (sandboxed iframes,
+  // some redirects), which is not a parseable URL — treat any parse failure as
+  // "not same origin" rather than letting it throw a 500 out of the middleware.
+  if (origin && host && sameOrigin(origin, host)) {
     return { valid: true };
   }
 
@@ -129,6 +137,18 @@ export async function validateCsrfForRequest(
 }
 
 /**
+ * Whether an Origin header refers to the same host as the request.
+ * Returns false for unparseable / opaque origins instead of throwing.
+ */
+function sameOrigin(origin: string, host: string): boolean {
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Parse cookie header into object
  */
 function parseCookies(cookieHeader: string | null): Record<string, string> {
@@ -148,9 +168,13 @@ function parseCookies(cookieHeader: string | null): Record<string, string> {
 }
 
 /**
- * Generate CSRF cookie settings
+ * Build the CSRF cookie for a token pair.
+ *
+ * Takes the `hashedToken` from `generateCsrfToken()` — it must be the hash of the
+ * plaintext token handed to the client, otherwise double-submit validation can
+ * never match.
  */
-export function getCsrfCookieOptions(maxAge = 3600): {
+export function getCsrfCookieOptions(hashedToken: string, maxAge = 3600): {
   name: string;
   value: string;
   options: {
@@ -161,8 +185,6 @@ export function getCsrfCookieOptions(maxAge = 3600): {
     path: string;
   };
 } {
-  const { hashedToken } = generateCsrfToken();
-  
   return {
     name: CSRF_COOKIE_NAME,
     value: hashedToken,

@@ -7,8 +7,10 @@ import { generateCsrfToken, getCsrfCookieOptions } from "@/lib/csrf";
  * NOTE: This is separate from /api/auth/csrf to avoid conflicts with NextAuth
  */
 export async function GET() {
-  const { token } = generateCsrfToken();
-  const cookie = getCsrfCookieOptions();
+  // The cookie must carry the hash of *this* token — generating a second pair
+  // for the cookie would hand the client a token that can never validate.
+  const { token, hashedToken } = generateCsrfToken();
+  const cookie = getCsrfCookieOptions(hashedToken);
 
   const response = NextResponse.json({ csrfToken: token });
 

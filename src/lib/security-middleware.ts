@@ -13,6 +13,7 @@ import { getToken } from "next-auth/jwt";
 import {
   validateCsrfForRequest,
   getCsrfCookieOptions,
+  generateCsrfToken,
 } from "./csrf";
 import {
   checkIpRateLimit,
@@ -129,19 +130,29 @@ export function withSecurity(
       }
     }
 
-    // 4. Call handler and attach rate limit headers to successful responses
-    const originalHandler = await handler(req);
-    if (Object.keys(rateLimitHeaders).length === 0) return originalHandler;
-
-    const response = new NextResponse(originalHandler.body, {
-      status: originalHandler.status,
-      statusText: originalHandler.statusText,
-      headers: originalHandler.headers,
-    });
-    Object.entries(rateLimitHeaders).forEach(([key, value]) => {
-      response.headers.set(key, value);
-    });
-    return response;
+    // 4. Call handler and attach rate limit headers to successful responses.
+    // Mutate the handler's own headers rather than rebuilding the Response:
+    // reconstructing drops nothing on a normal 200, but throws for null-body
+    // statuses (204/304) and needlessly re-wraps streamed bodies.
+    const response = await handler(req);
+    try {
+      for (const [key, value] of Object.entries(rateLimitHeaders)) {
+        response.headers.set(key, value);
+      }
+      return response;
+    } catch {
+      // Guarded headers (e.g. a Response passed straight through from fetch)
+      // can't be mutated — fall back to a copy, preserving the streamed body.
+      const copy = new NextResponse(response.body, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+      for (const [key, value] of Object.entries(rateLimitHeaders)) {
+        copy.headers.set(key, value);
+      }
+      return copy;
+    }
   };
 }
 
@@ -209,12 +220,15 @@ export async function securityMiddleware(
 }
 
 /**
- * Helper to set CSRF cookie on responses
+ * Helper to set a CSRF cookie on a response.
+ * Returns the plaintext token, which must be sent to the client — the cookie
+ * only holds its hash, and validation compares the two.
  */
-export function setCsrfCookie(response: NextResponse): NextResponse {
-  const cookie = getCsrfCookieOptions();
+export function setCsrfCookie(response: NextResponse): string {
+  const { token, hashedToken } = generateCsrfToken();
+  const cookie = getCsrfCookieOptions(hashedToken);
   response.cookies.set(cookie.name, cookie.value, cookie.options);
-  return response;
+  return token;
 }
 
 /**
@@ -222,8 +236,11 @@ export function setCsrfCookie(response: NextResponse): NextResponse {
  * Call this to get a fresh CSRF token
  */
 export async function handleCsrfToken(): Promise<NextResponse> {
-  const response = NextResponse.json({ success: true });
-  return setCsrfCookie(response);
+  const { token, hashedToken } = generateCsrfToken();
+  const cookie = getCsrfCookieOptions(hashedToken);
+  const response = NextResponse.json({ success: true, csrfToken: token });
+  response.cookies.set(cookie.name, cookie.value, cookie.options);
+  return response;
 }
 
 /**
@@ -319,9 +336,21 @@ export const SecurityPresets = {
     auditAuth: true,
   },
   
-  /** Sensitive operations - all protections */
+  /** Sensitive operations - strict rate limit + CSRF + audit.
+   *  NOTE: deliberately does NOT set `requireSignature`. Request signing uses a
+   *  server-only secret, so a browser can never produce a valid signature — any
+   *  browser-facing route using it would 401 unconditionally. Use `signed` for
+   *  service-to-service callers that can sign. */
   sensitive: {
     csrf: true,
+    rateLimit: "sensitive" as const,
+    requireSignature: false,
+    auditAuth: true,
+  },
+
+  /** Service-to-service calls — HMAC signature required (see lib/request-signing). */
+  signed: {
+    csrf: false,
     rateLimit: "sensitive" as const,
     requireSignature: true,
     auditAuth: true,
