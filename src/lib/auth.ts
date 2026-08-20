@@ -319,9 +319,16 @@ export const authOptions: NextAuthOptions = {
         token.provider = account.provider;
       }
 
-      // handle manual updates if needed later
-      if (trigger === "update" && session) {
-        token = { ...token, ...session };
+      // Manual `useSession().update(data)` calls.
+      // SECURITY: `session` here is arbitrary caller-supplied data — spreading it
+      // into the token would let any signed-in user overwrite `token.id` / `token.email`
+      // (and therefore `session.user.id`, which every authorization check reads) and
+      // impersonate another account. Only display fields are allowed through.
+      if (trigger === "update" && session && typeof session === "object") {
+        const patch = session as { name?: unknown; picture?: unknown; image?: unknown };
+        if (typeof patch.name === "string") token.name = patch.name;
+        const nextPicture = patch.picture ?? patch.image;
+        if (typeof nextPicture === "string") token.picture = nextPicture;
       }
       return token;
     },

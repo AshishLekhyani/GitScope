@@ -102,6 +102,7 @@ export function ChatWithRepo({ selectedRepo, isPro = false }: ChatWithRepoProps)
       const decoder = new TextDecoder();
       let buffer = "";
       let assistantText = "";
+      let receivedDone = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -122,6 +123,7 @@ export function ChatWithRepo({ selectedRepo, isPro = false }: ChatWithRepoProps)
               setStreamBuffer(assistantText);
             }
             if (data.type === "done") {
+              receivedDone = true;
               if (data.error) {
                 setError(data.error);
               } else {
@@ -135,6 +137,20 @@ export function ChatWithRepo({ selectedRepo, isPro = false }: ChatWithRepoProps)
               setStreamBuffer("");
             }
           } catch { /* skip bad chunks */ }
+        }
+      }
+      // If the stream ends without a terminal event, keep whatever arrived
+      // rather than silently discarding a reply the user just watched stream in.
+      if (!receivedDone) {
+        if (assistantText) {
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: assistantText, timestamp: Date.now() },
+          ]);
+          setStreamBuffer("");
+          setError("The reply was cut off before it finished.");
+        } else {
+          throw new Error("Chat connection closed before a reply arrived. Please retry.");
         }
       }
     } catch (err) {

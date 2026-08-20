@@ -13,6 +13,8 @@ export interface IpRateLimitResult {
   allowed: boolean;
   remaining: number;
   resetAt: number;
+  /** The configured ceiling for the window, reported as X-RateLimit-Limit. */
+  limit?: number;
   blocked?: boolean;
   blockDuration?: number;
 }
@@ -29,6 +31,15 @@ const ipReputation = new Map<string, IpReputation>();
 // Block duration increases with repeat violations (exponential backoff)
 const BLOCK_DURATION_BASE = 60_000; // 1 minute
 const MAX_BLOCK_DURATION = 60 * 60 * 1000; // 1 hour
+
+/** Violations older than this stop counting toward the exponential backoff. */
+const VIOLATION_DECAY_MS = 60 * 60 * 1000; // 1 hour
+
+/** Sweep stale reputation entries once the map grows past this size. */
+const REPUTATION_SWEEP_THRESHOLD = 5000;
+
+/** Sentinel used when the client IP can't be determined. */
+const UNKNOWN_IP = "unknown";
 
 // List of trusted proxy IPs (configure for your deployment environment)
 // In production, this should be populated with your actual load balancer/proxy IPs
@@ -71,7 +82,7 @@ export function getClientIp(req: Request): string {
   
   // In development or when no proxy headers available, return unknown
   // The rate limiter will still work but won't be IP-specific
-  return "unknown";
+  return UNKNOWN_IP;
 }
 
 /**
@@ -85,15 +96,30 @@ export async function checkIpRateLimit(
   const ip = getClientIp(req);
   const key = `${prefix}:${ip}`;
 
+  const now = Date.now();
+
+  // Reputation is keyed by IP. When we can't identify the client every request
+  // collapses onto the same key, so a single offender would block everyone —
+  // skip reputation tracking entirely in that case and rely on the plain limit.
+  // Reputation is keyed by IP. When we can't identify the client every request
+  // collapses onto the same key, so a single offender would block everyone —
+  // skip reputation tracking entirely in that case and rely on the plain limit.
+  if (ip === UNKNOWN_IP) {
+    return { ...(await checkRateLimit(key, options)), limit: options.limit };
+  }
+
+  // Amortised cleanup so the reputation map can't grow without bound.
+  if (ipReputation.size > REPUTATION_SWEEP_THRESHOLD) cleanupIpReputation();
+
   // Check if IP is currently blocked due to violations
   const reputation = ipReputation.get(ip);
-  const now = Date.now();
 
   if (reputation && reputation.blockedUntil > now) {
     return {
       allowed: false,
       remaining: 0,
       resetAt: reputation.blockedUntil,
+      limit: options.limit,
       blocked: true,
       blockDuration: reputation.blockedUntil - now,
     };
@@ -107,7 +133,7 @@ export async function checkIpRateLimit(
     recordViolation(ip);
   }
 
-  return result;
+  return { ...result, limit: options.limit };
 }
 
 /**
@@ -116,8 +142,12 @@ export async function checkIpRateLimit(
 function recordViolation(ip: string): void {
   const now = Date.now();
   const existing = ipReputation.get(ip);
-  
-  const violations = (existing?.violations || 0) + 1;
+
+  // Let the violation count decay, otherwise one bad hour permanently pins an
+  // IP at the maximum block duration for the life of the process.
+  const priorViolations =
+    existing && now - existing.lastViolation < VIOLATION_DECAY_MS ? existing.violations : 0;
+  const violations = priorViolations + 1;
   
   // Exponential backoff for block duration
   const blockDuration = Math.min(
@@ -163,7 +193,7 @@ export const RateLimitPresets = {
  */
 export function getRateLimitHeaders(result: IpRateLimitResult): Record<string, string> {
   const headers: Record<string, string> = {
-    "X-RateLimit-Limit": String(result.remaining + (result.allowed ? 1 : 0)),
+    "X-RateLimit-Limit": String(result.limit ?? result.remaining + (result.allowed ? 1 : 0)),
     "X-RateLimit-Remaining": String(result.remaining),
     "X-RateLimit-Reset": String(Math.ceil(result.resetAt / 1000)),
   };
@@ -182,9 +212,9 @@ export function getRateLimitHeaders(result: IpRateLimitResult): Record<string, s
 export function cleanupIpReputation(): void {
   const now = Date.now();
   const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-  
+
   for (const [ip, reputation] of ipReputation.entries()) {
-    if (reputation.lastViolation < now - maxAge) {
+    if (reputation.lastViolation < now - maxAge && reputation.blockedUntil < now) {
       ipReputation.delete(ip);
     }
   }

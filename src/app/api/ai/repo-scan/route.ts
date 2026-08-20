@@ -1262,7 +1262,7 @@ export async function POST(req: NextRequest) {
               qualityScore:  result.codeQuality?.score ?? 0,
               criticalCount: critCount,
               prevHealthScore: prevScan?.healthScore ?? null,
-            }).catch(() => { /* non-blocking */ });
+            }, session).catch(() => { /* non-blocking */ });
 
             // ── Check scheduled scan alert threshold ──────────────────────
             if (caps.scheduledScansAllowed) {

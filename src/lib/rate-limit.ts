@@ -16,6 +16,9 @@ interface RateLimitEntry {
 
 const store = new Map<string, RateLimitEntry>();
 
+/** Sweep expired entries once the fallback store grows past this size. */
+const MEMORY_STORE_SWEEP_THRESHOLD = 1000;
+
 export interface RateLimitOptions {
   /** Max requests allowed in the window */
   limit: number;
@@ -60,11 +63,23 @@ function getUpstashLimiter(limit: number, windowMs: number): Ratelimit | null {
 
 // ── In-memory fallback ────────────────────────────────────────────────────────
 
+/** Drop expired entries so the fallback store can't grow without bound. */
+function sweepExpired(now: number): void {
+  for (const [key, entry] of store) {
+    if (now > entry.resetAt) store.delete(key);
+  }
+}
+
 function checkRateLimitMemory(
   key: string,
   { limit, windowMs }: RateLimitOptions
 ): { allowed: boolean; remaining: number; resetAt: number } {
   const now = Date.now();
+
+  // Amortised cleanup: without this the Map retains one entry per distinct key
+  // forever in a long-lived process.
+  if (store.size > MEMORY_STORE_SWEEP_THRESHOLD) sweepExpired(now);
+
   const entry = store.get(key);
 
   if (!entry || now > entry.resetAt) {

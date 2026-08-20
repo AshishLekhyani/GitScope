@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 
-const CURRENT_VERSION = "1.0.0.0";
+const CURRENT_VERSION = "1.0.5.0";
 const STORAGE_KEY = "gitscope_last_seen_version";
 
 interface VersionInfo {

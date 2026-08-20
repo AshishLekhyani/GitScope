@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { githubFetch } from "@/lib/github";
 import { getGitHubTokenWithSource } from "@/lib/github-auth";
 import { withRouteSecurity, SecurityPresets } from "@/lib/security-middleware";
+import { resolveProxyPath } from "@/lib/github-proxy-path";
 
 /**
  * Generic GitHub API proxy.
@@ -16,10 +17,8 @@ async function getHandler(req: NextRequest) {
 
   // Keep this public proxy narrow: repo endpoints only. Other GitHub data has
   // dedicated API routes with their own auth/rate-limit behavior.
-  const apiPath = path.startsWith("/") ? path : `/${path}`;
-  // Strip query string for path validation
-  const pathWithoutQuery = apiPath.split("?")[0];
-  if (path.startsWith("http") || path.includes("..") || !/^\/repos\/[\w.-]+\/[\w.-]+/.test(pathWithoutQuery)) {
+  const apiPath = resolveProxyPath(path);
+  if (!apiPath) {
     return NextResponse.json({ error: "Invalid path" }, { status: 400 });
   }
 

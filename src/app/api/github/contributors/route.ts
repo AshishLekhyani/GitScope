@@ -52,7 +52,7 @@ async function handler(req: NextRequest) {
     }>;
 
     // If we got 100, there might be more - fetch additional contributors via paginated endpoint
-    let allContributors = [...statsData];
+    const allContributors = [...statsData];
     if (statsData.length >= 100) {
       const extraContributors = await fetchAllContributors(repo, headers, statsData);
       // Merge: statsData has detailed weeks, extraContributors has commit counts only
