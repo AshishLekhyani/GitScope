@@ -24,11 +24,19 @@ GitScope implements comprehensive security measures:
 - Double Submit Cookie pattern
 - HMAC-SHA256 token validation
 - Constant-time comparison to prevent timing attacks
-- `__Host-` prefix cookies (secure, httpOnly, sameSite=strict)
+- `__Host-` prefix cookies in production (secure, httpOnly, sameSite=strict).
+  The `__Host-` prefix requires the `Secure` attribute, which cannot be set over
+  plain `http://localhost`, so local development uses an unprefixed cookie name
+  with the same httpOnly/sameSite settings.
+- Same-origin requests are accepted on the `Origin`/`Host` match; cross-origin
+  state-changing requests must present a paired token
 
 ### Rate Limiting
 - IP-based rate limiting with reputation tracking
-- Exponential backoff for repeat violators
+- Exponential backoff for repeat violators, with violation counts decaying after
+  an hour of good behaviour
+- Reputation tracking is skipped when the client IP cannot be attributed, so one
+  offender behind an unidentifiable proxy cannot block other clients
 - Different presets: auth (5/min), sensitive (10/min), standard (60/min)
 - Rate limit headers exposed to clients
 

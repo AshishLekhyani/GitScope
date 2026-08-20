@@ -45,8 +45,25 @@ const KIND_META: Record<ChangeKind, { label: string; dot: string; badge: string 
 
 const RELEASES: Release[] = [
   {
-    version: "1.0.4.0",
+    version: "1.0.5.0",
     label: "Latest",
+    date: "August 2026",
+    title: "Security & Reliability Patch",
+    changes: [
+      { kind: "fix", text: "Security: fixed a session-update flaw in the NextAuth JWT callback that let a signed-in user overwrite their own session identity fields, including the account id every permission check reads. Only display name and avatar can be changed through that path now — the fix applies automatically, no action needed" },
+      { kind: "fix", text: "BYOK key save/remove and personal API key create/revoke now work — all four endpoints required a request signature no browser could produce and were returning 401 unconditionally" },
+      { kind: "fix", text: "CSRF tokens issued by /api/csrf now match their cookie; the endpoint was generating one token pair for the response and a second, unrelated pair for the cookie, so validation could never succeed" },
+      { kind: "fix", text: "AI scans, PR reviews, and commit analysis no longer hang on a spinner when a provider times out mid-stream — the dropped connection is surfaced as a retryable error" },
+      { kind: "fix", text: "Chat with Repo no longer discards a partially streamed reply when the connection drops; whatever arrived is kept in the transcript" },
+      { kind: "fix", text: "GitHub 404 and 403 responses now surface immediately instead of retrying through a 7-second backoff, making repo pages far quicker to report a missing or private repository" },
+      { kind: "fix", text: "Rate limiter no longer lets one unidentifiable client block every other unidentifiable client, and violation counts decay after an hour of good behaviour instead of accumulating permanently" },
+      { kind: "fix", text: "Hardened the GitHub proxy path allowlist against percent-encoded directory traversal (%2e%2e), which the URL parser collapses the same way as literal dot segments" },
+      { kind: "fix", text: "Automation rules that create a GitHub issue now authenticate the request — previously they were sent without credentials and always rejected" },
+      { kind: "improvement", text: "AI provider failures now log which provider failed and why, so an incorrect BYOK key is distinguishable from no key being configured" },
+    ],
+  },
+  {
+    version: "1.0.4.0",
     date: "April 2026",
     title: "Code Ownership · CI/CD · Test Coverage · PR Queue · Team Workspaces · Private Repos",
     changes: [
