@@ -26,7 +26,7 @@ export const authOptions: NextAuthOptions = {
     GitHubProvider({
       clientId: process.env.GITHUB_ID,
       clientSecret: process.env.GITHUB_SECRET,
-      issuer: "https://github.com",
+      issuer: "https://github.com/login/oauth",
       // SECURITY: allowDangerousEmailAccountLinking enables automatic account linking when OAuth
       // provider email matches existing user email. We mitigate risks by:
       // 1. Checking email is verified by the OAuth provider
