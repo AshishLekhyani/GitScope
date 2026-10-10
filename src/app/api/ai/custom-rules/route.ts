@@ -13,6 +13,16 @@ function isValidRegex(pattern: string): boolean {
   try { new RegExp(pattern); return true; } catch { return false; }
 }
 
+const NESTED_QUANTIFIER = /\((?:[^()\\]|\\.)*[+*](?:[^()\\]|\\.)*\)\s*(?:[+*]|\{\d+,\d*\})/;
+
+function patternProblem(pattern: unknown): string | null {
+  if (typeof pattern !== "string" || !pattern.trim()) return "pattern is required";
+  if (pattern.length > 500) return "pattern must be 500 characters or fewer";
+  if (!isValidRegex(pattern)) return "pattern is not a valid regular expression";
+  if (NESTED_QUANTIFIER.test(pattern)) return "pattern contains a nested quantifier such as (a+)+, which can cause catastrophic backtracking — simplify it";
+  return null;
+}
+
 // GET /api/ai/custom-rules
 export async function GET(req: NextRequest) {
   const session = await getServerSession(authOptions);
@@ -81,9 +91,9 @@ export async function POST(req: NextRequest) {
   const { name, description, pattern, fileGlob, severity = "medium", category = "quality", suggestion, enabled = true } = body;
 
   if (!name?.trim()) return NextResponse.json({ error: "name is required" }, { status: 400 });
-  if (!pattern?.trim()) return NextResponse.json({ error: "pattern is required" }, { status: 400 });
+  const problem = patternProblem(pattern);
+  if (problem || !pattern) return NextResponse.json({ error: problem ?? "pattern is required" }, { status: 400 });
   if (!suggestion?.trim()) return NextResponse.json({ error: "suggestion is required" }, { status: 400 });
-  if (!isValidRegex(pattern)) return NextResponse.json({ error: "pattern is not a valid regular expression" }, { status: 400 });
   if (!VALID_SEVERITIES.includes(severity as typeof VALID_SEVERITIES[number])) {
     return NextResponse.json({ error: "severity must be critical | high | medium | low" }, { status: 400 });
   }
@@ -134,8 +144,9 @@ export async function PATCH(req: NextRequest) {
   try { body = await req.json(); }
   catch { return NextResponse.json({ error: "Invalid JSON" }, { status: 400 }); }
 
-  if (body.pattern && !isValidRegex(body.pattern as string)) {
-    return NextResponse.json({ error: "pattern is not a valid regular expression" }, { status: 400 });
+  if (body.pattern !== undefined) {
+    const problem = patternProblem(body.pattern);
+    if (problem) return NextResponse.json({ error: problem }, { status: 400 });
   }
 
   const rule = await prisma.customScanRule.update({

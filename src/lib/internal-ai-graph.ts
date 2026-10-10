@@ -138,6 +138,7 @@ export interface ImportBinding {
   typeOnly: boolean;
   offset: number;
   reexport: boolean;
+  dynamic?: boolean;
 }
 
 function parseClause(clause: string, typeOnly: boolean): Array<{ local: string; imported: string; typeOnly: boolean }> {
@@ -222,7 +223,7 @@ function parseImports(ctx: FileCtx, files: Set<string>, aliases: AliasMap): Impo
         out.push({ local: target, imported: "*", typeOnly: false, reexport: false, ...base });
       }
     } else if (m[10]) {
-      out.push({ local: "", imported: "*", typeOnly: true, reexport: false, ...base });
+      out.push({ local: "", imported: "*", typeOnly: true, reexport: false, dynamic: true, ...base });
     }
   }
   return out;
@@ -410,6 +411,15 @@ export interface GraphInsights {
   cycles: string[][];
   crossFileFlows: number;
   unresolvedImports: number;
+  testReach: {
+    testFiles: number;
+    sourceModules: number;
+    reachable: number;
+    direct: number;
+    untestedCritical: Array<{ file: string; reason: string }>;
+  };
+  complexity: ComplexityHotspot[];
+  duplicates: { blocks: number; lines: number; top: DuplicateBlock[] };
 }
 
 export interface GraphResult {
@@ -473,21 +483,23 @@ export function analyzeProjectGraph(input: GraphInput): GraphResult {
     });
   }
 
-  const report = (m: ModuleNode, offset: number, f: Omit<EngineFinding, "file" | "line" | "snippet" | "occurrences">): void => {
-    if (targets && !targets.has(m.file)) return;
-    const aline = m.ctx.lines.lineOf(offset);
-    const line = reportableLine(m.ctx, aline, aline);
-    if (line === null || isSuppressed(m.ctx.suppress, line, f.ruleId, f.category)) return;
-    const raw = m.ctx.lines.lineText(aline).trim();
+  const reportCtx = (ctx: FileCtx, offset: number, f: Omit<EngineFinding, "file" | "line" | "snippet" | "occurrences">): void => {
+    if (targets && !targets.has(ctx.filename)) return;
+    const aline = ctx.lines.lineOf(offset);
+    const line = reportableLine(ctx, aline, aline);
+    if (line === null || isSuppressed(ctx.suppress, line, f.ruleId, f.category)) return;
+    const raw = ctx.lines.lineText(aline).trim();
     findings.push({
       ...f,
       description: redactSecrets(f.description),
-      file: m.file,
+      file: ctx.filename,
       line,
       snippet: redactSecrets(raw.length > 160 ? `${raw.slice(0, 157)}…` : raw),
       occurrences: 1,
     });
   };
+  const report = (m: ModuleNode, offset: number, f: Omit<EngineFinding, "file" | "line" | "snippet" | "occurrences">): void =>
+    reportCtx(m.ctx, offset, f);
 
   for (const m of modules.values()) {
     if (m.ctx.role !== "source" && m.ctx.role !== "fixture") continue;
@@ -610,7 +622,7 @@ export function analyzeProjectGraph(input: GraphInput): GraphResult {
         }
         for (const [k, flow] of call.callee.flows) {
           const arg = call.args[k];
-          if (!arg) continue;
+          if (!arg || flow.chain.length >= 4) continue;
           const hit = argHit(arg, flow, caller.state);
           const idx = hit ? /^param:(\d+)$/.exec(hit.via) : null;
           if (!idx) continue;
@@ -881,10 +893,99 @@ export function analyzeProjectGraph(input: GraphInput): GraphResult {
     }
   }
 
-  const tested = (file: string) => {
-    const stem = (file.split("/").pop() ?? file).replace(/\.[^.]+$/, "");
-    return [...fileSet].some((f) => new RegExp(`(?:^|/)${escapeRe(stem)}\\.(?:test|spec)\\.[jt]sx?$|(?:^|/)test_${escapeRe(stem)}\\.py$`).test(f));
+  const runtimeEdges = new Map<string, string[]>();
+  for (const m of modules.values()) {
+    runtimeEdges.set(m.file, [...new Set(
+      m.imports
+        .filter((b) => b.resolved && b.resolved !== m.file && modules.has(b.resolved) && (!b.typeOnly || b.dynamic))
+        .map((b) => b.resolved as string),
+    )]);
+  }
+  const testModules = [...modules.values()].filter((m) => m.ctx.role === "test").map((m) => m.file);
+  const directlyTested = new Set<string>();
+  const reachable = new Set<string>();
+  const reachQueue: string[] = [];
+  for (const t of testModules) {
+    for (const to of runtimeEdges.get(t) ?? []) {
+      directlyTested.add(to);
+      if (!reachable.has(to)) { reachable.add(to); reachQueue.push(to); }
+    }
+  }
+  while (reachQueue.length > 0) {
+    const cur = reachQueue.pop()!;
+    for (const to of runtimeEdges.get(cur) ?? []) {
+      if (!reachable.has(to)) { reachable.add(to); reachQueue.push(to); }
+    }
+  }
+  const testStems = new Set<string>();
+  for (const f of fileSet) {
+    const m = /(?:^|\/)([^/]+?)\.(?:test|spec)\.[cm]?[jt]sx?$/.exec(f) ?? /(?:^|\/)test_([^/]+)\.py$/.exec(f);
+    if (m) testStems.add(m[1]);
+  }
+  const tested = (file: string) =>
+    directlyTested.has(file) || testStems.has((file.split("/").pop() ?? file).replace(/\.[^.]+$/, ""));
+  const countable = [...modules.values()].filter((m) =>
+    m.ctx.role === "source" && !/\.d\.ts$|(?:^|\/)types?\/|\.config\.[cm]?[jt]s$|(?:^|\/)(?:layout|loading|error|not-found|template|page)\.[jt]sx?$/.test(m.file));
+  const SENSITIVE_PATH = /(?:^|\/|-|_)(?:auth|session|payment|billing|stripe|checkout|webhooks?|security|crypto|permissions?|rbac|acl|password|tokens?|byok|encrypt\w*)(?:\/|\.|-|_)/i;
+  const untestedCritical = countable
+    .filter((m) => !tested(m.file) && ((fanIn.get(m.file)?.size ?? 0) >= 8 || SENSITIVE_PATH.test(m.file)))
+    .map((m) => ({ file: m.file, fanIn: fanIn.get(m.file)?.size ?? 0 }))
+    .sort((a, b) => b.fanIn - a.fanIn)
+    .slice(0, 8)
+    .map(({ file, fanIn: n }) => ({
+      file,
+      reason: n >= 8 ? `imported by ${n} modules` : "security-sensitive code path",
+    }));
+  const testReach = {
+    testFiles: testModules.length,
+    sourceModules: countable.length,
+    reachable: countable.filter((m) => reachable.has(m.file)).length,
+    direct: countable.filter((m) => tested(m.file)).length,
+    untestedCritical,
   };
+
+  const complexity: ComplexityHotspot[] = [];
+  for (const m of modules.values()) {
+    if (m.ctx.role !== "source") continue;
+    const spots = functionDefs(m.ctx).map((d) => ({ def: d, spot: complexityOf(m.ctx, d) }))
+      .filter((x) => x.spot.complexity >= 25 || (x.spot.lines >= 250 && x.spot.complexity >= 10))
+      .sort((a, b) => b.spot.complexity - a.spot.complexity);
+    const taken: Array<[number, number]> = [];
+    for (const { def, spot } of spots) {
+      if (taken.some(([s, e]) => def.offset >= s && def.offset < e)) continue;
+      taken.push([def.offset, def.bodyEnd]);
+      complexity.push(spot);
+      if (taken.length > 1) continue;
+      reportCtx(m.ctx, def.offset, {
+        ruleId: "complex-function",
+        category: "quality",
+        severity: spot.complexity >= 60 || spot.lines >= 400 ? "medium" : "low",
+        confidence: 0.6,
+        cls: "complexity",
+        description: `\`${spot.name}\` in ${m.ctx.short} has a cyclomatic complexity of ${spot.complexity} across ${spot.lines} lines (aim for under ~15). Functions this branchy are hard to review, hard to test exhaustively and attract regressions.`,
+        suggestion: "Split it: extract each responsibility into a named helper, hook or sub-component, replace long if/else or switch chains with lookup tables or early returns, and put tests around the extracted pieces.",
+      });
+    }
+  }
+  complexity.sort((a, b) => b.complexity - a.complexity);
+
+  const duplicateBlocks = findDuplicates(input.contexts);
+  const byFile = new Map(input.contexts.map((c) => [c.filename, c]));
+  for (const block of duplicateBlocks.slice(0, 12)) {
+    const [here, there] = targets && !targets.has(block.b.file) && targets.has(block.a.file) ? [block.a, block.b] : [block.b, block.a];
+    const ctx = byFile.get(here.file);
+    if (!ctx) continue;
+    const sameFile = here.file === there.file;
+    reportCtx(ctx, ctx.lines.offsetOf(here.line), {
+      ruleId: "duplicate-code",
+      category: "quality",
+      severity: block.lines >= 40 ? "medium" : "low",
+      confidence: 0.65,
+      cls: "duplicate",
+      description: `Lines ${here.line}–${here.endLine} of ${ctx.short} duplicate ${sameFile ? "lines" : shortPath(there.file) + " lines"} ${there.line}–${there.endLine}${sameFile ? " of the same file" : ""} (${block.lines} identical statements). Copy-pasted logic drifts apart — a fix applied to one copy is easily missed in the other.`,
+      suggestion: "Extract the shared logic into one function, hook or component and call it from both places.",
+    });
+  }
   const hubs = [...fanIn.entries()]
     .filter(([file]) => modules.has(file) && !/\.d\.ts$|(?:^|\/)types?\//.test(file))
     .map(([file, set]) => ({ file, fanIn: set.size, tested: tested(file) }))
@@ -910,6 +1011,13 @@ export function analyzeProjectGraph(input: GraphInput): GraphResult {
       cycles,
       crossFileFlows,
       unresolvedImports,
+      testReach,
+      complexity: complexity.slice(0, 10),
+      duplicates: {
+        blocks: duplicateBlocks.length,
+        lines: duplicateBlocks.reduce((n, b) => n + b.lines, 0),
+        top: duplicateBlocks.slice(0, 10),
+      },
     },
   };
 }
@@ -992,4 +1100,125 @@ function findCycles(edges: Map<string, Array<{ to: string }>>): string[][] {
     }
     return [start];
   }).filter((c) => c.length > 1);
+}
+
+const DECISION_JS = /\b(?:if|for|while|case|catch)\b|&&|\|\||\?\?(?!=)|\?(?![.?:=])/g;
+const DECISION_PY = /\b(?:if|elif|for|while|except|and|or|case)\b/g;
+
+export interface ComplexityHotspot {
+  file: string;
+  name: string;
+  line: number;
+  complexity: number;
+  lines: number;
+}
+
+function complexityOf(ctx: FileCtx, def: FnDef): ComplexityHotspot {
+  const body = ctx.code.slice(def.bodyStart, def.bodyEnd);
+  const decisions = body.match(ctx.lang === "py" ? DECISION_PY : DECISION_JS)?.length ?? 0;
+  const line = ctx.lines.lineOf(def.offset);
+  return { file: ctx.filename, name: def.name, line, complexity: 1 + decisions, lines: ctx.lines.lineOf(def.bodyEnd) - line + 1 };
+}
+
+const DUP_WINDOW = 8;
+const DUP_MIN_LINES = 10;
+const DUP_LANGS = new Set<FileCtx["lang"]>(["js", "py", "go", "java", "cs", "rs", "rb", "php"]);
+const DUP_SKIP_LINE = /^(?:import\b|from\s+\S+\s+import\b|export\s*\{|export\s+\*|package\s|using\s|require\s*\(|#include)/;
+
+function hashString(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+interface SigFile {
+  ctx: FileCtx;
+  lines: number[];
+  norm: string[];
+  hashes: number[];
+  chars: number[];
+}
+
+export interface DuplicateBlock {
+  a: { file: string; line: number; endLine: number };
+  b: { file: string; line: number; endLine: number };
+  lines: number;
+}
+
+function significantLines(ctx: FileCtx): SigFile {
+  const out: SigFile = { ctx, lines: [], norm: [], hashes: [], chars: [] };
+  const raw = ctx.text.split("\n");
+  for (let i = 0; i < raw.length; i++) {
+    const t = raw[i].trim().replace(/\s+/g, " ");
+    if (t.length < 6 || DUP_SKIP_LINE.test(t)) continue;
+    let word = 0;
+    for (let k = 0; k < t.length && word < 3; k++) {
+      const c = t.charCodeAt(k);
+      if ((c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122)) word++;
+    }
+    if (word < 3) continue;
+    out.lines.push(i + 1);
+    out.norm.push(t);
+    out.hashes.push(hashString(t));
+    out.chars.push(t.length);
+  }
+  return out;
+}
+
+export function findDuplicates(contexts: FileCtx[], maxBlocks = 40): DuplicateBlock[] {
+  const files = contexts
+    .filter((c) => DUP_LANGS.has(c.lang) && c.role === "source" && !c.lineMap)
+    .map(significantLines)
+    .filter((f) => f.norm.length >= DUP_WINDOW);
+  const index = new Map<number, Array<[number, number]>>();
+  const found: Array<{ fa: number; ia: number; fb: number; ib: number; len: number }> = [];
+
+  for (let fi = 0; fi < files.length; fi++) {
+    const f = files[fi];
+    let skipUntil = -1;
+    for (let i = 0; i + DUP_WINDOW <= f.norm.length; i++) {
+      let h = 0;
+      let chars = 0;
+      for (let k = 0; k < DUP_WINDOW; k++) {
+        h = (Math.imul(h, 31) + f.hashes[i + k]) >>> 0;
+        chars += f.chars[i + k];
+      }
+      if (chars < 180) continue;
+      const prior = index.get(h);
+      if (prior && i > skipUntil) {
+        for (const [fj, j] of prior) {
+          const g = files[fj];
+          if (fj === fi && i - j < DUP_WINDOW) continue;
+          let same = true;
+          for (let k = 0; k < DUP_WINDOW && same; k++) same = g.norm[j + k] === f.norm[i + k];
+          if (!same) continue;
+          let len = DUP_WINDOW;
+          while (i + len < f.norm.length && j + len < g.norm.length && g.norm[j + len] === f.norm[i + len] && !(fj === fi && j + len >= i)) len++;
+          if (len >= DUP_MIN_LINES) {
+            found.push({ fa: fj, ia: j, fb: fi, ib: i, len });
+            skipUntil = i + len - 1;
+          }
+          break;
+        }
+      }
+      if (prior) prior.push([fi, i]);
+      else index.set(h, [[fi, i]]);
+    }
+  }
+
+  return found
+    .sort((x, y) => y.len - x.len)
+    .slice(0, maxBlocks)
+    .map(({ fa, ia, fb, ib, len }) => {
+      const a = files[fa];
+      const b = files[fb];
+      return {
+        a: { file: a.ctx.filename, line: a.lines[ia], endLine: a.lines[ia + len - 1] },
+        b: { file: b.ctx.filename, line: b.lines[ib], endLine: b.lines[ib + len - 1] },
+        lines: len,
+      };
+    });
 }

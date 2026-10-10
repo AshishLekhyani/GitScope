@@ -28,16 +28,17 @@ export async function GET(req: NextRequest) {
   }
 
   // Create the real verified user
-  await prisma.user.create({
-    data: {
-      email: pending.email,
-      name: pending.name,
-      password: pending.hashedPassword,
-      emailVerified: new Date(),
-    },
-  });
-
-  await prisma.pendingSignup.delete({ where: { token } });
+  await prisma.$transaction([
+    prisma.user.create({
+      data: {
+        email: pending.email,
+        name: pending.name,
+        password: pending.hashedPassword,
+        emailVerified: new Date(),
+      },
+    }),
+    prisma.pendingSignup.delete({ where: { token } }),
+  ]);
 
   // Create two one-time autologin tokens:
   // - "at" in the redirect URL for the clicking tab (5 min)

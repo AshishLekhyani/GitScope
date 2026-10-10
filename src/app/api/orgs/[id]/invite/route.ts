@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { OrgRole } from "@prisma/client";
 
 const VALID_ROLES: OrgRole[] = ["admin", "member", "viewer"];
@@ -18,6 +19,11 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ id:
   const member = await prisma.orgMember.findUnique({ where: { orgId_userId: { orgId: id, userId: session.user.id } } });
   if (!member || (member.role !== "owner" && member.role !== "admin")) {
     return NextResponse.json({ error: "Only admins can invite members." }, { status: 403 });
+  }
+
+  const limit = await checkRateLimit(`orgs-invite:${session.user.id}`, { limit: 20, windowMs: 60 * 60 * 1000 });
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Too many invites sent — try again later." }, { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000))) } });
   }
 
   const body = await req.json() as { email?: string; role?: OrgRole };

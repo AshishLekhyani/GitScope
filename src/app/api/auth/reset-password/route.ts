@@ -48,20 +48,21 @@ async function postHandler(req: NextRequest) {
   const hashed = await bcrypt.hash(password, 12);
 
   // Update password and mark email as verified (for OAuth users setting password for first time)
-  await prisma.user.updateMany({ 
-    where: { email }, 
-    data: { 
-      password: hashed,
-      emailVerified: new Date(), // Mark as verified since OAuth already verified it
-    } 
-  });
-  
-  // Delete both reset and set tokens for this email to clean up
-  await prisma.verificationToken.deleteMany({ 
-    where: { 
-      identifier: { in: [`reset:${email}`, `set:${email}`] } 
-    } 
-  });
+  await prisma.$transaction([
+    prisma.user.updateMany({ 
+      where: { email }, 
+      data: { 
+        password: hashed,
+        emailVerified: new Date(), // Mark as verified since OAuth already verified it
+      } 
+    }),
+    // Delete both reset and set tokens for this email to clean up
+    prisma.verificationToken.deleteMany({ 
+      where: { 
+        identifier: { in: [`reset:${email}`, `set:${email}`] } 
+      } 
+    }),
+  ]);
 
   return NextResponse.json({ ok: true });
 }

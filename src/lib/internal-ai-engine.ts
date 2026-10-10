@@ -92,25 +92,33 @@ const REGEX_PRECEDING_KEYWORDS = new Set([
   "return", "typeof", "case", "do", "else", "in", "of", "new", "delete", "void", "throw", "yield", "await",
 ]);
 
-type StrFrame = {
-  kind: "str";
+interface Frame {
+  str: boolean;
   close: string;
   escapes: boolean;
   multiline: boolean;
-  interp: string | null;
+  interp: string;
   contentStart: number;
-};
-type HoleFrame = { kind: "hole"; depth: number };
+  depth: number;
+}
+
+function isWordCode(c: number): boolean {
+  return (c >= 48 && c <= 57) || (c >= 65 && c <= 90) || (c >= 97 && c <= 122) || c === 95 || c === 36;
+}
+
+function isSpaceCode(c: number): boolean {
+  if (c < 128) return c === 32 || (c >= 9 && c <= 13);
+  return /\s/.test(String.fromCharCode(c));
+}
 
 function regexAllowed(src: string, lastSig: number): boolean {
   if (lastSig < 0) return true;
-  const p = src[lastSig];
-  if (/[\w$]/.test(p)) {
+  if (isWordCode(src.charCodeAt(lastSig))) {
     let s = lastSig;
-    while (s > 0 && /[\w$]/.test(src[s - 1])) s--;
+    while (s > 0 && isWordCode(src.charCodeAt(s - 1))) s--;
     return REGEX_PRECEDING_KEYWORDS.has(src.slice(s, lastSig + 1));
   }
-  return !")]}<'\"`".includes(p);
+  return !")]}<'\"`".includes(src[lastSig]);
 }
 
 function scanRegexLiteral(src: string, start: number): number {
@@ -156,45 +164,94 @@ function maskJsxText(s: string): string {
   return s.replace(JSX_TEXT, (m, inner: string) => ">" + " ".repeat(inner.length) + m.slice(1 + inner.length));
 }
 
+interface ResolvedSyntax {
+  line: string[];
+  lineFirst: number[];
+  block: boolean;
+  hashNeedsSpace: boolean;
+  blankStrings: boolean;
+  quoteCodes: number[];
+  backtick: string;
+  triple: boolean;
+  multilineStrings: boolean;
+  regex: boolean;
+  pyPrefixes: boolean;
+  dqInterp: string;
+}
+
+const RESOLVED_SYNTAX = new Map<Lang, ResolvedSyntax>();
+
+function resolvedSyntax(lang: Lang): ResolvedSyntax {
+  let r = RESOLVED_SYNTAX.get(lang);
+  if (!r) {
+    const s = SYNTAX[lang];
+    r = {
+      line: s.line,
+      lineFirst: s.line.map((l) => l.charCodeAt(0)),
+      block: s.block,
+      hashNeedsSpace: s.hashNeedsSpace === true,
+      blankStrings: s.blankStrings,
+      quoteCodes: [...s.quotes].map((q) => q.charCodeAt(0)),
+      backtick: s.backtick ?? "",
+      triple: s.triple === true,
+      multilineStrings: s.multilineStrings === true,
+      regex: s.regex === true,
+      pyPrefixes: s.pyPrefixes === true,
+      dqInterp: s.dqInterp ?? "",
+    };
+    RESOLVED_SYNTAX.set(lang, r);
+  }
+  return r;
+}
+
+const CH_NL = 10;
+const CH_DQ = 34;
+const CH_HASH = 35;
+const CH_SQ = 39;
+const CH_STAR = 42;
+const CH_SLASH = 47;
+const CH_LBRACKET = 91;
+const CH_BACKSLASH = 92;
+const CH_BACKTICK = 96;
+const CH_LBRACE = 123;
+const CH_RBRACE = 125;
+
 export function maskSource(src: string, lang: Lang, filename = ""): MaskedSource {
-  const syn = SYNTAX[lang];
+  const syn = resolvedSyntax(lang);
   const n = src.length;
   const codeBlank: number[] = [];
   const textBlank: number[] = [];
-  const blankBoth = (s: number, e: number) => { codeBlank.push(s, e); textBlank.push(s, e); };
-  const blankCode = (s: number, e: number) => { if (syn.blankStrings && e > s) codeBlank.push(s, e); };
-
-  const stack: Array<StrFrame | HoleFrame> = [];
+  const stack: Frame[] = [];
   let i = 0;
   let lastSig = -1;
 
-  const openString = (quoteLen: number, frame: Omit<StrFrame, "kind" | "contentStart">) => {
-    stack.push({ kind: "str", contentStart: i + quoteLen, ...frame });
+  const pushStr = (quoteLen: number, close: string, escapes: boolean, multiline: boolean, interp: string) => {
+    stack.push({ str: true, close, escapes, multiline, interp, contentStart: i + quoteLen, depth: 0 });
     i += quoteLen;
   };
 
   while (i < n) {
-    const top = stack[stack.length - 1];
+    const top = stack.length > 0 ? stack[stack.length - 1] : null;
+    const c = src.charCodeAt(i);
 
-    if (top?.kind === "str") {
-      const c = src[i];
-      if (top.escapes && c === "\\") { i += 2; continue; }
+    if (top !== null && top.str) {
+      if (top.escapes && c === CH_BACKSLASH) { i += 2; continue; }
       if (src.startsWith(top.close, i)) {
-        blankCode(top.contentStart, i);
+        if (syn.blankStrings && i > top.contentStart) codeBlank.push(top.contentStart, i);
         stack.pop();
         i += top.close.length;
         lastSig = i - 1;
         continue;
       }
-      if (c === "\n" && !top.multiline) {
-        blankCode(top.contentStart, i);
+      if (c === CH_NL && !top.multiline) {
+        if (syn.blankStrings && i > top.contentStart) codeBlank.push(top.contentStart, i);
         stack.pop();
         continue;
       }
-      if (top.interp && src.startsWith(top.interp, i)) {
-        if (top.interp === "{" && src[i + 1] === "{") { i += 2; continue; }
-        blankCode(top.contentStart, i);
-        stack.push({ kind: "hole", depth: 0 });
+      if (top.interp !== "" && src.startsWith(top.interp, i)) {
+        if (top.interp === "{" && src.charCodeAt(i + 1) === CH_LBRACE) { i += 2; continue; }
+        if (syn.blankStrings && i > top.contentStart) codeBlank.push(top.contentStart, i);
+        stack.push({ str: false, close: "", escapes: false, multiline: false, interp: "", contentStart: 0, depth: 0 });
         i += top.interp.length;
         lastSig = i - 1;
         continue;
@@ -203,16 +260,13 @@ export function maskSource(src: string, lang: Lang, filename = ""): MaskedSource
       continue;
     }
 
-    const c = src[i];
-
-    if (top?.kind === "hole") {
-      if (c === "{") {
+    if (top !== null) {
+      if (c === CH_LBRACE) {
         top.depth++;
-      } else if (c === "}") {
+      } else if (c === CH_RBRACE) {
         if (top.depth === 0) {
           stack.pop();
-          const str = stack[stack.length - 1] as StrFrame;
-          str.contentStart = i + 1;
+          stack[stack.length - 1].contentStart = i + 1;
           i++;
           continue;
         }
@@ -220,68 +274,74 @@ export function maskSource(src: string, lang: Lang, filename = ""): MaskedSource
       }
     }
 
-    if (syn.block && c === "/" && src[i + 1] === "*") {
+    if (syn.block && c === CH_SLASH && src.charCodeAt(i + 1) === CH_STAR) {
       const end = src.indexOf("*/", i + 2);
       const stop = end < 0 ? n : end + 2;
-      blankBoth(i, stop);
+      codeBlank.push(i, stop);
+      textBlank.push(i, stop);
       i = stop;
       continue;
     }
 
     let isLineComment = false;
-    for (const lc of syn.line) {
-      if (!src.startsWith(lc, i)) continue;
-      if (lc === "#" && syn.hashNeedsSpace && i > 0 && !/\s/.test(src[i - 1])) continue;
-      if (lc === "#" && lang === "php" && src[i + 1] === "[") continue;
+    for (let k = 0; k < syn.line.length; k++) {
+      if (c !== syn.lineFirst[k] || !src.startsWith(syn.line[k], i)) continue;
+      if (c === CH_HASH && syn.hashNeedsSpace && i > 0 && !isSpaceCode(src.charCodeAt(i - 1))) continue;
+      if (c === CH_HASH && lang === "php" && src.charCodeAt(i + 1) === CH_LBRACKET) continue;
       isLineComment = true;
       break;
     }
     if (isLineComment) {
       const end = src.indexOf("\n", i);
       const stop = end < 0 ? n : end;
-      blankBoth(i, stop);
+      codeBlank.push(i, stop);
+      textBlank.push(i, stop);
       i = stop;
       continue;
     }
 
-    if (syn.triple && (src.startsWith('"""', i) || src.startsWith("'''", i))) {
-      const interp = syn.pyPrefixes && /[fF]/.test(pyPrefix(src, i)) ? "{" : null;
-      openString(3, { close: src.slice(i, i + 3), escapes: true, multiline: true, interp });
+    if (syn.triple && (c === CH_DQ || c === CH_SQ) && src.charCodeAt(i + 1) === c && src.charCodeAt(i + 2) === c) {
+      const interp = syn.pyPrefixes && /[fF]/.test(pyPrefix(src, i)) ? "{" : "";
+      pushStr(3, src.slice(i, i + 3), true, true, interp);
       continue;
     }
 
-    if (syn.quotes.includes(c)) {
-      let interp: string | null = null;
+    if (syn.quoteCodes.includes(c)) {
+      let interp = "";
       if (syn.pyPrefixes && /[fF]/.test(pyPrefix(src, i))) interp = "{";
-      if (syn.dqInterp && c === '"') interp = syn.dqInterp;
-      const escapes = !(c === "'" && (lang === "yaml" || lang === "shell" || lang === "docker"));
-      openString(1, { close: c, escapes, multiline: !!syn.multilineStrings, interp });
+      if (syn.dqInterp !== "" && c === CH_DQ) interp = syn.dqInterp;
+      const escapes = !(c === CH_SQ && (lang === "yaml" || lang === "shell" || lang === "docker"));
+      pushStr(1, src[i], escapes, syn.multilineStrings, interp);
       continue;
     }
 
-    if (c === "`" && syn.backtick) {
-      if (syn.backtick === "template") openString(1, { close: "`", escapes: true, multiline: true, interp: "${" });
-      else if (syn.backtick === "raw") openString(1, { close: "`", escapes: false, multiline: true, interp: null });
-      else openString(1, { close: "`", escapes: true, multiline: true, interp: "#{" });
+    if (c === CH_BACKTICK && syn.backtick !== "") {
+      if (syn.backtick === "template") pushStr(1, "`", true, true, "${");
+      else if (syn.backtick === "raw") pushStr(1, "`", false, true, "");
+      else pushStr(1, "`", true, true, "#{");
       continue;
     }
 
-    if (syn.regex && c === "/" && regexAllowed(src, lastSig)) {
+    if (syn.regex && c === CH_SLASH && regexAllowed(src, lastSig)) {
       const end = scanRegexLiteral(src, i);
       if (end > 0) {
-        blankBoth(i, end);
+        codeBlank.push(i, end);
+        textBlank.push(i, end);
         i = end;
         lastSig = end - 1;
         continue;
       }
     }
 
-    if (!/\s/.test(c)) lastSig = i;
+    if (!isSpaceCode(c)) lastSig = i;
     i++;
   }
 
-  const open = stack.find((f): f is StrFrame => f.kind === "str");
-  if (open) blankCode(open.contentStart, n);
+  for (const f of stack) {
+    if (!f.str) continue;
+    if (syn.blankStrings && n > f.contentStart) codeBlank.push(f.contentStart, n);
+    break;
+  }
 
   let code = applyBlanks(src, codeBlank);
   let text = applyBlanks(src, textBlank);
@@ -472,6 +532,12 @@ export interface CallArgs {
   args: Part[];
 }
 
+export function isDiscardedExpression(code: string, start: number, close: number): boolean {
+  const before = code.slice(Math.max(0, start - 200), start).trimEnd();
+  const after = code.slice(close + 1, close + 200).trimStart();
+  return /(?:^|[;{}])$/.test(before) && /^(?:;|\}|$)/.test(after);
+}
+
 export function callArgsAt(code: string, from: number): CallArgs | null {
   let open = from;
   while (open < code.length && open - from < 4 && code[open] !== "(") open++;
@@ -595,17 +661,65 @@ export interface TaintedVar {
   prefix: boolean;
 }
 
+export interface Validation {
+  name: string;
+  offset: number;
+  region: number;
+}
+
 export interface TaintState {
   lang: Lang;
   vars: Map<string, TaintedVar>;
   sourceRe: RegExp | null;
   regions: Array<[number, number]>;
   lines: LineIndex;
+  validations: Validation[];
 }
 
+const ALLOWLIST_CHECK =
+  /!\s*\/\^((?:[^/\\\n]|\\.)+)\$\/[a-z]*\s*\.\s*test\s*\(\s*([A-Za-z_$][\w$]*)\s*\)|!\s*([A-Z_][A-Z0-9_]*|[\w$]*(?:allow|Allow|ALLOW)[\w$]*)\s*\.\s*(?:has|includes)\s*\(\s*([A-Za-z_$][\w$]*)\s*\)/g;
+const PERMISSIVE_PATTERN = /\.\*|\.\+|\\S|\\W|\\D|\[\^/;
+const EARLY_EXIT = /\b(?:return|throw)\b|\bprocess\s*\.\s*exit\s*\(|(?<![\w$.])(?:notFound|redirect|abort)\s*\(/;
+
+export function allowlistValidations(code: string, raw: string, lang: Lang, regions: Array<[number, number]>): Validation[] {
+  if (lang !== "js" || !/\.\s*test\s*\(|\.\s*(?:has|includes)\s*\(/.test(code)) return [];
+  const out: Validation[] = [];
+  for (const m of code.matchAll(/\bif\s*\(/g)) {
+    const open = m.index + m[0].length - 1;
+    const close = findClose(code, open);
+    if (close < 0 || /&&/.test(code.slice(open + 1, close))) continue;
+    const lead = /^\s*\{/.exec(code.slice(close + 1, close + 200));
+    let bodyEnd: number;
+    let body: string;
+    if (lead) {
+      const bodyOpen = close + lead[0].length;
+      bodyEnd = findClose(code, bodyOpen);
+      if (bodyEnd < 0) continue;
+      body = code.slice(bodyOpen, bodyEnd);
+    } else {
+      bodyEnd = statementEnd(code, close + 1);
+      body = code.slice(close + 1, bodyEnd);
+    }
+    if (!EARLY_EXIT.test(body)) continue;
+    for (const g of raw.slice(open + 1, close).matchAll(ALLOWLIST_CHECK)) {
+      if (g[1] !== undefined && PERMISSIVE_PATTERN.test(g[1])) continue;
+      out.push({ name: g[2] ?? g[4], offset: bodyEnd, region: regionAt(regions, m.index) });
+    }
+  }
+  return out;
+}
+
+const IDENT_PATTERNS = new Map<string, RegExp>();
+
 function identPattern(name: string): RegExp {
-  const esc = name.replace(/[$]/g, "\\$");
-  return new RegExp(`(?<![\\w$.])${esc}(?![\\w$])(?!\\s*:(?!:))`);
+  let re = IDENT_PATTERNS.get(name);
+  if (!re) {
+    if (IDENT_PATTERNS.size > 4000) IDENT_PATTERNS.clear();
+    const esc = name.replace(/[$]/g, "\\$");
+    re = new RegExp(`(?<![\\w$.])${esc}(?![\\w$])(?!\\s*:(?!:))`);
+    IDENT_PATTERNS.set(name, re);
+  }
+  return re;
 }
 
 function destructuredNames(lhs: string): string[] {
@@ -709,6 +823,7 @@ export interface TaintOptions {
   regions?: Array<[number, number]>;
   assignments?: Assignment[];
   sources?: RegExp;
+  raw?: string;
 }
 
 export function computeTaint(
@@ -726,7 +841,8 @@ export function computeTaint(
   }
   const regions = opts.regions ?? scopeRegions(code, lang);
   const vars = new Map<string, TaintedVar>();
-  const state: TaintState = { lang, vars, sourceRe, regions, lines };
+  const validations = opts.raw ? allowlistValidations(code, opts.raw, lang, regions) : [];
+  const state: TaintState = { lang, vars, sourceRe, regions, lines, validations };
   for (const v of opts.seeds ?? []) vars.set(`${v.region}:${v.name}`, v);
   if (!sourceRe && vars.size === 0) return state;
 
@@ -772,6 +888,7 @@ export function exprTaint(expr: string, state: TaintState, offset: number, prefi
   for (const v of state.vars.values()) {
     if (v.region !== region && v.region !== -1) continue;
     if (v.line > line || (prefixOnly && !v.prefix)) continue;
+    if (state.validations.some((val) => val.name === v.name && val.region === v.region && val.offset < offset && state.lines.lineOf(val.offset) >= v.line)) continue;
     if (identPattern(v.name).test(expr)) return { via: v.via, name: v.name, sourceLine: v.line };
   }
   return null;
@@ -1017,7 +1134,7 @@ export function getAssignments(ctx: FileCtx): Assignment[] {
 }
 
 export function getTaint(ctx: FileCtx): TaintState {
-  ctx.taint ??= computeTaint(ctx.code, ctx.text, ctx.lang, ctx.filename, ctx.lines, { assignments: getAssignments(ctx) });
+  ctx.taint ??= computeTaint(ctx.code, ctx.text, ctx.lang, ctx.filename, ctx.lines, { assignments: getAssignments(ctx), raw: ctx.raw });
   return ctx.taint;
 }
 
@@ -1090,7 +1207,7 @@ export interface SinkRule {
   prefixOnly?: boolean;
   guard?: "strong" | "weak" | "none";
   extract?: (argCode: string) => string | null;
-  when?: (call: { argsCode: string; argsText: string }, ctx: FileCtx) => boolean;
+  when?: (call: { argsCode: string; argsText: string; start: number; end: number }, ctx: FileCtx) => boolean;
   skipClient?: boolean;
   severity: Severity;
   confidence: number;
@@ -1355,7 +1472,7 @@ export function sinkSites(ctx: FileCtx, sinks: SinkRule[]): SinkSite[] {
         argsText = ctx.text.slice(matchEnd, end);
         exprs = [{ code: argsCode, text: argsText, start: matchEnd }];
       }
-      if (sink.when && !sink.when({ argsCode, argsText }, ctx)) continue;
+      if (sink.when && !sink.when({ argsCode, argsText, start: m.index, end }, ctx)) continue;
       const sinkName = `${m[0].replace(/\s+/g, "").replace(/[(=]$/, "")}${sink.kind === "call" ? "()" : ""}`;
       sites.push({ sink, index: m.index, end, sinkName, exprs });
     }

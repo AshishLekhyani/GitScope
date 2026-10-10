@@ -5,6 +5,7 @@ export const metadata: Metadata = { title: "Accept Workspace Invite — GitScope
 
 import { InviteAcceptClient } from "@/features/organizations/invite-accept-client";
 
-export default function InviteAcceptPage({ searchParams }: { searchParams: { token?: string } }) {
-  return <InviteAcceptClient token={searchParams.token ?? ""} />;
+export default async function InviteAcceptPage({ searchParams }: { searchParams: Promise<{ token?: string | string[] }> }) {
+  const { token } = await searchParams;
+  return <InviteAcceptClient token={typeof token === "string" ? token : ""} />;
 }

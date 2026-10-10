@@ -9,6 +9,8 @@ import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-pla
 import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
+import { fetchRepoArchive, LOCKFILE } from "@/lib/repo-archive";
+import { scanDependencies } from "@/lib/osv";
 import type { ProjectProfile, ScoreBreakdown } from "@/lib/internal-ai-profile";
 import { callAI, hasAnyAIProvider, hasByokKey, type AIPlan, type UserBYOKKeys } from "@/lib/ai-providers";
 import { getUserBYOKKeys } from "@/lib/byok";
@@ -93,6 +95,35 @@ function safeObjectArray(value: unknown): Array<Record<string, unknown>> {
 
 function safeObject(value: unknown): Record<string, unknown> | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : undefined;
+}
+
+const FINDING_TOPIC = /sql|inject|xss|html|redirect|ssrf|secret|credential|token|api key|command|shell|path traversal|prototype|csrf|rate.?limit|auth|regex|redos|prompt|cors|cookie|n\+1|transaction|deserializ|eval|searchparams|params/gi;
+const FINDING_SEVERITY_RANK: Record<RepoScanFinding["severity"], number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+
+function findingTopics(text: string): Set<string> {
+  return new Set((text.toLowerCase().match(FINDING_TOPIC) ?? []).map((t) => t.replace(/[^a-z+]/g, "")));
+}
+
+function sameFile(a?: string, b?: string): boolean {
+  if (!a || !b) return false;
+  return a === b || a.endsWith(`/${b}`) || b.endsWith(`/${a}`);
+}
+
+export function mergeStaticScanFindings(llm: RepoScanFinding[], engine: RepoScanFinding[], cap: number): RepoScanFinding[] {
+  const extra: RepoScanFinding[] = [];
+  for (const f of engine) {
+    if (extra.length >= cap) break;
+    if (!(f.severity === "critical" || f.severity === "high" || (f.severity === "medium" && f.line))) continue;
+    const topics = findingTopics(f.description);
+    const duplicate = llm.some((l) => {
+      if (!sameFile(l.file, f.file)) return false;
+      if (l.line && f.line) return Math.abs(l.line - f.line) <= 3;
+      const known = findingTopics(`${l.description} ${l.suggestion}`);
+      return topics.size === 0 || [...topics].some((t) => known.has(t));
+    });
+    if (!duplicate) extra.push(f);
+  }
+  return [...llm, ...extra].sort((a, b) => FINDING_SEVERITY_RANK[a.severity] - FINDING_SEVERITY_RANK[b.severity]);
 }
 
 // ── Types ─────────────────────────────────────────────────────────────────────
@@ -549,7 +580,7 @@ export async function POST(req: NextRequest) {
         emit({ type: "progress", step: "Scanning file tree and commit history…", percent: 22 });
 
         const [treeData, commitsData, contributorsData, pullsData] = await Promise.all([
-          ghFetch<{ tree: Array<{ path: string; type: string }> }>(
+          ghFetch<{ tree: Array<{ path: string; type: string }>; truncated?: boolean }>(
             `/repos/${repo}/git/trees/${targetBranch ?? (meta.default_branch as string | undefined) ?? "HEAD"}?recursive=1`,
             ghToken
           ),
@@ -669,7 +700,54 @@ export async function POST(req: NextRequest) {
         const keyFileContents: Record<string, string> = {};
         const truncatedFiles: string[] = [];
 
-        emit({ type: "progress", step: `Reading ${allFilesToRead.length} files…`, percent: 38 });
+        emit({ type: "progress", step: "Downloading repository snapshot…", percent: 36 });
+        const archive = await fetchRepoArchive(
+          repo,
+          targetBranch ?? (meta.default_branch as string | undefined) ?? "HEAD",
+          ghToken,
+        );
+        const engineFiles: Record<string, string> = {};
+        if (archive) {
+          const ENGINE_SKIP = /\.(?:md|mdx|txt|html|css|scss|lock)$|(?:^|\/)(?:package-lock\.json|pnpm-lock\.yaml|go\.sum)$/i;
+          const enginePriority = (p: string) =>
+            CONFIG_FILES.includes(p) || INFRA_FILES.includes(p) ? 0
+            : SOURCE_EXTS.test(p) && !EXCLUDE.test(p) ? (HIGH_SIGNAL.test(p) ? 1 : 2)
+            : /\.json$/i.test(p) ? 4
+            : 3;
+          const ranked = [...archive.files.keys()]
+            .filter((p) => p === "README.md" || !ENGINE_SKIP.test(p))
+            .sort((a, b) => enginePriority(a) - enginePriority(b));
+          let engineChars = 0;
+          for (const path of ranked.slice(0, 4000)) {
+            const content = archive.files.get(path) ?? "";
+            if (engineChars + content.length > 25_000_000) continue;
+            engineChars += content.length;
+            engineFiles[path] = content;
+          }
+        }
+        const engineTree = archive ? [...new Set([...treeBlobs.map((t) => t.path), ...archive.files.keys()])] : fileTree;
+
+        const DEPENDENCY_MANIFEST = /(?:^|\/)(?:package\.json|pyproject\.toml|go\.mod|requirements(?:[-_.][\w-]+)?\.txt)$/;
+        const dependencyScanPromise = (async () => {
+          let manifests: Map<string, string>;
+          if (archive) {
+            manifests = new Map([...archive.files].filter(([p]) => LOCKFILE.test(p) || DEPENDENCY_MANIFEST.test(p)));
+          } else {
+            const wanted = fileTree.filter((p) => (LOCKFILE.test(p) || DEPENDENCY_MANIFEST.test(p)) && p.split("/").length <= 2).slice(0, 6);
+            const fetched = await Promise.all(wanted.map(async (p) => [p, await ghFetchText(`/repos/${repo}/contents/${p}${targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : ""}`, ghToken)] as const));
+            manifests = new Map(fetched.filter((e): e is readonly [string, string] => Boolean(e[1])));
+          }
+          if (manifests.size === 0) return null;
+          return scanDependencies(manifests, { timeoutMs: 18_000 });
+        })().catch(() => null);
+
+        emit({
+          type: "progress",
+          step: archive
+            ? `Snapshot loaded — ${archive.files.size.toLocaleString()} text files available for deep analysis…`
+            : `Reading ${allFilesToRead.length} files…`,
+          percent: 38,
+        });
 
         for (let i = 0; i < allFilesToRead.length; i += BATCH) {
           const batch = allFilesToRead.slice(i, i + BATCH);
@@ -685,7 +763,7 @@ export async function POST(req: NextRequest) {
               ? (fileTree.find((t) => t === f || t.endsWith(`/${f}`)) ?? f)
               : f;
             const contentUrl = `/repos/${repo}/contents/${actualPath}${targetBranch ? `?ref=${encodeURIComponent(targetBranch)}` : ""}`;
-            const content = await ghFetchText(contentUrl, ghToken);
+            const content = archive ? (archive.files.get(actualPath) ?? null) : await ghFetchText(contentUrl, ghToken);
             if (!content) return;
 
             if (f === "package.json") {
@@ -714,6 +792,23 @@ export async function POST(req: NextRequest) {
         }
 
         const filesRead = Object.keys(keyFileContents).length;
+        const engineInput = archive
+          ? { fileTree: engineTree, keyFileContents: engineFiles, truncatedFiles: [] as string[], completeTree: !treeData?.truncated }
+          : { fileTree, keyFileContents, truncatedFiles, completeTree: fileTree.length < 2000 };
+        let staticScan: RepoScanResult | undefined;
+        const runStatic = async (): Promise<RepoScanResult> => {
+          if (staticScan) return staticScan;
+          const dependencyScan = await dependencyScanPromise;
+          staticScan ??= scanRepoWithInternalAI({
+            repo, ...engineInput, recentCommits, contributors, meta, scanMode,
+            realLoc, realLocByExt, totalCodeFiles, importGraph,
+            vulnerabilities: dependencyScan?.vulnerabilities,
+            dependencyScan: dependencyScan
+              ? { scanned: dependencyScan.scanned, lockfiles: dependencyScan.lockfiles, complete: dependencyScan.complete }
+              : undefined,
+          });
+          return staticScan;
+        };
 
         // ── Build import graph ────────────────────────────────────────────────
         // Parse import/require statements from every fetched file to understand
@@ -830,10 +925,7 @@ export async function POST(req: NextRequest) {
         let internalScanResult: RepoScanResult | undefined;
         if (!useLlm) {
           emit({ type: "progress", step: "Running static analysis (no AI key configured)…", percent: 65 });
-          internalScanResult = scanRepoWithInternalAI({
-            repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-            realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
-          });
+          internalScanResult = await runStatic();
           result = internalScanResult;
         } else {
           emit({ type: "progress", step: "AI scanning architecture, security, and quality…", percent: 65 });
@@ -886,18 +978,12 @@ export async function POST(req: NextRequest) {
 
             if (!orchestratorRes || orchestratorRes.agentResults.length === 0) {
               emit({ type: "progress", step: "AI agents returned no results — falling back to static analysis…", percent: 80 });
-              internalScanResult = scanRepoWithInternalAI({
-                repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-                realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
-              });
+              internalScanResult = await runStatic();
               result = { ...internalScanResult, isDemo: false };
             } else if (orchestratorRes.agentResults.every(isAgentOutputEmpty)) {
               // All agents failed or returned empty/error — fall back to internal AI
               emit({ type: "progress", step: "AI agents failed — falling back to static analysis…", percent: 80 });
-              internalScanResult = scanRepoWithInternalAI({
-                repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-                realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
-              });
+              internalScanResult = await runStatic();
               result = { ...internalScanResult, isDemo: false };
             } else {
               // Successfully extracted results from agents - process and compile
@@ -966,7 +1052,12 @@ export async function POST(req: NextRequest) {
                 securityOutput?.["findings"] ?? securityOutput?.["issues"] ??
                 securityOutput?.["vulnerabilities"] ?? securityOutput?.["problems"] ?? []
               );
-              const securityFindings: RepoScanFinding[] = rawSecFindings.slice(0, 14).map(normalizeSecFinding);
+              const llmSecurityFindings: RepoScanFinding[] = rawSecFindings.slice(0, 14).map(normalizeSecFinding);
+              const staticResult = await runStatic();
+              const securityFindings = mergeStaticScanFindings(llmSecurityFindings, staticResult.security.issues, 8);
+              const staticPenalty = Math.min(20, securityFindings
+                .filter((f) => !llmSecurityFindings.includes(f))
+                .reduce((sum, f) => sum + (f.severity === "critical" ? 6 : f.severity === "high" ? 3 : 1), 0));
 
               // ── Architecture concerns — the agent returns OBJECTS not strings ─
               // Schema: { severity, category, file, title, description, evidence, recommendation, effort }
@@ -1007,14 +1098,16 @@ export async function POST(req: NextRequest) {
                 : [];
 
               // ── Scores — clamp 0-100, use agent value or compute from findings ─
-              const securityScore = Math.min(100, Math.max(5,
+              const llmSecurityScore = Math.min(100, Math.max(5,
                 safeNumber(securityOutput?.["securityScore"]) ??
                 safeNumber(securityOutput?.["score"])         ??
                 safeNumber(securityOutput?.["rating"])        ??
-                Math.max(5, 100 - securityFindings.filter((f) => f.severity === "critical").length * 20
-                              - securityFindings.filter((f) => f.severity === "high").length * 10
-                              - securityFindings.filter((f) => f.severity === "medium").length * 5)
+                Math.max(5, 100 - llmSecurityFindings.filter((f) => f.severity === "critical").length * 20
+                              - llmSecurityFindings.filter((f) => f.severity === "high").length * 10
+                              - llmSecurityFindings.filter((f) => f.severity === "medium").length * 5)
               ));
+
+              const securityScore = Math.max(5, llmSecurityScore - staticPenalty);
 
               const archScore = Math.min(100, Math.max(5,
                 safeNumber(archOutput?.["architectureScore"]) ??
@@ -1029,18 +1122,18 @@ export async function POST(req: NextRequest) {
                 safeNumber(perfOutput?.["performanceScore"]) ??
                 safeNumber(perfOutput?.["score"])            ??
                 Math.max(5, 100 - rawPerfIssues.length * 8)
-              )) : 70; // conservative default when no perf agent ran
+              )) : staticResult.performance.score;
 
               const testScore = hasRealTest ? Math.min(100, Math.max(5,
                 safeNumber(testOutput?.["testabilityScore"]) ??
                 safeNumber(testOutput?.["score"])            ??
                 Math.max(5, 100 - testGaps.length * 8)
-              )) : 60; // conservative default — assume limited tests until proven otherwise
+              )) : staticResult.testability.score;
 
-              const depScore = hasRealDep ? Math.min(100, Math.max(5,
+              const depScore = hasRealDep ? Math.min(staticResult.dependencies.score + 10, 100, Math.max(5,
                 safeNumber(depOutput?.["dependencyScore"]) ??
                 safeNumber(depOutput?.["score"])           ?? 85
-              )) : 75; // conservative default when no dep agent ran
+              )) : staticResult.dependencies.score;
 
               // ── healthScore: weights sum exactly to 1.0, adjust for missing agents
               let wsec = 0.35, warch = 0.25, wperf = 0.18, wtest = 0.12, wdep = 0.10;
@@ -1120,12 +1213,15 @@ export async function POST(req: NextRequest) {
                   score: securityScore,
                   grade: grade(securityScore),
                   issues: securityFindings,
-                  positives: safeStringArray(securityOutput?.["positives"] ?? securityOutput?.["complianceNotes"] ?? []),
+                  positives: [...new Set([
+                    ...safeStringArray(securityOutput?.["positives"] ?? securityOutput?.["complianceNotes"] ?? []),
+                    ...staticResult.security.positives,
+                  ])].slice(0, 12),
                 },
                 codeQuality: {
                   score: codeQualityScore,
                   grade: grade(codeQualityScore),
-                  issues: qualityIssues,
+                  issues: mergeStaticScanFindings(qualityIssues, staticResult.codeQuality.issues, 6),
                   strengths: safeStringArray(
                     debtOutput?.["strengths"] ?? debtOutput?.["positives"] ??
                     archOutput?.["quickWins"] ?? archOutput?.["strengths"] ?? []
@@ -1134,20 +1230,23 @@ export async function POST(req: NextRequest) {
                 performance: {
                   score: perfScore,
                   grade: grade(perfScore),
-                  issues: perfFindings,
+                  issues: mergeStaticScanFindings(perfFindings, staticResult.performance.issues, 4),
                   positives: safeStringArray(perfOutput?.["positives"] ?? perfOutput?.["strengths"] ?? []),
                 },
                 testability: {
                   score: testScore,
                   grade: grade(testScore),
-                  hasTestFramework: Boolean(testOutput?.["hasTestFramework"] ?? false),
+                  hasTestFramework: Boolean(testOutput?.["hasTestFramework"] ?? staticResult.testability.hasTestFramework),
                   coverageEstimate: String(testOutput?.["coverageEstimate"] ?? (hasRealTest ? "unknown" : "Not analyzed")),
-                  gaps: testGaps,
+                  gaps: testGaps.length > 0 ? testGaps : staticResult.testability.gaps,
                 },
                 dependencies: {
                   score: depScore,
                   totalCount: depTotalCount,
-                  risks: safeStringArray(depOutput?.["risks"] ?? depOutput?.["vulnerabilities"] ?? []),
+                  risks: [...new Set([
+                    ...safeStringArray(depOutput?.["risks"] ?? depOutput?.["vulnerabilities"] ?? []),
+                    ...staticResult.dependencies.risks,
+                  ])],
                   outdatedSignals: safeStringArray(depOutput?.["outdatedSignals"] ?? depOutput?.["outdated"] ?? []),
                 },
                 techDebt: {
@@ -1168,6 +1267,7 @@ export async function POST(req: NextRequest) {
                   openIssues: safeNumber((meta as Record<string, unknown>).open_issues_count) ?? 0,
                   stars: safeNumber((meta as Record<string, unknown>).stargazers_count) ?? 0,
                 },
+                profile: staticResult.profile,
                 model: orchestratorRes.providers[0] ?? "multi-agent-v2",
                 isDemo: false,
               };
@@ -1212,10 +1312,7 @@ export async function POST(req: NextRequest) {
               console.error("[repo-scan] Multi-agent error — falling back to internal:", aiErr);
             }
             emit({ type: "progress", step: "AI error — falling back to static analysis…", percent: 80 });
-            internalScanResult = scanRepoWithInternalAI({
-              repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-              realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
-            });
+            internalScanResult = await runStatic();
             result = { ...internalScanResult, isDemo: false };
           }
         }
@@ -1226,10 +1323,7 @@ export async function POST(req: NextRequest) {
         if (!result) {
           emit({ type: "progress", step: "Fallback analysis…", percent: 90 });
           if (!internalScanResult) {
-            internalScanResult = scanRepoWithInternalAI({
-              repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-              realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
-            });
+            internalScanResult = await runStatic();
           }
           result = { ...internalScanResult, isDemo: false };
         }

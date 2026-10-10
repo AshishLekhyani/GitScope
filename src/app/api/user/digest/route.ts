@@ -13,6 +13,7 @@ import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-pla
 import { sendEmail, buildWeeklyDigestEmail } from "@/lib/email";
 import { sendWeeklyDigestSlack } from "@/lib/slack";
 import { sendDiscordDigest } from "@/lib/discord";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // ── GET — return digest settings ───────────────────────────────────────────────
 export async function GET(req: NextRequest) {
@@ -68,6 +69,11 @@ export async function POST(req: NextRequest) {
   }
 
   if (!sendNow) return NextResponse.json({ ok: true });
+
+  const limit = await checkRateLimit(`digest-send:${session.user.id}`, { limit: 3, windowMs: 60 * 60 * 1000 });
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Digest already sent recently — try again later." }, { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000))) } });
+  }
 
   // ── Build digest data ───────────────────────────────────────────────────────
   const [user, bookmarks] = await Promise.all([

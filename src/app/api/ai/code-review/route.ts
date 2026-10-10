@@ -44,6 +44,7 @@ export interface CodeReviewResult {
   };
   flags: string[];
   findings: CodeReviewFinding[];
+  resolvedFindings?: CodeReviewFinding[];
   breakingChanges: string[];
   securityIssues: string[];
   positives: string[];
@@ -71,6 +72,7 @@ interface GHFile {
   additions: number;
   deletions: number;
   patch?: string;
+  previous_filename?: string;
 }
 
 interface GHPRMeta {
@@ -86,6 +88,7 @@ interface GHPRMeta {
   labels: Array<{ name: string }>;
   requested_reviewers: Array<{ login: string }>;
   head?: { sha: string };
+  base?: { sha: string };
 }
 
 interface GHCommitMeta {
@@ -534,16 +537,22 @@ export async function POST(req: NextRequest) {
 
           const fileContents: Record<string, string> = {};
           const fullFileContents: Record<string, string> = {};
+          const baseContents: Record<string, string> = {};
           const headRef = prMeta.head?.sha ? `?ref=${encodeURIComponent(prMeta.head.sha)}` : "";
-          for (let i = 0; i < keyChangedFiles.length; i++) {
-            const f = keyChangedFiles[i];
-            const shortName = f.filename.split("/").slice(-2).join("/");
-            emit({ type: "progress", step: `Reading ${shortName}…`, percent: Math.round(42 + (i / keyChangedFiles.length) * 12) });
-            const content = await ghFetchText(`/repos/${repo}/contents/${f.filename}${headRef}`, ghToken);
-            if (!content) continue;
+          const baseRef = prMeta.base?.sha ? `?ref=${encodeURIComponent(prMeta.base.sha)}` : "";
+          emit({ type: "progress", step: `Reading ${keyChangedFiles.length} changed file${keyChangedFiles.length === 1 ? "" : "s"} (before and after)…`, percent: 44 });
+          await Promise.all(keyChangedFiles.map(async (f) => {
+            const [content, before] = await Promise.all([
+              ghFetchText(`/repos/${repo}/contents/${f.filename}${headRef}`, ghToken),
+              baseRef && f.status !== "added"
+                ? ghFetchText(`/repos/${repo}/contents/${f.previous_filename ?? f.filename}${baseRef}`, ghToken)
+                : Promise.resolve(null),
+            ]);
+            if (before) baseContents[f.filename] = before;
+            if (!content) return;
             fullFileContents[f.filename] = content;
             fileContents[f.filename] = content.slice(0, scanMode === "deep" ? 3000 : 1500);
-          }
+          }));
 
           let repoFiles: string[] | undefined;
           if (prMeta.head?.sha) {
@@ -584,7 +593,7 @@ export async function POST(req: NextRequest) {
           // ── Always run internal AI first (fast, no API key needed) ──
           emit({ type: "progress", step: "Running internal static analysis…", percent: 60 });
           const internalResult = analyzeWithInternalAI({
-            repo, analysisType: "pr", prMeta, files, prNumber, fileContents: fullFileContents, repoFiles,
+            repo, analysisType: "pr", prMeta, files, prNumber, fileContents: fullFileContents, baseContents, repoFiles,
           });
 
           if (!hasAnyAIProvider()) {
@@ -608,6 +617,11 @@ export async function POST(req: NextRequest) {
                 result.model = aiRes.model;
                 result.isDemo = false;
                 result.findings = mergeStaticFindings(result.findings, internalResult.findings);
+                if (internalResult.resolvedFindings?.length) {
+                  result.resolvedFindings = internalResult.resolvedFindings;
+                  const fixedNote = internalResult.positives.find((p) => p.startsWith("Fixes "));
+                  if (fixedNote) result.positives = [fixedNote, ...(Array.isArray(result.positives) ? result.positives : [])];
+                }
                 await prisma.codeReviewScan.create({
                   data: {
                     userId: session.user.id, repo, prNumber, scanMode, analysisType: "pr",

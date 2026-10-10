@@ -2,6 +2,7 @@ import {
   callArgsAt,
   findClose,
   functionBodyAfter,
+  isDiscardedExpression,
   looksLikeSecretValue,
   looksLikePlaceholder,
   shannonEntropy,
@@ -2464,6 +2465,7 @@ export const TAINT_SINKS: SinkRule[] = [
   {
     id: "taint-redos", cls: "redos", langs: ["js"], kind: "call", args: "first", skipClient: true,
     pattern: /\bnew\s+RegExp\s*\(|(?<![.\w$])RegExp\s*\(/g,
+    when: (call, ctx) => !isDiscardedExpression(ctx.code, call.start, call.end),
     severity: "medium", confidence: 0.8, title: "Regular-expression injection (ReDoS)",
     impact: "Callers supply the pattern itself — a catastrophic-backtracking pattern pins the CPU and blocks the event loop.",
     suggestion: "Escape the input before building a RegExp (input.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\")) or use string methods like includes().",

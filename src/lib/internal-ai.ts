@@ -6,6 +6,7 @@ import {
   buildFileCtx,
   callArgsAt,
   EMPTY_PROJECT,
+  isDiscardedExpression,
   findClose,
   fileRole,
   SEVERITY_RANK,
@@ -43,6 +44,7 @@ import {
   type ScoreFactor,
 } from "@/lib/internal-ai-profile";
 import { STACK_CHECKS, STACK_RULES } from "@/lib/internal-ai-stacks";
+import { describeCounts, groupVulnerabilities, type Vulnerability, type VulnerablePackage } from "@/lib/osv";
 
 
 interface RuleScope {
@@ -413,6 +415,10 @@ const SECURITY_RULES: SecurityRule[] = [
     confidence: 0.85,
     view: "code",
     cls: "redos",
+    refine: (m) => {
+      const call = callArgsAt(m.ctx.code, m.ctx.code.indexOf("(", m.index));
+      return !call || !isDiscardedExpression(m.ctx.code, m.index, call.close);
+    },
     fix: {
       before: `// VULNERABLE — attacker sends catastrophic regex like (a+)+$\nconst re = new RegExp(req.query.pattern);\nconst match = content.match(re);`,
       after: "// SAFE — treat user input as a literal string, not a pattern\nconst escaped = req.query.pattern.replace(/[.*+?^${}()|[\\]\\\\]/g, \"\\\\$&\");\nconst re = new RegExp(escaped);\nconst match = content.match(re);\n// Or use safe-regex to validate patterns if regex input is required",
@@ -2304,6 +2310,7 @@ export interface InternalAnalysisInput {
   prNumber?: number;
   sha?: string;
   fileContents?: Record<string, string>;
+  baseContents?: Record<string, string>;
   repoFiles?: string[];
   project?: Partial<ProjectCtx>;
 }
@@ -2328,8 +2335,50 @@ function applyGraph(findings: EngineFinding[], graph: GraphResult): EngineFindin
   return mergeByClass([...adjusted, ...graph.findings]);
 }
 
+const SUPPRESSION_MARKER = /gitscope-ignore(?:-next-line|-file)?(?::[^\n]*)?|\bnosec\b/g;
+
+function findingFingerprint(f: EngineFinding): string {
+  return `${f.ruleId}|${(f.snippet ?? "").replace(/\s+/g, " ").trim()}`;
+}
+
+function resolvedByChange(input: InternalAnalysisInput, project: ProjectCtx): EngineFinding[] {
+  const base = input.baseContents ?? {};
+  const head = input.fileContents ?? {};
+  const resolved: EngineFinding[] = [];
+  for (const file of input.files) {
+    if (REMOVED_STATUS.has(file.status) || file.status === "added") continue;
+    const before = base[file.filename];
+    const after = head[file.filename];
+    if (before === undefined || after === undefined || before === after) continue;
+    const baseCtx = buildFileCtx({ filename: file.filename, content: before.replace(SUPPRESSION_MARKER, ""), project });
+    const headCtx = buildFileCtx({ filename: file.filename, content: after.replace(SUPPRESSION_MARKER, ""), project });
+    if (!baseCtx || !headCtx || baseCtx.role !== "source") continue;
+    const headFindings = analyzeFileCtx(headCtx, RULE_PACKS);
+    const headPrints = new Set(headFindings.map(findingFingerprint));
+    const headCount = new Map<string, number>();
+    for (const f of headFindings) headCount.set(f.ruleId, (headCount.get(f.ruleId) ?? 0) + f.occurrences);
+    const byRule = new Map<string, EngineFinding[]>();
+    for (const f of analyzeFileCtx(baseCtx, RULE_PACKS)) {
+      if (!byRule.has(f.ruleId)) byRule.set(f.ruleId, []);
+      byRule.get(f.ruleId)!.push(f);
+    }
+    for (const [ruleId, list] of byRule) {
+      const baseTotal = list.reduce((n, f) => n + f.occurrences, 0);
+      let budget = baseTotal - (headCount.get(ruleId) ?? 0);
+      for (const f of list) {
+        if (budget <= 0) break;
+        if (headPrints.has(findingFingerprint(f))) continue;
+        resolved.push(f);
+        budget -= f.occurrences;
+      }
+    }
+  }
+  return resolved;
+}
+
 function analyzeChangedFiles(input: InternalAnalysisInput): {
   findings: EngineFinding[];
+  resolved: EngineFinding[];
   analyzed: number;
   withContext: number;
   graph: GraphResult;
@@ -2374,7 +2423,9 @@ function analyzeChangedFiles(input: InternalAnalysisInput): {
     completeTree: Boolean(input.repoFiles && input.repoFiles.length > 0 && input.repoFiles.length < 100_000),
   });
   const merged = applyGraph(findings, graph);
-  return { findings: (profile ? calibrateFindings(merged, profile) : merged).sort(compareFindings), analyzed, withContext, graph };
+  const resolvedRaw = input.baseContents ? resolvedByChange(input, project) : [];
+  const resolved = (profile ? calibrateFindings(resolvedRaw, profile) : resolvedRaw).sort(compareFindings);
+  return { findings: (profile ? calibrateFindings(merged, profile) : merged).sort(compareFindings), resolved, analyzed, withContext, graph };
 }
 
 function toReviewFinding(f: EngineFinding): CodeReviewFinding {
@@ -2402,7 +2453,7 @@ export function analyzeWithInternalAI(input: InternalAnalysisInput): CodeReviewR
   const totalAdditions = prMeta?.additions ?? commitMeta?.stats?.additions ?? files.reduce((a, f) => a + f.additions, 0);
   const totalDeletions = prMeta?.deletions ?? commitMeta?.stats?.deletions ?? files.reduce((a, f) => a + f.deletions, 0);
 
-  const { findings: engineFindings, analyzed, withContext } = analyzeChangedFiles(input);
+  const { findings: engineFindings, resolved, analyzed, withContext } = analyzeChangedFiles(input);
   const securityFindings = engineFindings.filter((f) => f.category === "security");
   const qualityFindings = engineFindings.filter((f) => f.category === "quality");
   const securityScore = clamp(96 * Math.exp(-penaltyOf(securityFindings) / 70), 0, 100);
@@ -2495,6 +2546,10 @@ export function analyzeWithInternalAI(input: InternalAnalysisInput): CodeReviewR
   if (breakingChanges.length > 0) {
     summaryParts.push("Breaking changes detected — coordinate with downstream consumers before deploying.");
   }
+  if (resolved.length > 0) {
+    const serious = resolved.filter((f) => f.severity === "critical" || f.severity === "high").length;
+    summaryParts.push(`Resolves ${resolved.length} pre-existing issue${resolved.length > 1 ? "s" : ""}${serious > 0 ? ` (${serious} critical/high)` : ""} found in the base version of the changed files.`);
+  }
 
   const positives: string[] = [];
   if (securityScore >= 85) positives.push("No security vulnerabilities detected in the added lines");
@@ -2505,6 +2560,10 @@ export function analyzeWithInternalAI(input: InternalAnalysisInput): CodeReviewR
   if (files.some((f) => /\.md$/.test(f.filename))) positives.push("Documentation updated alongside the code");
   if (/^(feat|fix|refactor|perf|security|chore|docs|test)(\(.+\))?!?:/.test(title)) positives.push("Conventional commit message format — great for changelog generation");
   if (totalAdditions < 150 && files.length > 1) positives.push("Focused, well-scoped change — easy to review");
+  if (resolved.length > 0) {
+    const notable = resolved.filter((f) => f.severity !== "low");
+    positives.unshift(`Fixes ${resolved.length} pre-existing issue${resolved.length > 1 ? "s" : ""}${notable.length > 0 ? `, including ${notable.slice(0, 2).map((f) => `${firstSentence(describeFinding(f)).replace(/\.$/, "")} (${f.file.split("/").pop()})`).join("; ")}` : ""}`);
+  }
   if (positives.length === 0) positives.push("Change is syntactically valid and follows basic code structure");
 
   const hotFiles = [...files]
@@ -2569,6 +2628,7 @@ export function analyzeWithInternalAI(input: InternalAnalysisInput): CodeReviewR
     },
     flags,
     findings: allFindings.slice(0, 20),
+    resolvedFindings: resolved.slice(0, 12).map(toReviewFinding),
     breakingChanges,
     securityIssues,
     positives,
@@ -2632,6 +2692,9 @@ export interface InternalRepoScanInput {
   /** Import graph: file → list of import specifiers it imports */
   importGraph?: Record<string, string[]>;
   truncatedFiles?: string[];
+  completeTree?: boolean;
+  vulnerabilities?: Vulnerability[];
+  dependencyScan?: { scanned: number; lockfiles: string[]; complete: boolean };
 }
 
 // Files that are never code — skip during content scanning
@@ -2995,7 +3058,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     contexts,
     fileSet: new Set(fileTree),
     tsconfig: keyFileContents["tsconfig.json"],
-    completeTree: fileTree.length < 2000,
+    completeTree: input.completeTree ?? fileTree.length < 2000,
     fullCoverage: graphCoverage >= 0.97,
     truncated: new Set(input.truncatedFiles ?? []),
   });
@@ -3041,6 +3104,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     });
   } else securityPositives.push("Environment template (.env.example) documents all required variables");
 
+  const autoDeploy = profile.deployment.find((d) => ["Vercel", "Netlify", "Cloudflare Workers", "Render", "Railway"].includes(d));
   if (!hasCI) {
     const stakes = [
       profile.traits.includes("payments") && "payments",
@@ -3048,11 +3112,17 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
       profile.traits.includes("ai-powered") && "paid AI calls",
       profile.traits.includes("personal-data") && "personal data",
     ].filter(Boolean);
-    structuralIssues.push({
-      severity: "medium", category: "config",
-      description: `No CI/CD pipeline found. PRs can merge without automated tests, linting, or security checks${stakes.length ? ` — risky for a project that handles ${stakes.join(", ")}` : ""}.`,
-      suggestion: "Add GitHub Actions (.github/workflows/ci.yml) with test, lint, and npm audit steps. Gate all PRs on it.",
-    });
+    structuralIssues.push(autoDeploy
+      ? {
+          severity: "medium", category: "config",
+          description: `No test or lint gate before deploys. ${autoDeploy} builds and ships every push automatically, but nothing runs the test suite, linter or dependency audit first${stakes.length ? ` — risky for a project that handles ${stakes.join(", ")}` : ""}.`,
+          suggestion: `Add a GitHub Actions workflow that runs typecheck, lint and tests on every push and PR, and make it a required status check on the branch ${autoDeploy} deploys from. It complements ${autoDeploy}'s deploys rather than replacing them.`,
+        }
+      : {
+          severity: "medium", category: "config",
+          description: `No CI/CD pipeline found. PRs can merge without automated tests, linting, or security checks${stakes.length ? ` — risky for a project that handles ${stakes.join(", ")}` : ""}.`,
+          suggestion: "Add GitHub Actions (.github/workflows/ci.yml) with test, lint, and npm audit steps. Gate all PRs on it.",
+        });
   } else securityPositives.push("CI/CD pipeline configured — every PR runs automated checks");
 
   if (!hasLinting) {
@@ -3076,6 +3146,32 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
 
   // ── Dependency risk analysis ───────────────────────────────────────────────
   const riskyDeps = riskyDependencies(prodDeps, devDepsObj);
+  const vulnPackages = groupVulnerabilities(input.vulnerabilities ?? []);
+  const runtimeVulns = vulnPackages.filter((p) => !p.dev);
+  const seriousRuntimeVulns = runtimeVulns.filter((p) => p.severity === "critical" || p.severity === "high");
+  const advisoryWord = (n: number) => `known vulnerabilit${n > 1 ? "ies" : "y"}`;
+  const vulnLabel = (p: VulnerablePackage) =>
+    `${p.name}@${p.version} — ${describeCounts(p.counts)} ${advisoryWord(p.ids.length)}${p.dev ? " (dev only)" : p.direct ? "" : " (transitive)"}`;
+  const upgradeAdvice = (p: VulnerablePackage) => p.fixTarget
+    ? `${p.direct ? `Upgrade ${p.name} to ${p.fixTarget} or later` : `Upgrade the package that pulls in ${p.name}, or force ${p.name}@${p.fixTarget}+ with ${p.ecosystem === "npm" ? "an \`overrides\` entry in package.json" : "a dependency constraint"}`}${p.unfixed > 0 ? `; ${p.unfixed} advisor${p.unfixed > 1 ? "ies have" : "y has"} no patched release yet, so check the advisory for mitigations` : ""}.`
+    : `No patched release exists yet — check the advisories for mitigations, or replace ${p.name}.`;
+  const vulnItems: PenaltyItem[] = vulnPackages.map((p) => ({
+    ruleId: `vuln:${p.ecosystem}:${p.name}`,
+    severity: p.dev ? (p.severity === "critical" ? "medium" : "low") : p.severity,
+    confidence: (p.approximate ? 0.5 : 1) * (p.dev ? 0.3 : p.direct ? 1 : 0.4),
+    label: vulnLabel(p),
+    file: p.source,
+  }));
+  const dependencyIssues: RepoScanFinding[] = seriousRuntimeVulns.slice(0, 6).map((p) => ({
+    severity: p.approximate && p.severity === "critical" ? "high" : p.severity,
+    category: "deps",
+    file: p.source,
+    description: `${p.name}@${p.version}${p.direct ? "" : " (transitive dependency)"} has ${describeCounts(p.counts)} ${advisoryWord(p.ids.length)} (${[...new Set([...p.cves, ...p.ids])].slice(0, 3).join(", ")}${p.ids.length > 3 ? ", …" : ""}): ${p.summaries[0]}${p.approximate ? ". The version comes from the declared range in the manifest — the lockfile may already pin a patched release" : ""}.`,
+    suggestion: upgradeAdvice(p),
+  }));
+  if (input.dependencyScan && input.dependencyScan.scanned > 0 && seriousRuntimeVulns.length === 0) {
+    securityPositives.push(`No critical or high known vulnerabilities (OSV) in ${input.dependencyScan.scanned} ${input.dependencyScan.lockfiles.length > 0 ? "locked" : "declared"} runtime packages`);
+  }
 
   // ── Architecture patterns ──────────────────────────────────────────────────
   const patterns: string[] = [];
@@ -3125,7 +3221,9 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   if (hasRateLimit) archStrengths.push("Rate limiting protects against brute-force and abuse");
 
   if (!hasTests && !hasTestDir) archConcerns.push("No test infrastructure — high regression risk on every change");
-  if (!hasCI) archConcerns.push("No CI/CD — releases are manual and unvalidated by automation");
+  if (!hasCI) archConcerns.push(autoDeploy
+    ? `Deploys are automated by ${autoDeploy}, but no tests or lint run before a push goes live`
+    : "No CI/CD — releases are manual and unvalidated by automation");
   if (!hasAnyORM && hasExpressOrFastify) archConcerns.push("No ORM detected on an API server — SQL injection risk if raw queries are used");
   if (!hasMonitoring && fileTree.length > 50) archConcerns.push("No observability (Sentry/Pino/Winston) — production errors may be silent");
   if (!hasRateLimit && !project.globalRateLimit && (hasExpressOrFastify || hasNextJs) && hasAuth) archConcerns.push("No rate limiting detected on an authenticated API — brute-force risk");
@@ -3135,6 +3233,15 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   for (const god of graph.insights.godModules.slice(0, 2)) archConcerns.push(`${shortPath(god.file)} imports ${god.fanOut} local modules — likely doing too much`);
   if (graph.insights.modules >= 20 && graph.insights.cycles.length === 0) archStrengths.push(`Acyclic dependency graph across ${graph.insights.modules} analyzed modules (${graph.insights.edges} import edges)`);
   for (const hub of graph.insights.hubs.filter((h) => h.tested).slice(0, 1)) archStrengths.push(`Core module ${shortPath(hub.file)} (imported by ${hub.fanIn} modules) has dedicated tests`);
+  const dup = graph.insights.duplicates;
+  if (dup.lines >= 60) {
+    const top = dup.top[0];
+    archConcerns.push(`${dup.blocks} duplicated code block${dup.blocks > 1 ? "s" : ""} (${dup.lines} copied statements) — largest: ${shortPath(top.b.file)}:${top.b.line} ↔ ${shortPath(top.a.file)}:${top.a.line} (${top.lines} statements)`);
+  }
+  const worst = graph.insights.complexity[0];
+  if (worst && worst.complexity >= 40) {
+    archConcerns.push(`Complexity hotspot: \`${worst.name}\` in ${shortPath(worst.file)} has cyclomatic complexity ${worst.complexity} over ${worst.lines} lines`);
+  }
   const deepNested = fileTree.filter((f) => f.split("/").length > 7).length;
   if (deepNested > 20) archConcerns.push(`${deepNested} files nested >7 directories deep — may indicate poor module organization`);
   if (depCount > 120) archConcerns.push(`${depCount} dependencies — very large tree increases maintenance burden and attack surface`);
@@ -3178,13 +3285,23 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     if (issue.category === "security") structuralIssues.push(issue);
     else qualityFindings.push(issue);
   }
-  const allSecIssues = [...codeSecurityFindings, ...structuralIssues].sort(
+  const allSecIssues = [...codeSecurityFindings, ...structuralIssues, ...dependencyIssues].sort(
     (a, b) => (SEVERITY_RANK[b.severity as Severity] ?? 0) - (SEVERITY_RANK[a.severity as Severity] ?? 0)
   );
   const extraQuality = qualityFindings.filter((f) => !f.file || f.file === "package.json" || !qualityEngine.some((e) => e.file === f.file));
 
   const secDeduction = deductionFactors(
-    [...securityEngine.map(engineItem), ...scanItems(structuralIssues.filter((f) => f.category === "security"))],
+    [
+      ...securityEngine.map(engineItem),
+      ...scanItems(structuralIssues.filter((f) => f.category === "security")),
+      ...seriousRuntimeVulns.filter((p) => p.severity === "critical" || p.direct).map((p) => ({
+        ruleId: `vuln:${p.ecosystem}:${p.name}`,
+        severity: p.severity,
+        confidence: (p.approximate ? 0.5 : 1) * (p.direct ? 0.4 : 0.15),
+        label: `Vulnerable dependency ${p.name}@${p.version} (${describeCounts(p.counts)})`,
+        file: p.source,
+      })),
+    ],
     98,
     110,
   );
@@ -3213,26 +3330,43 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   const qualityFactors: ScoreFactor[] = [{ label: "Starting score", points: 85 }, ...qualityDeduction.factors, ...qualityBonuses, ...capFactor(qualityRaw, qualityScore)];
 
   const testFileCount = fileTree.filter((f) => fileRole(f) === "test" && CODE_FILE.test(f)).length;
+  const reach = graph.insights.testReach;
+  const reachKnown = graphCoverage >= 0.9 && reach.sourceModules >= 10 && reach.testFiles > 0;
+  const pct = (n: number) => `${Math.round((n / Math.max(1, reach.sourceModules)) * 100)}%`;
   const testabilityParts: ScoreFactor[] = [
     hasTests || hasTestDir ? { label: "Test files present", points: 45 } : { label: "No test files", points: 5 },
     ...(hasCI ? [{ label: "CI runs on every change", points: 18 }] : [{ label: "No CI — tests are never run automatically", points: 0 }]),
     ...(hasAnyTestFramework ? [{ label: "Test framework configured", points: 5 }] : []),
     ...(hasTestingLibrary ? [{ label: "Component testing library", points: 5 }] : []),
     ...(hasAnyE2E ? [{ label: "End-to-end test framework", points: 8 }] : []),
-    ...(testFileCount > 5 ? [{ label: `More than 5 test files (${testFileCount})`, points: 8 }] : []),
-    ...(testFileCount > 20 ? [{ label: "More than 20 test files", points: 8 }] : []),
+    ...(reachKnown
+      ? [
+          { label: `Tests import ${pct(reach.direct)} of ${reach.sourceModules} source modules directly and reach ${pct(reach.reachable)} through the import graph`, points: Math.round((10 * reach.direct + 14 * reach.reachable) / reach.sourceModules) },
+          ...(reach.untestedCritical.length > 0 ? [{ label: `${reach.untestedCritical.length} widely-used or security-sensitive module${reach.untestedCritical.length > 1 ? "s" : ""} without tests`, points: -Math.min(10, reach.untestedCritical.length * 2) }] : []),
+        ]
+      : [
+          ...(testFileCount > 5 ? [{ label: `More than 5 test files (${testFileCount})`, points: 8 }] : []),
+          ...(testFileCount > 20 ? [{ label: "More than 20 test files", points: 8 }] : []),
+        ]),
   ];
   const testabilityRaw = testabilityParts.reduce((n, p) => n + p.points, 0);
   const testabilityScore = clamp(testabilityRaw, 5, 97);
   const testabilityFactors = [...testabilityParts, ...capFactor(testabilityRaw, testabilityScore)];
 
   const sizePenalty = depCount > 150 ? 15 : depCount > 100 ? 8 : depCount > 60 ? 3 : 0;
-  const depRaw = 88 - riskyDeps.length * 8 - sizePenalty;
-  const depScore = clamp(depRaw, 15, 97);
+  const depBase = clamp(88 - riskyDeps.length * 8 - sizePenalty, 15, 97);
+  const vulnDeduction = deductionFactors(vulnItems, depBase, 140);
+  const depRaw = vulnDeduction.remaining;
+  const depScore = clamp(depRaw, 5, 97);
   const dependencyFactors: ScoreFactor[] = [
     { label: "Starting score", points: 88 },
     ...riskyDeps.map((d) => ({ label: `${d.name}@${d.range} — ${d.reason}`, points: -8 })),
     ...(sizePenalty > 0 ? [{ label: `${depCount} dependencies`, points: -sizePenalty }] : []),
+    ...capFactor(88 - riskyDeps.length * 8 - sizePenalty, depBase),
+    ...vulnDeduction.factors.slice(0, 15),
+    ...(vulnDeduction.factors.length > 15
+      ? [{ label: `${vulnDeduction.factors.length - 15} more vulnerable packages`, points: round1(vulnDeduction.factors.slice(15).reduce((n, f) => n + f.points, 0)) }]
+      : []),
     ...capFactor(depRaw, depScore),
   ];
 
@@ -3257,7 +3391,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
 
   // ── Recommendations ────────────────────────────────────────────────────────
   const recommendations: RepoScanResult["recommendations"] = [];
-  const critHigh = allSecIssues.filter((i) => i.severity === "critical" || i.severity === "high");
+  const critHigh = allSecIssues.filter((i) => (i.severity === "critical" || i.severity === "high") && i.category !== "deps");
 
   if (critHigh.length > 0) {
     recommendations.push({
@@ -3268,11 +3402,26 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     });
   }
 
+  if (vulnPackages.length > 0) {
+    const fixable = vulnPackages.filter((p) => p.fixTarget && !p.dev);
+    const targets = (fixable.length > 0 ? fixable : vulnPackages.filter((p) => p.fixTarget)).slice(0, 4);
+    recommendations.push({
+      priority: seriousRuntimeVulns.length > 0 ? "immediate" : "short-term",
+      title: `Patch ${runtimeVulns.length > 0 ? `${runtimeVulns.length} vulnerable runtime package${runtimeVulns.length > 1 ? "s" : ""}` : `${vulnPackages.length} vulnerable dev package${vulnPackages.length > 1 ? "s" : ""}`}`,
+      description: targets.length > 0
+        ? `${targets.map((p) => `${p.name} ${p.version} → ${p.fixTarget} (${describeCounts(p.counts)})`).join("; ")}${vulnPackages.length > targets.length ? `; ${vulnPackages.length - targets.length} more in the dependency report` : ""}. Re-run the scan after updating the lockfile.`
+        : "None of the affected packages has a patched release yet — review the advisories for mitigations or replace the packages.",
+      effort: seriousRuntimeVulns.some((p) => p.fixTarget && p.fixTarget.split(".")[0] !== p.version.split(".")[0]) ? "medium" : "low",
+    });
+  }
+
   if (!hasCI) {
     recommendations.push({
       priority: "immediate",
-      title: "Set up CI/CD pipeline",
-      description: "Add GitHub Actions (.github/workflows/ci.yml) with automated testing, linting, and npm audit. Require all checks to pass before merging.",
+      title: autoDeploy ? `Gate ${autoDeploy} deploys on tests` : "Set up CI/CD pipeline",
+      description: autoDeploy
+        ? `${autoDeploy} already deploys automatically. Add a GitHub Actions workflow running typecheck, lint and tests, and make it a required check on the deploy branch so broken builds never ship.`
+        : "Add GitHub Actions (.github/workflows/ci.yml) with automated testing, linting, and npm audit. Require all checks to pass before merging.",
       effort: "medium",
     });
   }
@@ -3290,7 +3439,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     recommendations.push({
       priority: "short-term",
       title: `Modernize ${riskyDeps.length} risky/deprecated package${riskyDeps.length > 1 ? "s" : ""}`,
-      description: riskyDeps.slice(0, 3).map((d) => `${d.name}@${d.range}: ${d.reason}`).join("; ") + (riskyDeps.length > 3 ? ` (+${riskyDeps.length - 3} more)` : "") + ". Run npm audit for CVEs.",
+      description: riskyDeps.slice(0, 3).map((d) => `${d.name}@${d.range}: ${d.reason}`).join("; ") + (riskyDeps.length > 3 ? ` (+${riskyDeps.length - 3} more)` : "") + (input.dependencyScan ? "." : ". Run npm audit for CVEs."),
       effort: "medium",
     });
   }
@@ -3358,6 +3507,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     - (!hasTests && !hasTestDir ? 20 : 0)
     - (!hasCI ? 15 : 0)
     - (riskyDeps.length * 5)
+    - Math.min(15, seriousRuntimeVulns.length * 3)
     - Math.min(25, qualityMedium * 3 + qualityLow),
     15, 90,
   );
@@ -3372,8 +3522,11 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
 
   const techDebtHotspots = [
     ...(!hasTests ? ["Test coverage — no test files detected"] : []),
-    ...(!hasCI ? ["CI/CD pipeline — not configured"] : []),
+    ...(!hasCI ? [autoDeploy ? `Test gate — ${autoDeploy} deploys without running tests` : "CI/CD pipeline — not configured"] : []),
+    ...(seriousRuntimeVulns.length > 0 ? [`Vulnerable dependencies: ${seriousRuntimeVulns.slice(0, 4).map((p) => p.name).join(", ")}`] : []),
     ...(riskyDeps.length > 0 ? [`Outdated/risky dependencies: ${riskyDeps.slice(0, 4).map((d) => d.name).join(", ")}`] : []),
+    ...graph.insights.complexity.slice(0, 2).map((c) => `Complexity: ${c.name} in ${shortPath(c.file)} (cyclomatic ${c.complexity}, ${c.lines} lines)`),
+    ...(dup.blocks > 0 ? [`Duplication: ${dup.blocks} copy-pasted block${dup.blocks > 1 ? "s" : ""} (${dup.lines} statements)`] : []),
     ...filesFor("todo-fixme", 2).map((f) => `Unfinished work in ${f}`),
     ...filesFor("any-type", 1).map((f) => `Type safety gaps in ${f}`),
     ...filesFor("empty-catch", 1).map((f) => `Silent error swallowing in ${f}`),
@@ -3446,12 +3599,15 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
       score: testabilityScore,
       grade: grade(testabilityScore),
       hasTestFramework: hasAnyTestFramework || hasTests || hasTestDir,
-      coverageEstimate: hasTests
+      coverageEstimate: reachKnown
+        ? `${pct(reach.direct)} of source modules imported directly by tests; ${pct(reach.reachable)} reachable from tests (import graph — an upper bound on line coverage)`
+        : hasTests
         ? testFileCount > 20 ? "~60-80% (estimated from test file density)"
         : testFileCount > 8 ? "~30-50% (estimated)"
         : "~10-25% (estimated)"
         : "None detected",
       gaps: [
+        ...(reachKnown ? reach.untestedCritical.map((u) => `${u.file} (${u.reason}) has no tests importing it`) : []),
         ...(!hasTests && !hasTestDir ? ["No test files (.test.ts, .spec.ts, test_*.py, *_test.go) found in the codebase"] : []),
         ...(!hasCI ? ["No CI enforcement — tests can be bypassed before merge"] : []),
         ...(!hasAnyE2E ? ["No E2E test framework (Playwright/Cypress) detected — user flows unprotected"] : []),
@@ -3463,9 +3619,12 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
       score: depScore,
       totalCount: depCount,
       risks: [
+        ...vulnPackages.slice(0, 20).map((p) => `${vulnLabel(p)}${p.fixTarget ? ` — fixed in ${p.fixTarget}` : " — no patched release yet"}`),
+        ...(vulnPackages.length > 20 ? [`${vulnPackages.length - 20} more packages with known vulnerabilities`] : []),
         ...riskyDeps.slice(0, 8).map((d) => `${d.name}@${d.range} — ${d.reason}`),
         ...(depCount > 100 ? [`Large dependency tree (${depCount} packages) — increases maintenance and attack surface`] : []),
-        ...(depCount > 0 ? ["Run npm audit to check for known CVEs in the full dependency tree"] : []),
+        ...(!input.dependencyScan && depCount > 0 ? ["Run npm audit to check for known CVEs in the full dependency tree"] : []),
+        ...(input.dependencyScan && !input.dependencyScan.complete ? ["Vulnerability lookup was partial (OSV timed out or the tree was too large) — run npm audit for the full picture"] : []),
       ],
       outdatedSignals: [
         ...("moment" in deps ? ["moment.js is deprecated — migrate to date-fns or dayjs"] : []),

@@ -858,6 +858,7 @@ export function RepoScanner({
     id: string; package: string; version: string; ecosystem: string;
     summary: string; severity: "critical" | "high" | "medium" | "low";
     cvss?: string; fixedIn?: string[]; url?: string;
+    aliases?: string[]; dev?: boolean; direct?: boolean; approximate?: boolean; source?: string;
   }[] | null>(null);
   const [osvScanning, setOsvScanning] = useState(false);
   const [osvScanned, setOsvScanned] = useState(0);
@@ -2006,7 +2007,7 @@ export function RepoScanner({
 
           const critical = osvVulns?.filter((v) => v.severity === "critical").length ?? 0;
           const high      = osvVulns?.filter((v) => v.severity === "high").length ?? 0;
-          const prodOnly  = osvVulns ?? [];
+          const prodOnly  = (osvVulns ?? []).filter((v) => !v.dev);
 
           return (
             <div className="space-y-4 animate-in fade-in duration-300">
@@ -2082,12 +2083,26 @@ export function RepoScanner({
                                     {v.ecosystem && (
                                       <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 border border-outline-variant/20 px-1.5 py-0.5 rounded">{v.ecosystem}</span>
                                     )}
+                                    {v.dev && (
+                                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 border border-outline-variant/20 px-1.5 py-0.5 rounded">dev</span>
+                                    )}
+                                    {v.direct === false && (
+                                      <span className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/40 border border-outline-variant/20 px-1.5 py-0.5 rounded">transitive</span>
+                                    )}
+                                    {v.cvss && (
+                                      <span className="text-[8px] font-mono text-muted-foreground/50">CVSS {v.cvss}</span>
+                                    )}
                                     <a href={v.url} target="_blank" rel="noopener noreferrer"
                                       className="text-[8px] font-mono text-amber-400/60 hover:text-amber-400 transition-colors ml-auto shrink-0">
                                       {v.id} →
                                     </a>
                                   </div>
                                   <p className="text-[10px] text-muted-foreground/70 leading-snug line-clamp-2">{v.summary}</p>
+                                  <p className="text-[9px] font-mono text-muted-foreground/50">
+                                    {v.fixedIn?.length ? `Fixed in ${v.fixedIn.join(" / ")}` : "No patched release yet"}
+                                    {v.aliases?.find((a) => a.startsWith("CVE-")) ? ` · ${v.aliases.find((a) => a.startsWith("CVE-"))}` : ""}
+                                    {v.approximate ? " · version inferred from the package.json range" : ""}
+                                  </p>
                                 </div>
                               </div>
                               <div className="flex items-center gap-2 pl-5">
@@ -2102,7 +2117,7 @@ export function RepoScanner({
                                         repo: targetRepo,
                                         title: `CVE: ${v.package}@${v.version} — ${v.id}`,
                                         description: v.summary,
-                                        suggestion: `Upgrade ${v.package} to a patched version. See advisory: ${v.url}`,
+                                        suggestion: `Upgrade ${v.package} to ${v.fixedIn?.[0] ?? "a patched version"}${v.direct === false ? " (transitive — update the parent package or add an override)" : ""}. See advisory: ${v.url}`,
                                         severity: v.severity,
                                         category: "security",
                                       }),

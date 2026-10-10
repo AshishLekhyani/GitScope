@@ -681,6 +681,33 @@ export function PRReviewer({ selectedRepo, canDeepScan, allowsPrivateRepo }: PRR
           </Section>
         )}
 
+        {(result.resolvedFindings?.length ?? 0) > 0 && (
+          <Section
+            id="resolved"
+            title="Fixed by this PR"
+            subtitle={`${result.resolvedFindings!.length} pre-existing issue${result.resolvedFindings!.length > 1 ? "s" : ""} resolved`}
+            icon="task_alt"
+            badgeColor="text-emerald-400 bg-emerald-500/10 border-emerald-500/15"
+            expanded={expandedSection === "resolved"}
+            onToggle={() => setExpandedSection((s) => s === "resolved" ? null : "resolved")}
+          >
+            <ul className="space-y-2">
+              {result.resolvedFindings!.map((f, i) => (
+                <li key={i} className="flex items-start gap-2 text-xs leading-relaxed">
+                  <MaterialIcon name="check_circle" size={14} className="shrink-0 mt-0.5 text-emerald-400" />
+                  <div className="min-w-0 space-y-0.5">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-full border border-emerald-500/20 text-emerald-400/80 line-through decoration-emerald-400/50">{f.severity}</span>
+                      {f.file && <span className="text-[9px] font-mono text-muted-foreground/60 truncate">{f.file}</span>}
+                    </div>
+                    <p className="text-emerald-400/80 font-medium">{f.description}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </Section>
+        )}
+
         {/* Positives */}
         {result.positives.length > 0 && (
           <Section

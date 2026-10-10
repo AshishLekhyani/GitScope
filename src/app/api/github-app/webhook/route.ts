@@ -6,8 +6,9 @@
  *   - installation (created, deleted) → store/clear installationId
  */
 export const dynamic = "force-dynamic";
+export const maxDuration = 60;
 
-import { NextRequest, NextResponse } from "next/server";
+import { after, NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import {
   verifyWebhookSignature,
@@ -18,6 +19,7 @@ import {
 } from "@/lib/github-app";
 import { sendSlackMessage } from "@/lib/slack";
 import { analyzeWithInternalAI } from "@/lib/internal-ai";
+import { importSpecifiers, readAliases, resolveImport } from "@/lib/internal-ai-graph";
 
 // ── Types ──────────────────────────────────────────────────────────────────────
 
@@ -29,7 +31,7 @@ interface PullRequestPayload {
     title: string;
     html_url: string;
     head: { sha: string; ref: string };
-    base: { ref: string };
+    base: { ref: string; sha?: string };
     body: string | null;
     user: { login: string };
     draft: boolean;
@@ -93,9 +95,9 @@ export async function POST(req: NextRequest) {
     }
 
     // Fire and forget — respond quickly to GitHub (10s limit)
-    void handlePRReview(p).catch((err) => {
+    after(() => handlePRReview(p).catch((err) => {
       if (process.env.NODE_ENV !== "production") console.error("[webhook] PR review error:", err);
-    });
+    }));
 
     return NextResponse.json({ ok: true, queued: true });
   }
@@ -178,8 +180,70 @@ async function handlePRReview(p: PullRequestPayload) {
       { headers: { Authorization: `Bearer ${token}`, Accept: "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28" } }
     );
 
-    interface GHFile { filename: string; status: string; additions: number; deletions: number; patch?: string; }
+    interface GHFile { filename: string; status: string; additions: number; deletions: number; patch?: string; previous_filename?: string; }
     const files: GHFile[] = filesRes.ok ? (await filesRes.json() as GHFile[]) : [];
+
+    const ghHeaders = { Authorization: `Bearer ${token}`, "X-GitHub-Api-Version": "2022-11-28" };
+    const readFile = async (path: string, ref: string | undefined): Promise<string | null> => {
+      if (!ref) return null;
+      try {
+        const res = await fetch(`https://api.github.com/repos/${repoFull}/contents/${path}?ref=${encodeURIComponent(ref)}`, {
+          headers: { ...ghHeaders, Accept: "application/vnd.github.raw+json" },
+          signal: AbortSignal.timeout(10_000),
+        });
+        return res.ok ? await res.text() : null;
+      } catch {
+        return null;
+      }
+    };
+    const fileContents: Record<string, string> = {};
+    const baseContents: Record<string, string> = {};
+    const codeFiles = files
+      .filter((f) => f.status !== "removed" && /\.(?:[cm]?[jt]sx?|py|go|rs|java|cs|rb|php)$/.test(f.filename))
+      .slice(0, 10);
+    await Promise.all(codeFiles.map(async (f) => {
+      const [after, before] = await Promise.all([
+        readFile(f.filename, pr.head.sha),
+        f.status === "added" ? Promise.resolve(null) : readFile(f.previous_filename ?? f.filename, pr.base.sha),
+      ]);
+      if (after) fileContents[f.filename] = after;
+      if (before) baseContents[f.filename] = before;
+    }));
+
+    let repoFiles: string[] | undefined;
+    try {
+      const treeRes = await fetch(`https://api.github.com/repos/${repoFull}/git/trees/${pr.head.sha}?recursive=1`, {
+        headers: { ...ghHeaders, Accept: "application/vnd.github+json" },
+        signal: AbortSignal.timeout(10_000),
+      });
+      const tree = treeRes.ok ? (await treeRes.json() as { tree: Array<{ path: string; type: string }>; truncated?: boolean }) : null;
+      if (tree && !tree.truncated) repoFiles = tree.tree.filter((t) => t.type === "blob").map((t) => t.path);
+    } catch {
+      repoFiles = undefined;
+    }
+    if (repoFiles) {
+      const fileSet = new Set(repoFiles);
+      const projectFiles = ["tsconfig.json", "package.json", "proxy.ts", "middleware.ts", "src/proxy.ts", "src/middleware.ts", "next.config.ts", "next.config.js", "next.config.mjs"]
+        .filter((p) => fileSet.has(p));
+      await Promise.all(projectFiles.map(async (p) => {
+        const content = await readFile(p, pr.head.sha);
+        if (content) fileContents[p] = content;
+      }));
+      const aliases = readAliases(fileContents["tsconfig.json"]);
+      const imported = new Set<string>();
+      for (const f of codeFiles) {
+        const content = fileContents[f.filename];
+        if (!content) continue;
+        for (const spec of importSpecifiers(content, f.filename)) {
+          const target = resolveImport(f.filename, spec, fileSet, aliases);
+          if (target && !(target in fileContents) && /\.(?:[cm]?[jt]sx?|py)$/.test(target)) imported.add(target);
+        }
+      }
+      await Promise.all([...imported].slice(0, 8).map(async (p) => {
+        const content = await readFile(p, pr.head.sha);
+        if (content) fileContents[p] = content;
+      }));
+    }
 
     // Run internal static analysis directly (avoids the SSE code-review route)
     reviewResult = analyzeWithInternalAI({
@@ -193,6 +257,9 @@ async function handlePRReview(p: PullRequestPayload) {
       },
       files,
       prNumber: pr.number,
+      fileContents,
+      baseContents,
+      repoFiles,
     });
   } catch { /* fall through to static comment */ }
 

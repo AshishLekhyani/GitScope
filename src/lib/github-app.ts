@@ -147,10 +147,11 @@ export function formatReviewComment(result: {
   verdict: string;
   summary: string;
   findings?: Array<{ severity: string; description: string; suggestion?: string; file?: string; line?: number }>;
+  resolvedFindings?: Array<{ severity: string; description: string; file?: string; line?: number }>;
   securityIssues?: string[];
   model?: string;
 }): string {
-  const { verdict, summary, findings = [], securityIssues = [], model } = result;
+  const { verdict, summary, findings = [], resolvedFindings = [], securityIssues = [], model } = result;
   const verdictEmoji: Record<string, string> = {
     APPROVE: "✅",
     COMMENT: "💬",
@@ -179,6 +180,15 @@ export function formatReviewComment(result: {
   if (securityIssues.length > 0) {
     lines.push("### Security Concerns", "");
     for (const s of securityIssues.slice(0, 5)) lines.push(`- 🔐 ${s}`);
+    lines.push("");
+  }
+
+  if (resolvedFindings.length > 0) {
+    lines.push("### Fixed by this PR", "");
+    for (const f of resolvedFindings.slice(0, 6)) {
+      const where = f.file ? ` \`${f.file}\`` : "";
+      lines.push(`- ✅ **${f.severity.toUpperCase()}**${where} — ${f.description}`);
+    }
     lines.push("");
   }
 

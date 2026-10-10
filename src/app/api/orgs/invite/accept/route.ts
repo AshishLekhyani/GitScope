@@ -4,11 +4,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { checkRateLimit } from "@/lib/rate-limit";
 
 // POST /api/orgs/invite/accept — accept an invite by token
 export async function POST(req: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) return NextResponse.json({ error: "Sign in to accept this invite." }, { status: 401 });
+
+  const limit = await checkRateLimit(`orgs-accept:${session.user.id}`, { limit: 10, windowMs: 10 * 60 * 1000 });
+  if (!limit.allowed) {
+    return NextResponse.json({ error: "Too many attempts — try again in a few minutes." }, { status: 429, headers: { "Retry-After": String(Math.max(1, Math.ceil((limit.resetAt - Date.now()) / 1000))) } });
+  }
 
   const body = await req.json() as { token?: string };
   const token = (body.token ?? "").trim();

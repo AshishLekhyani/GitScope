@@ -515,3 +515,155 @@ describe("repo scan", () => {
     expect(result.codeQuality.issues.some((f) => /loose equality|`var`/i.test(f.description))).toBe(false);
   });
 });
+
+describe("PR analysis — base vs head", () => {
+  const vulnerable = [
+    "export async function POST(req: Request) {",
+    "  const body = await req.json();",
+    "  const rows = await db.query(`SELECT * FROM users WHERE id = ${body.id}`);",
+    "  return Response.json(rows);",
+    "}",
+  ].join("\n");
+  const fixed = [
+    "export async function POST(req: Request) {",
+    "  const body = await req.json();",
+    "  const rows = await db.query(\"SELECT * FROM users WHERE id = $1\", [body.id]);",
+    "  return Response.json(rows);",
+    "}",
+  ].join("\n");
+  const file = "src/app/api/users/route.ts";
+  const pr = (before: string, after: string) => analyzeWithInternalAI({
+    repo: "acme/app",
+    analysisType: "pr",
+    prMeta: { title: "fix: parameterize query", body: null, user: { login: "dev" }, additions: 1, deletions: 1, changed_files: 1, draft: false, labels: [] },
+    files: [{ filename: file, status: "modified", additions: 1, deletions: 1, patch: "@@ -3,1 +3,1 @@\n-x\n+y" }],
+    fileContents: { [file]: after },
+    baseContents: { [file]: before },
+  });
+
+  it("reports issues that the change removes", () => {
+    const result = pr(vulnerable, fixed);
+    expect(result.resolvedFindings?.some((f) => /SQL/.test(f.description))).toBe(true);
+    expect(result.positives[0]).toMatch(/^Fixes 1 pre-existing issue/);
+    expect(result.summary).toMatch(/Resolves 1 pre-existing issue/);
+  });
+
+  it("does not count a suppression comment as a fix", () => {
+    const suppressed = vulnerable.replace("  const rows", "  // gitscope-ignore-next-line\n  const rows");
+    expect(pr(vulnerable, suppressed).resolvedFindings ?? []).toHaveLength(0);
+  });
+});
+
+describe("ReDoS precision", () => {
+  it("ignores compile-only validation of a user-supplied pattern", () => {
+    const code = [
+      "function isValid(p: string) { try { new RegExp(p); return true; } catch { return false; } }",
+      "export async function POST(req: Request) {",
+      "  const body = await req.json();",
+      "  try { new RegExp(body.pattern); } catch { return Response.json({ error: \"bad\" }, { status: 400 }); }",
+      "  return Response.json({ ok: isValid(body.pattern) });",
+      "}",
+    ].join("\n");
+    expect(securityFindings("src/app/api/rules/route.ts", code).some((f) => /ReDoS/.test(f.description))).toBe(false);
+  });
+
+  it("still flags a user-supplied pattern that is executed", () => {
+    const code = [
+      "export async function POST(req: Request) {",
+      "  const body = await req.json();",
+      "  const hit = new RegExp(body.pattern).test(body.text);",
+      "  return Response.json({ hit });",
+      "}",
+    ].join("\n");
+    expect(securityFindings("src/app/api/rules/route.ts", code).some((f) => /ReDoS/.test(f.description))).toBe(true);
+  });
+});
+
+describe("repo intelligence", () => {
+  const base = { repo: "acme/app", recentCommits: [], contributors: 2, meta: {}, scanMode: "deep" };
+  const pkg = JSON.stringify({ dependencies: { next: "16.0.0" }, devDependencies: { typescript: "5.9.0", vitest: "4.0.0" } });
+
+  it("finds copy-pasted blocks and complexity hotspots across files", () => {
+    const shared = Array.from({ length: 12 }, (_, i) => `  total += computeWeightedValue(items[${i}], weights[${i}], options.factor);`).join("\n");
+    const branches = Array.from({ length: 30 }, (_, i) => `  if (mode === "m${i}") return handleMode${i}(input);`).join("\n");
+    const keyFileContents = {
+      "package.json": pkg,
+      "src/lib/a.ts": `export function sumA(items: number[], weights: number[], options: { factor: number }) {\n  let total = 0;\n${shared}\n  return total;\n}\n`,
+      "src/lib/b.ts": `export function sumB(items: number[], weights: number[], options: { factor: number }) {\n  let total = 1;\n${shared}\n  return total;\n}\n`,
+      "src/lib/router.ts": `export function route(mode: string, input: string) {\n${branches}\n  return null;\n}\n`,
+    };
+    const result = scanRepoWithInternalAI({ ...base, fileTree: Object.keys(keyFileContents), keyFileContents, completeTree: true });
+    const issues = [...result.codeQuality.issues, ...result.performance.issues];
+    const dup = issues.find((f) => /duplicate/i.test(f.description));
+    expect(dup?.file).toBe("src/lib/b.ts");
+    expect(dup?.description).toMatch(/lib\/a\.ts lines 3–15/);
+    expect(issues.some((f) => f.file === "src/lib/router.ts" && /cyclomatic complexity of 31/.test(f.description))).toBe(true);
+    expect(result.techDebt.hotspots.some((h) => /Complexity: route/.test(h))).toBe(true);
+  });
+
+  it("measures how much of the code the tests actually reach", () => {
+    const keyFileContents: Record<string, string> = { "package.json": pkg };
+    for (let i = 0; i < 10; i++) keyFileContents[`src/lib/m${i}.ts`] = `export const v${i} = ${i};\n`;
+    keyFileContents["src/lib/core.ts"] = "import { v1 } from './m1';\nimport { v2 } from './m2';\nexport const core = v1 + v2;\n";
+    keyFileContents["src/lib/core.test.ts"] = "import { core } from './core';\nit('works', () => expect(core).toBe(3));\n";
+    keyFileContents["src/lib/auth/session.ts"] = "export function readSession(token: string) { return token.length > 0; }\n";
+    const result = scanRepoWithInternalAI({ ...base, fileTree: Object.keys(keyFileContents), keyFileContents, completeTree: true });
+    expect(result.testability.coverageEstimate).toMatch(/^8% of source modules imported directly by tests; 25% reachable/);
+    expect(result.testability.gaps.some((g) => g.startsWith("src/lib/auth/session.ts (security-sensitive code path)"))).toBe(true);
+  });
+
+  it("turns known vulnerabilities into dependency findings, score and upgrade advice", () => {
+    const keyFileContents = { "package.json": pkg, "src/index.ts": "export {};\n" };
+    const scan = (vulnerabilities: Parameters<typeof scanRepoWithInternalAI>[0]["vulnerabilities"]) => scanRepoWithInternalAI({
+      ...base, fileTree: Object.keys(keyFileContents), keyFileContents,
+      vulnerabilities, dependencyScan: { scanned: 120, lockfiles: ["package-lock.json"], complete: true },
+    });
+    const clean = scan([]);
+    const vulnerable = scan([
+      { id: "GHSA-aaaa", aliases: ["CVE-2026-1"], package: "next", version: "16.0.0", ecosystem: "npm", summary: "Remote code execution in image optimizer", severity: "critical", fixedIn: ["16.0.7"], url: "u", dev: false, direct: true, approximate: false, source: "package-lock.json" },
+      { id: "GHSA-bbbb", aliases: [], package: "glob", version: "10.0.0", ecosystem: "npm", summary: "ReDoS", severity: "high", fixedIn: ["10.5.0"], url: "u", dev: true, direct: false, approximate: false, source: "package-lock.json" },
+    ]);
+    expect(clean.security.positives.some((p) => /No critical or high known vulnerabilities \(OSV\) in 120 locked/.test(p))).toBe(true);
+    expect(vulnerable.dependencies.score).toBeLessThan(clean.dependencies.score);
+    expect(vulnerable.security.score).toBeLessThan(clean.security.score);
+    const finding = vulnerable.security.issues.find((f) => f.category === "deps");
+    expect(finding?.description).toMatch(/^next@16\.0\.0 has 1 critical known vulnerability \(CVE-2026-1, GHSA-aaaa\)/);
+    expect(finding?.suggestion).toBe("Upgrade next to 16.0.7 or later.");
+    expect(vulnerable.security.issues.some((f) => /glob/.test(f.description))).toBe(false);
+    expect(vulnerable.dependencies.risks[0]).toMatch(/fixed in 16\.0\.7/);
+    expect(vulnerable.recommendations[0].title).toBe("Patch 1 vulnerable runtime package");
+  });
+
+  it("frames a missing CI pipeline around the auto-deploy platform", () => {
+    const keyFileContents = { "package.json": pkg, "src/index.ts": "export {};\n" };
+    const result = scanRepoWithInternalAI({ ...base, fileTree: [...Object.keys(keyFileContents), "vercel.json"], keyFileContents });
+    const ci = result.security.issues.find((f) => /gate before deploys/.test(f.description));
+    expect(ci?.description).toMatch(/Vercel builds and ships every push/);
+    expect(result.architecture.concerns.some((c) => /releases are manual/.test(c))).toBe(false);
+  });
+});
+
+describe("allowlist validation", () => {
+  const route = (guard: string) => [
+    "import OpenAI from \"openai\";",
+    "export async function POST(req: Request) {",
+    "  const { repo } = await req.json();",
+    `  ${guard}`,
+    "  const system = `You review the repository ${repo}.`;",
+    "  const r = await new OpenAI().chat.completions.create({ model: \"m\", max_tokens: 100, messages: [{ role: \"system\", content: system }] });",
+    "  return Response.json(r);",
+    "}",
+  ].join("\n");
+  const injected = (guard: string) => securityFindings("src/app/api/review/route.ts", route(guard)).some((f) => /system prompt/.test(f.description));
+
+  it("treats an early-exit anchored allowlist regex as validation", () => {
+    expect(injected("if (!repo || !/^[\\w.-]+\\/[\\w.-]+$/.test(repo)) { return new Response(\"bad\", { status: 400 }); }")).toBe(false);
+    expect(injected("if (!ALLOWED_REPOS.has(repo)) throw new Error(\"nope\");")).toBe(false);
+  });
+
+  it("ignores permissive patterns, non-exiting branches and conjunctions", () => {
+    expect(injected("if (!/^.*$/.test(repo)) return new Response(\"bad\");")).toBe(true);
+    expect(injected("if (!/^[a-z]+$/.test(repo)) console.warn(\"odd\");")).toBe(true);
+    expect(injected("if (strict && !/^[a-z]+$/.test(repo)) return new Response(\"bad\");")).toBe(true);
+  });
+});

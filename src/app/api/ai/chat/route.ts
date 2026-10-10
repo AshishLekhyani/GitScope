@@ -83,6 +83,13 @@ function fitChatMessages(
     next[i] = { ...next[i], content: trimmed };
     total -= content.length - trimmed.length;
   }
+  const last = next.length - 1;
+  const lastContent = next[last]?.content;
+  if (total > maxChars && last > 0 && typeof lastContent === "string") {
+    const trimmed = trimMiddle(lastContent, Math.max(2_000, lastContent.length - (total - maxChars)));
+    next[last] = { ...next[last], content: trimmed } as OpenAI.Chat.ChatCompletionMessageParam;
+    total -= lastContent.length - trimmed.length;
+  }
   if (total > maxChars && typeof next[0]?.content === "string") {
     next[0] = { ...next[0], content: trimMiddle(next[0].content, Math.max(2_000, maxChars - 4_000)) };
   }
@@ -107,7 +114,7 @@ export async function POST(req: Request) {
         const body = (await req.json()) as ChatRequestBody;
         const { repo, message, repoContext, clear, effort = "balanced" } = body;
 
-        if (!repo || typeof repo !== "string") { done(undefined, "repo is required"); return; }
+        if (!repo || typeof repo !== "string" || !/^[\w.-]+\/[\w.-]+$/.test(repo)) { done(undefined, "repo is required (owner/name)"); return; }
 
         if (clear) {
           await clearConversation(repo, session.user.id);
@@ -206,7 +213,10 @@ export async function POST(req: Request) {
         if (enrichedContext) contextParts.push(`### Additional Context (user-provided)\n${enrichedContext}`);
         const finalContext = contextParts.join("\n\n") || undefined;
 
-        const systemPrompt = buildChatSystemPrompt(repo, finalContext);
+        const systemPrompt = buildChatSystemPrompt(repo, Boolean(finalContext));
+        const userTurn = finalContext
+          ? `<repository_context>\n${finalContext.replace(/<\/?repository_context>/gi, "")}\n</repository_context>\n\n${message}`
+          : message;
         const history = sessionToProviderMessages(conversation);
         const models = pickModels(plan, effort);
         const maxTokens = maxTokensForEffort(effort);
@@ -234,7 +244,7 @@ export async function POST(req: Request) {
           let messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
             { role: "system", content: systemPrompt },
             ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-            { role: "user", content: message },
+            { role: "user", content: userTurn },
           ];
           if (options?.maxInputChars) messages = fitChatMessages(messages, options.maxInputChars);
           const resp = await client.chat.completions.create({
@@ -259,7 +269,7 @@ export async function POST(req: Request) {
             const client = new Anthropic({ apiKey: anthropicKey });
             const messages: Anthropic.MessageParam[] = [
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-              { role: "user", content: message },
+              { role: "user", content: userTurn },
             ];
             const streamResponse = client.messages.stream({ model: models.anthropic, max_tokens: maxTokens, system: systemPrompt, messages });
             for await (const chunk of streamResponse) {
@@ -357,7 +367,7 @@ export async function POST(req: Request) {
             const hfMessages = [
               { role: "system" as const, content: systemPrompt },
               ...history.map((m) => ({ role: m.role as "user" | "assistant", content: m.content })),
-              { role: "user" as const, content: message },
+              { role: "user" as const, content: userTurn },
             ];
             const result = await callHuggingFace({ tier: "balanced", messages: hfMessages, maxNewTokens: 1024, temperature: 0.4, apiKey: hfKey ?? undefined });
             assistantText = result?.text ?? "";
