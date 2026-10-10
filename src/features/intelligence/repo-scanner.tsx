@@ -274,6 +274,203 @@ const DEBT_LEVEL_COLOR = {
   severe: "text-red-400",
 } as const;
 
+type ScoreBreakdownData = NonNullable<RepoScanResult["scoreBreakdown"]>;
+type ScoreFactorItem = ScoreBreakdownData["security"][number];
+type ProfileData = NonNullable<RepoScanResult["profile"]>;
+
+function ScoreFactorList({ factors }: { factors: ScoreFactorItem[] }) {
+  return (
+    <ul className="space-y-1.5">
+      {factors.map((f, i) => (
+        <li key={`${f.label}-${i}`} className="flex items-start gap-2 text-[11px]">
+          <span
+            className={cn(
+              "shrink-0 w-12 text-right font-mono font-black",
+              f.points > 0 ? "text-emerald-400" : f.points < 0 ? "text-red-400" : "text-muted-foreground/50"
+            )}
+          >
+            {f.points > 0 ? "+" : ""}
+            {f.points}
+          </span>
+          <span className="flex-1 min-w-0 text-foreground/70 leading-snug">
+            {f.label}
+            {f.file && (
+              <span className="ml-1.5 font-mono text-[10px] text-muted-foreground/50">
+                {f.file.split("/").slice(-2).join("/")}
+                {f.line ? `:${f.line}` : ""}
+              </span>
+            )}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+const BREAKDOWN_TABS = [
+  { key: "health", label: "Health" },
+  { key: "security", label: "Security" },
+  { key: "quality", label: "Quality" },
+  { key: "testability", label: "Testability" },
+  { key: "dependencies", label: "Deps" },
+  { key: "performance", label: "Performance" },
+] as const;
+
+function ScoreBreakdownPanel({ breakdown }: { breakdown: ScoreBreakdownData }) {
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState<(typeof BREAKDOWN_TABS)[number]["key"]>("health");
+  return (
+    <div className="rounded-none bg-surface-container/20 border border-outline-variant/10">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-surface-container/40 transition-colors"
+      >
+        <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+          <MaterialIcon name="calculate" size={12} /> Why these scores?
+        </span>
+        <MaterialIcon name={open ? "expand_less" : "expand_more"} size={14} className="text-muted-foreground/50" />
+      </button>
+      {open && (
+        <div className="px-4 pb-4 pt-3 space-y-3 border-t border-outline-variant/10">
+          <div className="flex flex-wrap gap-1.5">
+            {BREAKDOWN_TABS.map((t) => (
+              <button
+                key={t.key}
+                type="button"
+                onClick={() => setTab(t.key)}
+                className={cn(
+                  "text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-none border transition-colors",
+                  tab === t.key
+                    ? "bg-amber-500/15 border-amber-500/30 text-amber-400"
+                    : "border-outline-variant/20 text-muted-foreground/60 hover:text-foreground/80"
+                )}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+          {tab === "health" && <p className="text-[10px] text-muted-foreground/60">{breakdown.weightsRationale}</p>}
+          <ScoreFactorList factors={breakdown[tab]} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+const ENDPOINT_AUTH_STYLE: Record<string, string> = {
+  none: "text-red-400 bg-red-500/10 border-red-500/20",
+  public: "text-muted-foreground/70 bg-surface-container-highest border-outline-variant/20",
+  proxy: "text-amber-400 bg-amber-500/10 border-amber-500/20",
+  session: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  helper: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
+  signature: "text-teal-400 bg-teal-500/10 border-teal-500/20",
+  secret: "text-teal-400 bg-teal-500/10 border-teal-500/20",
+};
+
+function ProjectProfilePanel({ profile }: { profile: ProfileData }) {
+  const [showEndpoints, setShowEndpoints] = useState(false);
+  const s = profile.surface;
+  const chips = [...profile.frameworks, ...profile.dataStores, ...profile.auth, ...profile.integrations, ...profile.deployment];
+  const pct = (n: number, d: number) => (d > 0 ? `${Math.round((n / d) * 100)}%` : "—");
+  const stats = s
+    ? [
+        { label: "Endpoints", value: String(s.totalEndpoints), show: s.totalEndpoints > 0 },
+        { label: "Mutating authed", value: `${pct(s.authenticated, s.mutating)}`, show: s.mutating > 0 },
+        { label: "Rate limited", value: pct(s.rateLimited, s.mutating), show: s.mutating > 0 },
+        { label: "Input validated", value: pct(s.validated, s.mutating), show: s.mutating > 0 },
+        { label: "Server actions", value: String(s.serverActions), show: s.serverActions > 0 },
+        { label: "Webhooks", value: String(s.webhooks), show: s.webhooks > 0 },
+        { label: "Cron jobs", value: String(s.cronJobs), show: s.cronJobs > 0 },
+        { label: "LLM call sites", value: String(s.llmCallSites), show: s.llmCallSites > 0 },
+        { label: "Client components", value: `${s.clientComponents} / ${s.clientComponents + s.serverComponents}`, show: s.clientComponents + s.serverComponents > 0 },
+      ].filter((x) => x.show)
+    : [];
+
+  return (
+    <div className="p-4 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-3">
+      <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+        <MaterialIcon name="travel_explore" size={12} /> Project profile
+      </p>
+      <p className="text-sm font-bold text-foreground/85 leading-snug">{profile.label}</p>
+      {chips.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {chips.map((c) => (
+            <span key={c} className="text-[9px] font-bold px-2 py-0.5 rounded-full bg-surface-container-highest border border-outline-variant/20 text-foreground/70">
+              {c}
+            </span>
+          ))}
+        </div>
+      )}
+      {profile.traits.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {profile.traits.map((t) => (
+            <span key={t} className="text-[9px] font-black uppercase tracking-wider px-2 py-0.5 rounded border border-amber-500/20 bg-amber-500/8 text-amber-400">
+              {t.replace(/-/g, " ")}
+            </span>
+          ))}
+        </div>
+      )}
+      {stats.length > 0 && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {stats.map((st) => (
+            <div key={st.label} className="p-2 rounded-none bg-surface-container/30 border border-outline-variant/10">
+              <div className="text-sm font-black text-foreground/85">{st.value}</div>
+              <div className="text-[8px] font-black uppercase tracking-widest text-muted-foreground/50">{st.label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+      {profile.focus.length > 0 && (
+        <div className="space-y-1.5">
+          <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50">What this scan focused on</p>
+          <ul className="space-y-1">
+            {profile.focus.map((f) => (
+              <li key={f} className="flex items-start gap-2 text-[11px] text-foreground/70">
+                <MaterialIcon name="adjust" size={12} className="shrink-0 mt-0.5 text-amber-400" /> {f}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {s && s.endpoints.length > 0 && (
+        <div className="space-y-2">
+          <button
+            type="button"
+            onClick={() => setShowEndpoints((v) => !v)}
+            className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-widest text-amber-400 hover:text-amber-300"
+          >
+            <MaterialIcon name={showEndpoints ? "expand_less" : "expand_more"} size={12} />
+            {showEndpoints ? "Hide" : "Show"} endpoint inventory ({s.totalEndpoints})
+          </button>
+          {showEndpoints && (
+            <div className="space-y-1 max-h-96 overflow-y-auto pr-1">
+              {s.endpoints.map((e) => (
+                <div key={`${e.file}:${e.path}`} className="flex flex-wrap items-center gap-1.5 px-2 py-1.5 border border-outline-variant/10 bg-surface-container/20 text-[10px]">
+                  <span className="font-mono font-black text-foreground/80">{e.methods.join(" ")}</span>
+                  <span className="font-mono text-foreground/70 truncate max-w-[220px]" title={`${e.file}:${e.line}`}>{e.path}</span>
+                  <span className={cn("ml-auto font-black uppercase tracking-wider px-1.5 py-0.5 rounded border text-[8px]", ENDPOINT_AUTH_STYLE[e.auth])}>
+                    {e.auth === "none" ? "no auth" : e.auth}
+                  </span>
+                  <span className={cn("text-[8px] font-black uppercase", e.rateLimited ? "text-emerald-400" : "text-muted-foreground/40")}>
+                    {e.rateLimited ? "rate-limited" : "no limit"}
+                  </span>
+                  <span className={cn("text-[8px] font-black uppercase", e.validated ? "text-emerald-400" : "text-muted-foreground/40")}>
+                    {e.validated ? "validated" : "unvalidated"}
+                  </span>
+                  {e.effects.length > 0 && (
+                    <span className="w-full text-[9px] text-muted-foreground/50">{e.effects.join(" · ")}</span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function ScoreBar({ label, score, grade }: { label: string; score: number; grade: string }) {
   const color =
     score >= 80 ? "bg-emerald-400" :
@@ -1209,6 +1406,8 @@ export function RepoScanner({
         {/* ── Overview section ── */}
         {activeSection === "overview" && (
           <div className="space-y-4 animate-in fade-in duration-300">
+            {result.profile && <ProjectProfilePanel profile={result.profile} />}
+
             {/* Score ring gauges */}
             <div className="p-5 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-4">
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -1234,6 +1433,8 @@ export function RepoScanner({
                 } />
               </div>
             </div>
+
+            {result.scoreBreakdown && <ScoreBreakdownPanel breakdown={result.scoreBreakdown} />}
 
             {/* ── Benchmark comparison ── */}
             {benchmark && (() => {
@@ -1379,6 +1580,15 @@ export function RepoScanner({
                 <p className="text-xs font-black text-foreground/70 mt-1">{result.security.score} / 100</p>
               </div>
             </div>
+
+            {(result.scoreBreakdown?.security.length ?? 0) > 0 && (
+              <div className="p-4 rounded-none bg-surface-container/20 border border-outline-variant/10 space-y-2">
+                <p className="text-[9px] font-black uppercase tracking-widest text-muted-foreground/50 flex items-center gap-1.5">
+                  <MaterialIcon name="calculate" size={12} /> What moved this score
+                </p>
+                <ScoreFactorList factors={result.scoreBreakdown!.security} />
+              </div>
+            )}
 
             {(result.security.positives?.length ?? 0) > 0 && (
               <div className="p-4 rounded-none bg-emerald-500/5 border border-emerald-500/10 space-y-2">

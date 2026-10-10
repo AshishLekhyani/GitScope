@@ -491,11 +491,26 @@ export function functionBodyAfter(code: string, from: number): { start: number; 
   if (paren < 0 || paren - from > 240) return null;
   const pclose = findClose(code, paren);
   if (pclose < 0) return null;
-  const m = /^\s*(?::[^{=;]*?)?\s*(?:=>)?\s*\{/.exec(code.slice(pclose + 1, pclose + 400));
-  if (!m) return null;
-  const open = pclose + m[0].length;
-  const close = findClose(code, open);
-  return close < 0 ? null : { start: open, end: close };
+  let angle = 0;
+  const stop = Math.min(code.length, pclose + 800);
+  for (let i = pclose + 1; i < stop; i++) {
+    const ch = code[i];
+    if (ch === "<") angle++;
+    else if (ch === ">" && code[i - 1] !== "=") angle = Math.max(0, angle - 1);
+    else if (ch === ";" && angle === 0) return null;
+    else if (ch === "(" || ch === "[") {
+      const c = findClose(code, i);
+      if (c < 0) return null;
+      i = c;
+    } else if (ch === "{") {
+      const close = findClose(code, i);
+      if (close < 0) return null;
+      const prev = /(\S)\s*$/.exec(code.slice(pclose + 1, i))?.[1] ?? ")";
+      if (angle === 0 && !":<|&,".includes(prev)) return { start: i, end: close };
+      i = close;
+    }
+  }
+  return null;
 }
 
 export function statementEnd(code: string, from: number, limit = 4000): number {
@@ -693,6 +708,7 @@ export interface TaintOptions {
   range?: [number, number];
   regions?: Array<[number, number]>;
   assignments?: Assignment[];
+  sources?: RegExp;
 }
 
 export function computeTaint(
@@ -704,8 +720,8 @@ export function computeTaint(
   opts: TaintOptions = {},
 ): TaintState {
   const useSources = opts.useSources ?? true;
-  let sourceRe = useSources ? SOURCES[lang] ?? null : null;
-  if (sourceRe && lang === "js" && JS_ROUTE_FILE.test(filename)) {
+  let sourceRe = opts.sources ?? (useSources ? SOURCES[lang] ?? null : null);
+  if (sourceRe && !opts.sources && lang === "js" && JS_ROUTE_FILE.test(filename)) {
     sourceRe = new RegExp(`${sourceRe.source}|\\bparams\\b`);
   }
   const regions = opts.regions ?? scopeRegions(code, lang);
@@ -866,9 +882,20 @@ export interface ProjectCtx {
   globalRateLimit: boolean;
   reactCompiler: boolean;
   deps: Record<string, string>;
+  kinds: string[];
+  traits: string[];
+  majors: Record<string, number>;
 }
 
-export const EMPTY_PROJECT: ProjectCtx = { globalAuth: false, globalRateLimit: false, reactCompiler: false, deps: {} };
+export const EMPTY_PROJECT: ProjectCtx = {
+  globalAuth: false,
+  globalRateLimit: false,
+  reactCompiler: false,
+  deps: {},
+  kinds: [],
+  traits: [],
+  majors: {},
+};
 
 export interface FileCtx {
   filename: string;
@@ -1022,6 +1049,7 @@ export interface PatternRule {
   cls?: string;
   pattern: RegExp;
   inStrings?: boolean;
+  when?: (ctx: FileCtx) => boolean;
   refine?: (m: RuleMatch) => boolean | Refinement;
   message: (m: RuleMatch) => string;
   label?: string;
@@ -1048,6 +1076,7 @@ export interface StructuralCheck {
   langs: Lang[] | "any";
   roles?: FileRole[];
   files?: RegExp;
+  when?: (ctx: FileCtx) => boolean;
   run: (ctx: FileCtx) => CheckFinding[];
 }
 
@@ -1089,10 +1118,14 @@ export interface EngineFinding {
 
 export const SEVERITY_RANK: Record<Severity, number> = { critical: 4, high: 3, medium: 2, low: 1 };
 
-function ruleApplies(r: { langs: Lang[] | "any"; roles?: FileRole[]; files?: RegExp }, ctx: FileCtx): boolean {
+function ruleApplies(
+  r: { langs: Lang[] | "any"; roles?: FileRole[]; files?: RegExp; when?: (ctx: FileCtx) => boolean },
+  ctx: FileCtx,
+): boolean {
   if (r.langs !== "any" && !r.langs.includes(ctx.lang)) return false;
   if (r.files && !r.files.test(ctx.filename)) return false;
-  return (r.roles ?? ["source"]).includes(ctx.role);
+  if (!(r.roles ?? ["source"]).includes(ctx.role)) return false;
+  return !r.when || r.when(ctx);
 }
 
 const regexCache = new WeakMap<RegExp, RegExp>();

@@ -31,6 +31,18 @@ import {
   TAINT_SINKS,
 } from "@/lib/internal-ai-rules";
 import { analyzeProjectGraph, type GraphResult } from "@/lib/internal-ai-graph";
+import {
+  buildSurface,
+  calibrateFindings,
+  detectProfile,
+  healthWeights,
+  parsePackageJson,
+  profileIssues,
+  projectCtxFrom,
+  type ProfileInput,
+  type ScoreFactor,
+} from "@/lib/internal-ai-profile";
+import { STACK_CHECKS, STACK_RULES } from "@/lib/internal-ai-stacks";
 
 
 interface RuleScope {
@@ -1042,22 +1054,6 @@ const SECURITY_RULES: SecurityRule[] = [
       language: "typescript",
     },
   },
-  // ── Missing database transaction ──────────────────────────────────────────
-  {
-    id: "missing-db-transaction",
-    pattern: /(?:prisma\.\w+\.create|prisma\.\w+\.update|prisma\.\w+\.delete)[^;]+;\s*(?:await\s+)?prisma\.\w+\.(?:create|update|delete)/g,
-    severity: "medium",
-    description: (_, file) =>
-      `Multiple database write operations in ${file} without a transaction. If the second write fails, the first is already committed — leaving data in an inconsistent state.`,
-    suggestion: "Wrap related writes in a transaction: await prisma.$transaction([prisma.user.update(...), prisma.account.create(...)]);",
-    category: "security",
-    confidence: 0.65,
-    fix: {
-      before: `await prisma.order.create({ data: orderData });\nawait prisma.inventory.update({ where: { id }, data: { stock: stock - 1 } });\n// If second line fails — order exists but stock not decremented!`,
-      after: `await prisma.$transaction(async (tx) => {\n  await tx.order.create({ data: orderData });\n  await tx.inventory.update({\n    where: { id: product.id },\n    data: { stock: { decrement: 1 } },\n  });\n}); // atomic — both succeed or both rollback`,
-      language: "typescript",
-    },
-  },
   // ── GraphQL mutation without auth ─────────────────────────────────────────
   {
     id: "graphql-mutation-no-auth",
@@ -1242,8 +1238,9 @@ const QUALITY_RULES: QualityRule[] = [
   },
   {
     id: "long-parameter-list",
-    pattern: /function\s+\w+\s*\((?:[^,)]+,){5,}[^)]*\)/g,
+    pattern: /function\s+\w+\s*\(/g,
     severity: "low",
+    refine: (m) => (callArgsAt(m.ctx.code, m.end - 1)?.args.length ?? 0) >= 6,
     description: (file) =>
       `Function with 6+ parameters detected in ${file}. Long parameter lists indicate a design smell.`,
     suggestion: "Group related parameters into an options object: function foo({ a, b, c, d, e }: FooOptions) {}",
@@ -1550,6 +1547,20 @@ const QUALITY_RULES: QualityRule[] = [
       language: "typescript",
     },
   },
+  {
+    id: "missing-db-transaction",
+    pattern: /(?:prisma\.\w+\.create|prisma\.\w+\.update|prisma\.\w+\.delete)[^;]+;\s*(?:await\s+)?prisma\.\w+\.(?:create|update|delete)/g,
+    severity: "medium",
+    description: (file) =>
+      `Multiple dependent database writes in ${file} without a transaction. If the second write fails, the first is already committed and the data is left inconsistent.`,
+    suggestion: "Wrap related writes in a transaction: await prisma.$transaction(async (tx) => { … }) so they succeed or roll back together.",
+    scanLabel: "Related database writes without a transaction",
+    fix: {
+      before: `await prisma.order.create({ data: orderData });\nawait prisma.inventory.update({ where: { id }, data: { stock: stock - 1 } });`,
+      after: `await prisma.$transaction(async (tx) => {\n  await tx.order.create({ data: orderData });\n  await tx.inventory.update({ where: { id }, data: { stock: { decrement: 1 } } });\n});`,
+      language: "typescript",
+    },
+  },
 ];
 
 // ── Performance rules ─────────────────────────────────────────────────────────
@@ -1788,7 +1799,7 @@ const PERFORMANCE_RULES: PerformanceRule[] = [
   // ── Missing debounce on input handler ─────────────────────────────────────
   {
     id: "input-no-debounce",
-    pattern: /onChange\s*=\s*\{[^}]*(?:fetch|axios|search|query|api)\s*\(/gi,
+    pattern: /onChange\s*=\s*\{[^}]*(?<![\w$])(?:fetch|axios(?:\.\w+)?|ky|search|runSearch|doSearch|query|api\.\w+)\s*\(/g,
     severity: "medium",
     refine: (m) => !/debounce|throttle|useDeferredValue|useTransition|setTimeout/i.test(m.ctx.code),
     description: (file) =>
@@ -1917,13 +1928,14 @@ const RULE_PACKS: RulePacks = {
   patterns: [
     ...SECRET_RULES,
     ...SECURITY_RULES.map(fromSecurityRule),
+    ...STACK_RULES,
     ...JS_EXTRA_RULES,
     ...LANGUAGE_RULES,
     ...INFRA_RULES,
     ...QUALITY_RULES.map((r) => fromCountedRule(r, "quality")),
     ...PERFORMANCE_RULES.map((r) => fromCountedRule(r, "performance")),
   ],
-  checks: STRUCTURAL_CHECKS,
+  checks: [...STRUCTURAL_CHECKS, ...STACK_CHECKS],
   sinks: TAINT_SINKS,
 };
 
@@ -1973,6 +1985,62 @@ function penaltyOf(findings: Array<{ ruleId: string; severity: Severity; confide
 
 function clamp(n: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, Math.round(n)));
+}
+
+function round1(n: number): number {
+  return Math.round(n * 10) / 10;
+}
+
+interface PenaltyItem {
+  ruleId: string;
+  severity: Severity;
+  confidence: number;
+  label: string;
+  file?: string;
+  line?: number;
+}
+
+function engineItem(f: EngineFinding): PenaltyItem {
+  return { ruleId: f.ruleId, severity: f.severity, confidence: f.confidence, label: firstSentence(describeFinding(f)), file: f.file, line: f.line };
+}
+
+function scanItems(findings: Array<{ severity: string; description: string; file?: string; line?: number }>): PenaltyItem[] {
+  return findings
+    .filter((f): f is typeof f & { severity: Severity } => f.severity in SEVERITY_RANK)
+    .map((f) => ({ ruleId: `repo:${f.description.slice(0, 40)}`, severity: f.severity, confidence: 0.8, label: firstSentence(f.description), file: f.file && f.file !== "root" ? f.file : undefined, line: f.line }));
+}
+
+function deductionFactors(items: PenaltyItem[], ceiling: number, scale: number): { remaining: number; factors: ScoreFactor[] } {
+  const groups = new Map<string, { weight: number; count: number; sample: PenaltyItem }>();
+  for (const item of items) {
+    const weight = PENALTY_WEIGHT[item.severity] * item.confidence;
+    const g = groups.get(item.ruleId);
+    if (!g) groups.set(item.ruleId, { weight, count: 1, sample: item });
+    else {
+      g.count++;
+      if (weight > g.weight) { g.weight = weight; g.sample = item; }
+    }
+  }
+  const penalties = [...groups.values()].map((g) => ({ ...g, penalty: g.weight * (1 + 0.35 * Math.min(g.count - 1, 4)) }));
+  const total = penalties.reduce((n, p) => n + p.penalty, 0);
+  const remaining = ceiling * Math.exp(-total / scale);
+  const lost = ceiling - remaining;
+  const factors = penalties
+    .sort((a, b) => b.penalty - a.penalty)
+    .map((p) => ({
+      label: `${p.sample.label}${p.count > 1 ? ` (+${p.count - 1} more file${p.count > 2 ? "s" : ""})` : ""}`,
+      points: -round1(total > 0 ? (lost * p.penalty) / total : 0),
+      file: p.sample.file,
+      line: p.sample.line,
+      severity: p.sample.severity,
+    }));
+  return { remaining, factors };
+}
+
+function capFactor(raw: number, final: number): ScoreFactor[] {
+  const diff = round1(final - raw);
+  if (Math.abs(diff) < 0.5) return [];
+  return [{ label: diff < 0 ? "Capped — static analysis can't prove the absence of issues" : "Floor applied", points: diff }];
 }
 
 // ── Breaking change detectors ─────────────────────────────────────────────────
@@ -2266,7 +2334,17 @@ function analyzeChangedFiles(input: InternalAnalysisInput): {
   withContext: number;
   graph: GraphResult;
 } {
-  const project: ProjectCtx = { ...EMPTY_PROJECT, ...input.project };
+  const contents = input.fileContents ?? {};
+  const pkg = parsePackageJson(contents["package.json"]);
+  const prodDeps = (pkg.dependencies ?? {}) as Record<string, string>;
+  const devDeps = (pkg.devDependencies ?? {}) as Record<string, string>;
+  const profile = Object.keys(pkg).length > 0
+    ? detectProfile({ fileTree: input.repoFiles ?? input.files.map((f) => f.filename), contents, prodDeps, devDeps, pkg })
+    : null;
+  const project: ProjectCtx = {
+    ...(profile ? projectCtxFrom(profile, { ...devDeps, ...prodDeps }, contents) : EMPTY_PROJECT),
+    ...input.project,
+  };
   const findings: EngineFinding[] = [];
   const contexts: FileCtx[] = [];
   const changed = new Set<string>();
@@ -2295,7 +2373,8 @@ function analyzeChangedFiles(input: InternalAnalysisInput): {
     tsconfig: input.fileContents?.["tsconfig.json"],
     completeTree: Boolean(input.repoFiles && input.repoFiles.length > 0 && input.repoFiles.length < 100_000),
   });
-  return { findings: applyGraph(findings, graph).sort(compareFindings), analyzed, withContext, graph };
+  const merged = applyGraph(findings, graph);
+  return { findings: (profile ? calibrateFindings(merged, profile) : merged).sort(compareFindings), analyzed, withContext, graph };
 }
 
 function toReviewFinding(f: EngineFinding): CodeReviewFinding {
@@ -2749,18 +2828,6 @@ function riskyDependencies(prodDeps: Record<string, string>, devDeps: Record<str
   return out;
 }
 
-function projectContext(keyFileContents: Record<string, string>, deps: Record<string, string>): ProjectCtx {
-  const find = (re: RegExp) => Object.entries(keyFileContents).find(([f]) => re.test(f))?.[1] ?? "";
-  const proxy = find(/(?:^|\/)(?:src\/)?(?:middleware|proxy)\.[jt]s$/);
-  const nextConfig = find(/(?:^|\/)next\.config\.[cm]?[jt]s$/);
-  return {
-    globalAuth: /\bgetToken\s*\(|\bwithAuth\b|\bauth\s*\(|clerkMiddleware|authMiddleware|NextAuth|getSession\s*\(|updateSession\s*\(|supabase\s*\.\s*auth/.test(proxy),
-    globalRateLimit: /rate.?limit|ratelimit|limiter/i.test(proxy),
-    reactCompiler: "babel-plugin-react-compiler" in deps || /reactCompiler\s*:\s*true/.test(nextConfig),
-    deps,
-  };
-}
-
 const COMMITTED_ENV_FILE = /(?:^|\/)\.env(?:\.(?:local|production|prod|development|dev|staging|test))?$/;
 const COMMITTED_KEY_FILE = /(?:^|\/)id_(?:rsa|dsa|ecdsa|ed25519)$|\.(?:key|p12|pfx|jks|keystore|ppk)$/;
 
@@ -2785,12 +2852,6 @@ function capPerRule(findings: EngineFinding[], perRule: number): EngineFinding[]
   });
 }
 
-function asPenaltyInput(findings: RepoScanFinding[], prefix: string): Array<{ ruleId: string; severity: Severity; confidence: number }> {
-  return findings
-    .filter((f): f is RepoScanFinding & { severity: Severity } => f.severity !== "info")
-    .map((f) => ({ ruleId: `${prefix}:${f.description.slice(0, 40)}`, severity: f.severity, confidence: 0.8 }));
-}
-
 export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanResult {
   const { repo, fileTree, keyFileContents, contributors, meta } = input;
 
@@ -2804,6 +2865,8 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   const devDepsObj = (pkg.devDependencies ?? {}) as Record<string, string>;
   const deps: Record<string, string> = { ...prodDeps, ...devDepsObj };
   const depCount = Object.keys(deps).length;
+  const profileInput: ProfileInput = { fileTree, contents: keyFileContents, prodDeps, devDeps: devDepsObj, pkg };
+  const profile = detectProfile(profileInput);
 
   // ── Evidence-based detection flags ────────────────────────────────────────
   const contentKeys = Object.keys(keyFileContents);
@@ -2916,7 +2979,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
       `${Math.round(rawEstLoc / 1000)}k lines`;
   }
 
-  const project = projectContext(keyFileContents, deps);
+  const project = projectCtxFrom(profile, deps, keyFileContents);
   const perFileFindings: EngineFinding[] = [];
   const contexts: FileCtx[] = [];
   for (const [filename, content] of Object.entries(keyFileContents)) {
@@ -2936,7 +2999,8 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     fullCoverage: graphCoverage >= 0.97,
     truncated: new Set(input.truncatedFiles ?? []),
   });
-  const engineFindings = applyGraph(perFileFindings, graph).sort(compareFindings);
+  const engineFindings = calibrateFindings(applyGraph(perFileFindings, graph), profile).sort(compareFindings);
+  const surface = buildSurface(contexts, graph, project);
   const securityEngine = engineFindings.filter((f) => f.category === "security");
   const qualityEngine = engineFindings.filter((f) => f.category === "quality");
   const performanceEngine = engineFindings.filter((f) => f.category === "performance");
@@ -2978,9 +3042,15 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   } else securityPositives.push("Environment template (.env.example) documents all required variables");
 
   if (!hasCI) {
+    const stakes = [
+      profile.traits.includes("payments") && "payments",
+      profile.traits.includes("authentication") && "authentication",
+      profile.traits.includes("ai-powered") && "paid AI calls",
+      profile.traits.includes("personal-data") && "personal data",
+    ].filter(Boolean);
     structuralIssues.push({
       severity: "medium", category: "config",
-      description: "No CI/CD pipeline found. PRs can merge without automated tests, linting, or security checks.",
+      description: `No CI/CD pipeline found. PRs can merge without automated tests, linting, or security checks${stakes.length ? ` — risky for a project that handles ${stakes.join(", ")}` : ""}.`,
       suggestion: "Add GitHub Actions (.github/workflows/ci.yml) with test, lint, and npm audit steps. Gate all PRs on it.",
     });
   } else securityPositives.push("CI/CD pipeline configured — every PR runs automated checks");
@@ -3104,54 +3174,83 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
   }
 
   // ── Score calculation ──────────────────────────────────────────────────────
+  for (const issue of profileIssues(profile, profileInput)) {
+    if (issue.category === "security") structuralIssues.push(issue);
+    else qualityFindings.push(issue);
+  }
   const allSecIssues = [...codeSecurityFindings, ...structuralIssues].sort(
     (a, b) => (SEVERITY_RANK[b.severity as Severity] ?? 0) - (SEVERITY_RANK[a.severity as Severity] ?? 0)
   );
-  const extraQuality = qualityFindings.filter((f) => !f.file);
+  const extraQuality = qualityFindings.filter((f) => !f.file || f.file === "package.json" || !qualityEngine.some((e) => e.file === f.file));
 
-  const securityPenalty =
-    penaltyOf(securityEngine) +
-    penaltyOf(asPenaltyInput(structuralIssues.filter((f) => f.category === "security"), "repo"));
-  const securityScore = clamp(98 * Math.exp(-securityPenalty / 110) + Math.min(6, securityPositives.length), 5, 98);
-
-  const performanceScore = clamp(15 + 82 * Math.exp(-penaltyOf(performanceEngine) / 60), 15, 97);
-
-  const qualityPenalty = penaltyOf(qualityEngine) + penaltyOf(asPenaltyInput(extraQuality, "repo"));
-  const qualityScore = clamp(
-    15 + 70 * Math.exp(-qualityPenalty / 70) +
-    (hasTypeScript ? 6 : 0) +
-    (hasLinting ? 5 : 0) +
-    (hasFormatting ? 2 : 0) +
-    (hasTests || hasTestDir ? 6 : -10),
-    15, 97,
+  const secDeduction = deductionFactors(
+    [...securityEngine.map(engineItem), ...scanItems(structuralIssues.filter((f) => f.category === "security"))],
+    98,
+    110,
   );
+  const secBonus = Math.min(6, securityPositives.length);
+  const securityScore = clamp(secDeduction.remaining + secBonus, 5, 98);
+  const securityFactors: ScoreFactor[] = [
+    { label: "Starting score", points: 98 },
+    ...secDeduction.factors,
+    ...(secBonus > 0 ? [{ label: `Security strengths detected (${securityPositives.length})`, points: secBonus }] : []),
+    ...capFactor(secDeduction.remaining + secBonus, securityScore),
+  ];
+
+  const perfDeduction = deductionFactors(performanceEngine.map(engineItem), 82, 60);
+  const performanceScore = clamp(15 + perfDeduction.remaining, 15, 97);
+  const performanceFactors: ScoreFactor[] = [{ label: "Starting score", points: 97 }, ...perfDeduction.factors, ...capFactor(15 + perfDeduction.remaining, performanceScore)];
+
+  const qualityDeduction = deductionFactors([...qualityEngine.map(engineItem), ...scanItems(extraQuality)], 70, 70);
+  const qualityBonuses: ScoreFactor[] = [
+    ...(hasTypeScript ? [{ label: "TypeScript", points: 6 }] : []),
+    ...(hasLinting ? [{ label: "Linter configured", points: 5 }] : []),
+    ...(hasFormatting ? [{ label: "Formatter configured", points: 2 }] : []),
+    hasTests || hasTestDir ? { label: "Tests present", points: 6 } : { label: "No tests", points: -10 },
+  ];
+  const qualityRaw = 15 + qualityDeduction.remaining + qualityBonuses.reduce((n, b) => n + b.points, 0);
+  const qualityScore = clamp(qualityRaw, 15, 97);
+  const qualityFactors: ScoreFactor[] = [{ label: "Starting score", points: 85 }, ...qualityDeduction.factors, ...qualityBonuses, ...capFactor(qualityRaw, qualityScore)];
 
   const testFileCount = fileTree.filter((f) => fileRole(f) === "test" && CODE_FILE.test(f)).length;
-  const testabilityScore = clamp(
-    (hasTests || hasTestDir ? 45 : 5) +
-    (hasCI ? 18 : 0) +
-    (hasAnyTestFramework ? 5 : 0) +
-    (hasTestingLibrary ? 5 : 0) +
-    (hasAnyE2E ? 8 : 0) +
-    (testFileCount > 5 ? 8 : 0) +
-    (testFileCount > 20 ? 8 : 0),
-    5, 97,
-  );
+  const testabilityParts: ScoreFactor[] = [
+    hasTests || hasTestDir ? { label: "Test files present", points: 45 } : { label: "No test files", points: 5 },
+    ...(hasCI ? [{ label: "CI runs on every change", points: 18 }] : [{ label: "No CI — tests are never run automatically", points: 0 }]),
+    ...(hasAnyTestFramework ? [{ label: "Test framework configured", points: 5 }] : []),
+    ...(hasTestingLibrary ? [{ label: "Component testing library", points: 5 }] : []),
+    ...(hasAnyE2E ? [{ label: "End-to-end test framework", points: 8 }] : []),
+    ...(testFileCount > 5 ? [{ label: `More than 5 test files (${testFileCount})`, points: 8 }] : []),
+    ...(testFileCount > 20 ? [{ label: "More than 20 test files", points: 8 }] : []),
+  ];
+  const testabilityRaw = testabilityParts.reduce((n, p) => n + p.points, 0);
+  const testabilityScore = clamp(testabilityRaw, 5, 97);
+  const testabilityFactors = [...testabilityParts, ...capFactor(testabilityRaw, testabilityScore)];
 
-  const depScore = clamp(
-    88
-    - (riskyDeps.length * 8)
-    - (depCount > 150 ? 15 : depCount > 100 ? 8 : depCount > 60 ? 3 : 0),
-    15, 97,
-  );
+  const sizePenalty = depCount > 150 ? 15 : depCount > 100 ? 8 : depCount > 60 ? 3 : 0;
+  const depRaw = 88 - riskyDeps.length * 8 - sizePenalty;
+  const depScore = clamp(depRaw, 15, 97);
+  const dependencyFactors: ScoreFactor[] = [
+    { label: "Starting score", points: 88 },
+    ...riskyDeps.map((d) => ({ label: `${d.name}@${d.range} — ${d.reason}`, points: -8 })),
+    ...(sizePenalty > 0 ? [{ label: `${depCount} dependencies`, points: -sizePenalty }] : []),
+    ...capFactor(depRaw, depScore),
+  ];
 
+  const weights = healthWeights(profile);
   const healthScore = Math.round(
-    securityScore * 0.28 +
-    qualityScore * 0.22 +
-    testabilityScore * 0.22 +
-    depScore * 0.18 +
-    performanceScore * 0.10
+    securityScore * weights.security +
+    qualityScore * weights.quality +
+    testabilityScore * weights.testability +
+    depScore * weights.dependencies +
+    performanceScore * weights.performance
   );
+  const healthFactors: ScoreFactor[] = [
+    { label: `Security ${securityScore} × ${Math.round(weights.security * 100)}%`, points: round1(securityScore * weights.security) },
+    { label: `Code quality ${qualityScore} × ${Math.round(weights.quality * 100)}%`, points: round1(qualityScore * weights.quality) },
+    { label: `Testability ${testabilityScore} × ${Math.round(weights.testability * 100)}%`, points: round1(testabilityScore * weights.testability) },
+    { label: `Dependencies ${depScore} × ${Math.round(weights.dependencies * 100)}%`, points: round1(depScore * weights.dependencies) },
+    { label: `Performance ${performanceScore} × ${Math.round(weights.performance * 100)}%`, points: round1(performanceScore * weights.performance) },
+  ];
 
   const grade = (s: number): "A" | "B" | "C" | "D" | "F" =>
     s >= 85 ? "A" : s >= 70 ? "B" : s >= 55 ? "C" : s >= 40 ? "D" : "F";
@@ -3316,7 +3415,7 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
     } ${!hasTests && !hasTestDir ? "No test infrastructure — regression risk is high." : `Test infrastructure present${hasAnyE2E ? " (including E2E)" : ""}.`} ${estimatedLoc} of code across ${fileTree.length} files (${scannedFiles} read).`,
 
     architecture: {
-      summary: `${patterns.filter((p) => !["TypeScript", "Docker", "Serverless/Edge", "React Compiler"].includes(p)).slice(0, 4).join(" + ") || primaryLanguage} project with ${fileTree.length} tracked files.${hasMigrations ? " Database migrations tracked." : ""}${hasDocker ? " Containerized." : ""}${hasMonorepo || hasWorkspaces ? " Monorepo structure." : ""}${graph.insights.modules > 0 ? ` Dependency graph: ${graph.insights.modules} modules, ${graph.insights.edges} import edges${graph.insights.cycles.length > 0 ? `, ${graph.insights.cycles.length} circular chain${graph.insights.cycles.length > 1 ? "s" : ""}` : ""}${graph.insights.crossFileFlows > 0 ? `, ${graph.insights.crossFileFlows} cross-file data flow${graph.insights.crossFileFlows > 1 ? "s" : ""} into dangerous sinks` : ""}.` : ""}`,
+      summary: `${profile.label} — ${fileTree.length} tracked files.${hasMigrations ? " Database migrations tracked." : ""}${hasDocker ? " Containerized." : ""}${hasMonorepo || hasWorkspaces ? " Monorepo structure." : ""}${graph.insights.modules > 0 ? ` Dependency graph: ${graph.insights.modules} modules, ${graph.insights.edges} import edges${graph.insights.cycles.length > 0 ? `, ${graph.insights.cycles.length} circular chain${graph.insights.cycles.length > 1 ? "s" : ""}` : ""}${graph.insights.crossFileFlows > 0 ? `, ${graph.insights.crossFileFlows} cross-file data flow${graph.insights.crossFileFlows > 1 ? "s" : ""} into dangerous sinks` : ""}.` : ""}`,
       patterns: patterns.length > 0 ? patterns : ["Standard project structure"],
       strengths: archStrengths.length > 0 ? archStrengths : ["Project is organized consistently"],
       concerns: archConcerns.length > 0 ? archConcerns : ["No major architectural concerns identified in scanned files"],
@@ -3397,6 +3496,16 @@ export function scanRepoWithInternalAI(input: InternalRepoScanInput): RepoScanRe
       repoAge,
       openIssues: (meta.open_issues_count as number) ?? 0,
       stars: (meta.stargazers_count as number) ?? 0,
+    },
+    profile: { ...profile, surface },
+    scoreBreakdown: {
+      security: securityFactors,
+      quality: qualityFactors,
+      performance: performanceFactors,
+      testability: testabilityFactors,
+      dependencies: dependencyFactors,
+      health: healthFactors,
+      weightsRationale: weights.rationale,
     },
     model: "gitscope-internal-v4",
     isDemo: false,

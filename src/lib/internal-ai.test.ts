@@ -346,6 +346,124 @@ describe("cross-file analysis", () => {
   });
 });
 
+describe("project profiling", () => {
+  const base = { repo: "acme/app", recentCommits: [], contributors: 3, meta: {}, scanMode: "deep" };
+  const scan = (files: Record<string, string>, extraTree: string[] = []) =>
+    scanRepoWithInternalAI({ ...base, fileTree: [...Object.keys(files), ...extraTree], keyFileContents: files });
+  const issues = (r: ReturnType<typeof scan>) => [...r.security.issues, ...r.codeQuality.issues, ...r.performance.issues];
+
+  it("recognizes a Next.js AI app and inventories its endpoints", () => {
+    const result = scan(
+      {
+        "package.json": JSON.stringify({ private: true, dependencies: { next: "16.0.0", react: "19.0.0", "@prisma/client": "5.0.0", "next-auth": "4.24.0", "@anthropic-ai/sdk": "0.80.0" } }),
+        "prisma/schema.prisma": "datasource db {\n  provider = \"postgresql\"\n}\nmodel User {\n  id String @id\n  email String\n  accessToken String?\n}\n",
+        "src/app/api/items/route.ts": "export async function DELETE(req: Request) {\n  const { id } = await req.json();\n  await prisma.item.delete({ where: { id } });\n}\n",
+        "src/app/api/me/route.ts": "export async function POST(req: Request) {\n  const session = await getServerSession(authOptions);\n  const body = Schema.parse(await req.json());\n  await prisma.user.update({ where: { id: session.user.id }, data: body });\n}\n",
+      },
+      ["vercel.json"],
+    );
+    const profile = result.profile!;
+    expect(profile.kind).toBe("nextjs-app");
+    expect(profile.label).toMatch(/Next\.js 16/);
+    expect(profile.label).toMatch(/Prisma \(PostgreSQL\)/);
+    expect(profile.traits).toEqual(expect.arrayContaining(["ai-powered", "authentication", "personal-data", "stores-credentials"]));
+    expect(profile.deployment).toContain("Vercel");
+    const surface = profile.surface!;
+    expect(surface.totalEndpoints).toBe(2);
+    expect(surface.endpoints[0]).toMatchObject({ path: "/api/items", auth: "none", effects: ["db-write"] });
+    expect(surface.endpoints.find((e) => e.path === "/api/me")).toMatchObject({ auth: "session", validated: true });
+  });
+
+  it("recognizes libraries and checks their packaging", () => {
+    const result = scan({
+      "package.json": JSON.stringify({ name: "tiny-lib", exports: "./dist/index.js", dependencies: { react: "^19.0.0" } }),
+      "src/index.ts": "export const add = (a: number, b: number): number => a + b;\n",
+    });
+    expect(result.profile!.kind).toBe("node-library");
+    const text = issues(result).map((f) => f.description).join("\n");
+    expect(text).toMatch(/no "files" allowlist/);
+    expect(text).toMatch(/without a "types" entry/);
+    expect(text).toMatch(/react listed in "dependencies"/);
+    expect(result.scoreBreakdown!.weightsRationale).toMatch(/Library weighting/);
+  });
+
+  it("treats CLI arguments as operator input", () => {
+    const result = scan({
+      "package.json": JSON.stringify({ name: "tool", bin: { tool: "./bin/tool.js" }, dependencies: { commander: "^12.0.0" } }),
+      "src/run.js": "const { exec } = require(\"child_process\");\nconst target = process.argv[2];\nexec(`ls ${target}`);\n",
+    });
+    expect(result.profile!.kinds).toContain("cli-tool");
+    const flow = result.security.issues.find((f) => /Command injection/.test(f.description));
+    expect(flow?.severity).toBe("low");
+    expect(flow?.description).toMatch(/operator running the tool/);
+  });
+
+  it("explains every score with factors that add up", () => {
+    const result = scan({
+      "package.json": JSON.stringify({ dependencies: { next: "16.0.0" } }),
+      "src/lib/hash.ts": "import { createHash } from \"crypto\";\nexport const tokenHash = (token: string) => createHash(\"md5\").update(token).digest(\"hex\");\n",
+    });
+    const b = result.scoreBreakdown!;
+    const sum = (xs: Array<{ points: number }>) => xs.reduce((n, x) => n + x.points, 0);
+    expect(Math.abs(sum(b.security) - result.security.score)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sum(b.dependencies) - result.dependencies.score)).toBeLessThanOrEqual(1);
+    expect(Math.abs(sum(b.health) - result.healthScore)).toBeLessThanOrEqual(1);
+    expect(b.security.some((f) => /MD5/.test(f.label) && f.file === "src/lib/hash.ts" && f.points < 0)).toBe(true);
+  });
+});
+
+describe("stack-specific rules", () => {
+  const withProject = (filename: string, code: string, deps: Record<string, string>) =>
+    analyzeWithInternalAI({
+      repo: "acme/app",
+      analysisType: "pr",
+      files: [{ filename, status: "added", additions: 1, deletions: 0, patch: code.split("\n").map((l) => `+${l}`).join("\n") }],
+      fileContents: { [filename]: code, "package.json": JSON.stringify({ dependencies: deps }) },
+    }).findings;
+
+  it("flags model output reaching HTML and eval", () => {
+    const code = "export async function render(el: HTMLElement) {\n  const res = await client.chat.completions.create({ model: \"m\", messages, max_tokens: 200 });\n  const html = res.choices[0].message.content;\n  el.innerHTML = html;\n}\n";
+    const findings = withProject("src/lib/render.ts", code, { openai: "^5.0.0" });
+    expect(findings.some((f) => /Model output reaches/.test(f.description) && f.line === 4)).toBe(true);
+  });
+
+  it("flags untrusted text in the system prompt", () => {
+    const code = "export async function POST(req: Request) {\n  const { persona } = await req.json();\n  return anthropic.messages.create({ model: \"m\", max_tokens: 100, system: `You are ${persona}`, messages });\n}\n";
+    const findings = withProject("src/app/api/chat/route.ts", code, { "@anthropic-ai/sdk": "^0.80.0" });
+    expect(findings.some((f) => /system prompt/.test(f.description))).toBe(true);
+  });
+
+  it("knows Next.js 16 made params and searchParams async", () => {
+    const page = "export default function Page({ searchParams }: { searchParams: { token?: string } }) {\n  return searchParams.token;\n}\n";
+    const helper = "function buildPrompt(params: {\n  repo: string;\n}) {\n  return params.repo;\n}\n";
+    expect(withProject("src/app/invite/page.tsx", page, { next: "16.0.0" }).find((f) => /Promise/.test(f.description))?.severity).toBe("high");
+    expect(withProject("src/app/invite/page.tsx", page, { next: "14.2.0" }).some((f) => /Promise/.test(f.description))).toBe(false);
+    expect(withProject("src/app/api/x/route.ts", helper, { next: "16.0.0" }).some((f) => /Promise/.test(f.description))).toBe(false);
+  });
+
+  it("catches redirect() swallowed by try/catch", () => {
+    const code = "import { redirect } from \"next/navigation\";\nexport async function go() {\n  try {\n    redirect(\"/home\");\n  } catch (err) {\n    console.error(err);\n  }\n}\n";
+    expect(withProject("src/app/actions.ts", code, { next: "16.0.0" }).some((f) => /swallows it/.test(f.description) && f.line === 4)).toBe(true);
+  });
+
+  it("checks Electron hardening only in Electron projects", () => {
+    const code = "new BrowserWindow({ webPreferences: { nodeIntegration: true, contextIsolation: false } });\n";
+    expect(withProject("src/main.ts", code, { electron: "^30.0.0" }).filter((f) => /Electron window/.test(f.description)).length).toBe(1);
+    expect(withProject("src/main.ts", code, { react: "^19.0.0" }).some((f) => /Electron window/.test(f.description))).toBe(false);
+  });
+
+  it("counts destructured props as one parameter and ignores setter calls in onChange", () => {
+    const code = "export function Dot({ a, b, c, d, e, f }: Props) {\n  return <input onChange={(e) => setSearch(e.target.value)} />;\n}\n";
+    const findings = withProject("src/components/dot.tsx", code, { react: "^19.0.0" });
+    expect(findings.some((f) => /6\+ parameters|every keystroke/.test(f.description))).toBe(false);
+  });
+
+  it("finds the async body after a return type containing braces", () => {
+    const code = "export async function load(): Promise<Array<{ id: string }>> {\n  const res = await fetch(\"/api\");\n  return res.json();\n}\n";
+    expect(withProject("src/lib/load.ts", code, {}).some((f) => /never awaits/.test(f.description))).toBe(false);
+  });
+});
+
 describe("repo scan", () => {
   const base = {
     repo: "acme/app",

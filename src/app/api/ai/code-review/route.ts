@@ -555,10 +555,12 @@ export async function POST(req: NextRequest) {
           }
           if (repoFiles) {
             const fileSet = new Set(repoFiles);
-            if (fileSet.has("tsconfig.json")) {
-              const tsconfig = await ghFetchText(`/repos/${repo}/contents/tsconfig.json${headRef}`, ghToken);
-              if (tsconfig) fullFileContents["tsconfig.json"] = tsconfig;
-            }
+            const projectFiles = ["tsconfig.json", "package.json", "proxy.ts", "middleware.ts", "src/proxy.ts", "src/middleware.ts", "next.config.ts", "next.config.js", "next.config.mjs", "prisma/schema.prisma"]
+              .filter((p) => fileSet.has(p) && !(p in fullFileContents));
+            await Promise.all(projectFiles.map(async (p) => {
+              const content = await ghFetchText(`/repos/${repo}/contents/${p}${headRef}`, ghToken);
+              if (content) fullFileContents[p] = content;
+            }));
             const aliases = readAliases(fullFileContents["tsconfig.json"]);
             const imported = new Set<string>();
             for (const [file, content] of Object.entries(fullFileContents)) {

@@ -1358,29 +1358,29 @@ export const AUTH_INDICATOR =
 export const RATE_LIMIT_INDICATOR =
   /rate.?limit|ratelimit|limiter|throttl|slidingWindow|fixedWindow|tokenBucket|consumeUsageBudget|checkUsage|usage.?budget|\bquota\b|arcjet|\bwith\w*(?:Security|Protect\w*|Guard)\s*\(/i;
 
-const PUBLIC_ROUTE =
+export const PUBLIC_ROUTE =
   /\/(?:auth|login|logout|signin|sign-in|signout|register|signup|sign-up|forgot|reset|verify|callback|oauth|webhooks?|health|healthz|status|ping|public|og|opengraph|sitemap|robots|cron|trpc|inngest|unsubscribe|track|beacon|contact|newsletter|waitlist|subscribe|feedback|invite|share|embed|badge|rss|feed)\b/i;
 
 const SENSITIVE_ROUTE =
   /\/(?:auth|login|signin|sign-in|register|signup|sign-up|forgot|reset|verify|otp|2fa|mfa|password|invite|contact|feedback|newsletter|waitlist|subscribe|email|chat|completions?|generate|llm|upload|payments?|checkout|billing|sms)\b/i;
 
-const SENSITIVE_CALL =
+export const SENSITIVE_CALL =
   /\b(?:sendMail|sendEmail|send\w*Email|resend\s*\.\s*emails|transporter\s*\.\s*sendMail|openai|anthropic|messages\s*\.\s*create|chat\s*\.\s*completions|generateText|streamText|callAI|bcrypt\s*\.\s*(?:compare|hash)|argon2\s*\.\s*(?:verify|hash)|stripe\s*\.\s*(?:charges|paymentIntents|checkout))\b/i;
 
-function routePath(filename: string): string {
+export function routePath(filename: string): string {
   const m = /(?:^|\/)(?:src\/)?(?:app|pages)\/(.*?)(?:\/route|\/index)?\.[jt]sx?$/.exec(filename);
   if (!m) return filename;
   return `/${m[1].split("/").filter((seg) => !/^\(.*\)$/.test(seg)).join("/")}`;
 }
 
-interface Handler {
+export interface Handler {
   method: string;
   offset: number;
   bodyText: string;
   path: string;
 }
 
-function findHandlers(ctx: FileCtx): Handler[] {
+export function findHandlers(ctx: FileCtx): Handler[] {
   if (ctx.isClient) return [];
   const out: Handler[] = [];
   const route = routePath(ctx.filename);
@@ -1490,7 +1490,7 @@ const serverActionAuthCheck: StructuralCheck = {
   },
 };
 
-const WEBHOOK_VERIFY =
+export const WEBHOOK_VERIFY =
   /signature|verify|constructEvent|createHmac|\bhmac\b|timingSafeEqual|svix|new\s+Webhook\s*\(|webhook_?secret|x-hub-signature|stripe-signature/i;
 
 const webhookCheck: StructuralCheck = {
@@ -1515,7 +1515,7 @@ const webhookCheck: StructuralCheck = {
   },
 };
 
-const CRON_AUTH = /CRON_SECRET|authorization|x-vercel-cron|verifySignature|Receiver|qstash|cron[_-]?secret|isVercelCron|INTERNAL_\w*(?:SECRET|KEY|TOKEN)/i;
+export const CRON_AUTH = /CRON_SECRET|authorization|x-vercel-cron|verifySignature|Receiver|qstash|cron[_-]?secret|isVercelCron|INTERNAL_\w*(?:SECRET|KEY|TOKEN)/i;
 
 const cronCheck: StructuralCheck = {
   id: "cron-no-secret",

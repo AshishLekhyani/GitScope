@@ -9,6 +9,7 @@ import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-pla
 import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
 import { scanRepoWithInternalAI } from "@/lib/internal-ai";
+import type { ProjectProfile, ScoreBreakdown } from "@/lib/internal-ai-profile";
 import { callAI, hasAnyAIProvider, hasByokKey, type AIPlan, type UserBYOKKeys } from "@/lib/ai-providers";
 import { getUserBYOKKeys } from "@/lib/byok";
 import { runAgentOrchestrator, SECURITY_AGENT, ARCHITECTURE_AGENT, PERFORMANCE_AGENT, TESTING_AGENT, DEPENDENCY_AGENT, DEBT_AGENT, type AgentConfig } from "@/lib/ai-agents";
@@ -171,6 +172,8 @@ export interface RepoScanResult {
     openIssues: number;
     stars: number;
   };
+  profile?: ProjectProfile;
+  scoreBreakdown?: ScoreBreakdown;
   model: string;
   isDemo: boolean;
 }
@@ -622,6 +625,9 @@ export async function POST(req: NextRequest) {
           ".github/workflows/deploy.yml", ".github/workflows/main.yml",
           ".gitlab-ci.yml", "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml",
           "middleware.ts", "middleware.js", "proxy.ts", "proxy.js", "prisma/schema.prisma",
+          "vercel.json", "netlify.toml", "fly.toml", "manifest.json", "public/manifest.json", "src/manifest.json",
+          "action.yml", "action.yaml", "setup.py", "Pipfile", "app.json", "build.gradle", "build.gradle.kts",
+          "AndroidManifest.xml", "Info.plist",
           ".env.example", "requirements.txt", "Gemfile", "composer.json", "pom.xml",
         ].filter((f) => fileTree.some((t) => t === f || t.endsWith(`/${f}`)));
 
@@ -686,7 +692,13 @@ export async function POST(req: NextRequest) {
               try {
                 const pkg = JSON.parse(content);
                 keyFileContents[f] = JSON.stringify(
-                  { name: pkg.name, version: pkg.version, scripts: pkg.scripts, dependencies: pkg.dependencies, devDependencies: pkg.devDependencies }, null, 2
+                  {
+                    name: pkg.name, version: pkg.version, private: pkg.private, type: pkg.type,
+                    main: pkg.main, module: pkg.module, types: pkg.types, typings: pkg.typings, exports: pkg.exports,
+                    bin: pkg.bin, files: pkg.files, license: pkg.license, engines: pkg.engines, workspaces: pkg.workspaces,
+                    scripts: pkg.scripts, dependencies: pkg.dependencies, devDependencies: pkg.devDependencies,
+                    peerDependencies: pkg.peerDependencies,
+                  }, null, 2
                 );
               } catch { keyFileContents[f] = content.slice(0, 4000); }
             } else {
