@@ -146,7 +146,7 @@ export function verifyWebhookSignature(payload: string, signature: string): bool
 export function formatReviewComment(result: {
   verdict: string;
   summary: string;
-  findings?: Array<{ severity: string; description: string; suggestion?: string }>;
+  findings?: Array<{ severity: string; description: string; suggestion?: string; file?: string; line?: number }>;
   securityIssues?: string[];
   model?: string;
 }): string {
@@ -169,7 +169,8 @@ export function formatReviewComment(result: {
     lines.push("### Findings", "");
     const sevEmoji: Record<string, string> = { critical: "🔴", high: "🟠", medium: "🟡", low: "🔵", info: "⚪" };
     for (const f of findings.slice(0, 8)) {
-      lines.push(`${sevEmoji[f.severity] ?? "•"} **${f.severity.toUpperCase()}** — ${f.description}`);
+      const where = f.file ? ` \`${f.file}${f.line ? `:${f.line}` : ""}\`` : "";
+      lines.push(`${sevEmoji[f.severity] ?? "•"} **${f.severity.toUpperCase()}**${where} — ${f.description}`);
       if (f.suggestion) lines.push(`  > ${f.suggestion}`);
     }
     lines.push("");

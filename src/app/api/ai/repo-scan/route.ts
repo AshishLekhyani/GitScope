@@ -100,6 +100,7 @@ export interface RepoScanFinding {
   severity: "critical" | "high" | "medium" | "low" | "info";
   category: "security" | "performance" | "architecture" | "quality" | "deps" | "testing" | "config";
   file?: string;
+  line?: number;
   description: string;
   suggestion: string;
   fix?: {
@@ -620,8 +621,15 @@ export async function POST(req: NextRequest) {
           ".github/workflows/ci.yml", ".github/workflows/ci.yaml",
           ".github/workflows/deploy.yml", ".github/workflows/main.yml",
           ".gitlab-ci.yml", "requirements.txt", "pyproject.toml", "go.mod", "Cargo.toml",
-          "middleware.ts", "middleware.js", "prisma/schema.prisma",
+          "middleware.ts", "middleware.js", "proxy.ts", "proxy.js", "prisma/schema.prisma",
+          ".env.example", "requirements.txt", "Gemfile", "composer.json", "pom.xml",
         ].filter((f) => fileTree.some((t) => t === f || t.endsWith(`/${f}`)));
+
+        const INFRA_FILES = [
+          ...fileTree.filter((t) => /^\.github\/workflows\/[^/]+\.ya?ml$/i.test(t)).slice(0, 12),
+          ...fileTree.filter((t) => /(?:^|\/)(?:Dockerfile|Containerfile)(?:\.[\w-]+)?$|(?:^|\/)(?:docker-)?compose(?:\.[\w-]+)?\.ya?ml$/i.test(t)).slice(0, 6),
+          ...fileTree.filter((t) => /\.tf$|(?:^|\/)(?:k8s|kubernetes|helm|deploy)\/.+\.ya?ml$/i.test(t)).slice(0, 10),
+        ].filter((t) => !CONFIG_FILES.includes(t));
 
         const SOURCE_EXTS = /\.(ts|tsx|js|jsx|mjs|cjs|py|go|rs|java|cs|rb|php|vue|svelte)$/;
         const EXCLUDE = /node_modules\/|\.next\/|dist\/|build\/|\.min\.(js|ts)$|\.d\.ts$/;
@@ -648,11 +656,12 @@ export async function POST(req: NextRequest) {
             : [...tier1, ...tier2].slice(0, fileCap);
         }
 
-        const allFilesToRead = [...CONFIG_FILES, ...sourceFilesToRead];
+        const allFilesToRead = [...new Set([...CONFIG_FILES, ...INFRA_FILES, ...sourceFilesToRead])];
 
         // ── Batch parallel fetch (25 concurrent) ───────────────────────────────
         const BATCH = 25;
         const keyFileContents: Record<string, string> = {};
+        const truncatedFiles: string[] = [];
 
         emit({ type: "progress", step: `Reading ${allFilesToRead.length} files…`, percent: 38 });
 
@@ -686,6 +695,7 @@ export async function POST(req: NextRequest) {
               const limit = isHighSignal
                 ? (scanMode === "deep" ? 8000 : 5000)
                 : (scanMode === "deep" ? 4000 : 2500);
+              if (content.length > limit) truncatedFiles.push(f);
               keyFileContents[f] = content.slice(0, limit);
             }
           }));
@@ -810,7 +820,7 @@ export async function POST(req: NextRequest) {
           emit({ type: "progress", step: "Running static analysis (no AI key configured)…", percent: 65 });
           internalScanResult = scanRepoWithInternalAI({
             repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-            realLoc, realLocByExt, totalCodeFiles, importGraph,
+            realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
           });
           result = internalScanResult;
         } else {
@@ -866,17 +876,17 @@ export async function POST(req: NextRequest) {
               emit({ type: "progress", step: "AI agents returned no results — falling back to static analysis…", percent: 80 });
               internalScanResult = scanRepoWithInternalAI({
                 repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-                realLoc, realLocByExt, totalCodeFiles, importGraph,
+                realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
               });
-              result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+              result = { ...internalScanResult, isDemo: false };
             } else if (orchestratorRes.agentResults.every(isAgentOutputEmpty)) {
               // All agents failed or returned empty/error — fall back to internal AI
               emit({ type: "progress", step: "AI agents failed — falling back to static analysis…", percent: 80 });
               internalScanResult = scanRepoWithInternalAI({
                 repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-                realLoc, realLocByExt, totalCodeFiles, importGraph,
+                realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
               });
-              result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+              result = { ...internalScanResult, isDemo: false };
             } else {
               // Successfully extracted results from agents - process and compile
               emit({ type: "progress", step: "Compiling multi-agent findings…", percent: 82 });
@@ -1192,9 +1202,9 @@ export async function POST(req: NextRequest) {
             emit({ type: "progress", step: "AI error — falling back to static analysis…", percent: 80 });
             internalScanResult = scanRepoWithInternalAI({
               repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-              realLoc, realLocByExt, totalCodeFiles, importGraph,
+              realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
             });
-            result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+            result = { ...internalScanResult, isDemo: false };
           }
         }
 
@@ -1206,10 +1216,10 @@ export async function POST(req: NextRequest) {
           if (!internalScanResult) {
             internalScanResult = scanRepoWithInternalAI({
               repo, fileTree, keyFileContents, recentCommits, contributors, meta, scanMode,
-              realLoc, realLocByExt, totalCodeFiles, importGraph,
+              realLoc, realLocByExt, totalCodeFiles, importGraph, truncatedFiles,
             });
           }
-          result = { ...internalScanResult, model: "internal-ai-v3", isDemo: false };
+          result = { ...internalScanResult, isDemo: false };
         }
 
         // ── Save scan history (Pro+ only) ─────────────────────────────────

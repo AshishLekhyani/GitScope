@@ -9,6 +9,7 @@ import { resolveAiPlanFromSessionDb, getCapabilitiesForPlan } from "@/lib/ai-pla
 import { consumeUsageBudget } from "@/lib/ai-usage";
 import { prisma } from "@/lib/prisma";
 import { analyzeWithInternalAI } from "@/lib/internal-ai";
+import { importSpecifiers, readAliases, resolveImport } from "@/lib/internal-ai-graph";
 import { callAI, hasAnyAIProvider, type AIPlan } from "@/lib/ai-providers";
 import { getUserBYOKKeys } from "@/lib/byok";
 
@@ -84,6 +85,7 @@ interface GHPRMeta {
   draft: boolean;
   labels: Array<{ name: string }>;
   requested_reviewers: Array<{ login: string }>;
+  head?: { sha: string };
 }
 
 interface GHCommitMeta {
@@ -138,6 +140,23 @@ async function ghFetchText(path: string, token: string | null): Promise<string |
   } catch {
     return null;
   }
+}
+
+function mergeStaticFindings(llm: CodeReviewFinding[] = [], internal: CodeReviewFinding[]): CodeReviewFinding[] {
+  const llmDescs = new Set(llm.map((f) => f.description.slice(0, 40)));
+  const duplicate = (f: CodeReviewFinding) =>
+    llmDescs.has(f.description.slice(0, 40)) ||
+    llm.some((l) =>
+      l.file === f.file &&
+      l.category === f.category &&
+      l.line !== undefined &&
+      f.line !== undefined &&
+      Math.abs(l.line - f.line) <= 3
+    );
+  const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+  return [...llm, ...internal.filter((f) => !duplicate(f))]
+    .sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity])
+    .slice(0, 16);
 }
 
 // ── AI Prompt ────────────────────────────────────────────────────────────────
@@ -514,12 +533,48 @@ export async function POST(req: NextRequest) {
             .slice(0, scanMode === "deep" ? 10 : 5);
 
           const fileContents: Record<string, string> = {};
+          const fullFileContents: Record<string, string> = {};
+          const headRef = prMeta.head?.sha ? `?ref=${encodeURIComponent(prMeta.head.sha)}` : "";
           for (let i = 0; i < keyChangedFiles.length; i++) {
             const f = keyChangedFiles[i];
             const shortName = f.filename.split("/").slice(-2).join("/");
             emit({ type: "progress", step: `Reading ${shortName}…`, percent: Math.round(42 + (i / keyChangedFiles.length) * 12) });
-            const content = await ghFetchText(`/repos/${repo}/contents/${f.filename}`, ghToken);
-            if (content) fileContents[f.filename] = content.slice(0, scanMode === "deep" ? 3000 : 1500);
+            const content = await ghFetchText(`/repos/${repo}/contents/${f.filename}${headRef}`, ghToken);
+            if (!content) continue;
+            fullFileContents[f.filename] = content;
+            fileContents[f.filename] = content.slice(0, scanMode === "deep" ? 3000 : 1500);
+          }
+
+          let repoFiles: string[] | undefined;
+          if (prMeta.head?.sha) {
+            const tree = await ghFetch<{ tree: Array<{ path: string; type: string }>; truncated?: boolean }>(
+              `/repos/${repo}/git/trees/${prMeta.head.sha}?recursive=1`,
+              ghToken
+            );
+            if (tree && !tree.truncated) repoFiles = tree.tree.filter((t) => t.type === "blob").map((t) => t.path);
+          }
+          if (repoFiles) {
+            const fileSet = new Set(repoFiles);
+            if (fileSet.has("tsconfig.json")) {
+              const tsconfig = await ghFetchText(`/repos/${repo}/contents/tsconfig.json${headRef}`, ghToken);
+              if (tsconfig) fullFileContents["tsconfig.json"] = tsconfig;
+            }
+            const aliases = readAliases(fullFileContents["tsconfig.json"]);
+            const imported = new Set<string>();
+            for (const [file, content] of Object.entries(fullFileContents)) {
+              for (const spec of importSpecifiers(content, file)) {
+                const target = resolveImport(file, spec, fileSet, aliases);
+                if (target && !(target in fullFileContents) && /\.(?:[cm]?[jt]sx?|py)$/.test(target)) imported.add(target);
+              }
+            }
+            const contextFiles = [...imported].slice(0, scanMode === "deep" ? 12 : 6);
+            if (contextFiles.length > 0) {
+              emit({ type: "progress", step: `Reading ${contextFiles.length} imported module${contextFiles.length > 1 ? "s" : ""} for cross-file analysis…`, percent: 55 });
+              await Promise.all(contextFiles.map(async (p) => {
+                const content = await ghFetchText(`/repos/${repo}/contents/${p}${headRef}`, ghToken);
+                if (content) fullFileContents[p] = content;
+              }));
+            }
           }
 
           emit({ type: "progress", step: `Analyzed ${files.length} changed files — building context…`, percent: 56 });
@@ -527,7 +582,7 @@ export async function POST(req: NextRequest) {
           // ── Always run internal AI first (fast, no API key needed) ──
           emit({ type: "progress", step: "Running internal static analysis…", percent: 60 });
           const internalResult = analyzeWithInternalAI({
-            repo, analysisType: "pr", prMeta, files, prNumber,
+            repo, analysisType: "pr", prMeta, files, prNumber, fileContents: fullFileContents, repoFiles,
           });
 
           if (!hasAnyAIProvider()) {
@@ -550,9 +605,7 @@ export async function POST(req: NextRequest) {
                 result = JSON.parse(cleaned) as CodeReviewResult;
                 result.model = aiRes.model;
                 result.isDemo = false;
-                const llmDescs = new Set(result.findings.map((f) => f.description.slice(0, 40)));
-                const extra = internalResult.findings.filter((f) => !llmDescs.has(f.description.slice(0, 40)));
-                result.findings = [...result.findings, ...extra].slice(0, 12);
+                result.findings = mergeStaticFindings(result.findings, internalResult.findings);
                 await prisma.codeReviewScan.create({
                   data: {
                     userId: session.user.id, repo, prNumber, scanMode, analysisType: "pr",
@@ -608,6 +661,7 @@ export async function POST(req: NextRequest) {
                 result = JSON.parse(cleaned) as CodeReviewResult;
                 result.model = aiRes.model;
                 result.isDemo = false;
+                result.findings = mergeStaticFindings(result.findings, internalCommitResult.findings);
                 await prisma.codeReviewScan.create({
                   data: {
                     userId: session.user.id, repo, commitSha, scanMode, analysisType: "commit",

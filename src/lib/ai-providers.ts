@@ -453,7 +453,7 @@ export function getModelLabel(plan: AIPlan, byokKeys?: UserBYOKKeys): string {
   if (process.env.GROQ_API_KEY) return `groq/${groqModel(plan)}`;
   if (process.env.DEEPSEEK_API_KEY) return `deepseek/${deepseekModel(plan)}`;
 
-  return "gitscope-internal-v3";
+  return "gitscope-internal-v4";
 }
 
 /** True when a server-side key is available (and the current call would use it, not BYOK). */

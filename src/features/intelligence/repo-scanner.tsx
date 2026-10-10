@@ -366,7 +366,10 @@ function FindingItem({ finding, fixDiffsAllowed = true, repo = "" }: { finding: 
   };
   const sev = (finding.severity in SEVERITY_STYLES ? finding.severity : "low") as keyof typeof SEVERITY_STYLES;
   const s = SEVERITY_STYLES[sev];
-  const fileName = finding.file ? finding.file.split("/").slice(-1)[0] : null;
+  const fileName = finding.file ? `${finding.file.split("/").slice(-1)[0]}${finding.line ? `:${finding.line}` : ""}` : null;
+  const fileHref = repo && finding.file && finding.file !== "root"
+    ? `https://github.com/${repo}/blob/HEAD/${finding.file}${finding.line ? `#L${finding.line}` : ""}`
+    : null;
   const hasFix = !!finding.fix;
   const lang = finding.fix?.language ?? "typescript";
 
@@ -407,7 +410,18 @@ function FindingItem({ finding, fixDiffsAllowed = true, repo = "" }: { finding: 
           {finding.file && (
             <div className="flex items-center gap-2 pt-3">
               <MaterialIcon name="insert_drive_file" size={12} className="text-muted-foreground/50 shrink-0" />
-              <span className="text-[10px] font-mono text-foreground/50 truncate">{finding.file}</span>
+              {fileHref ? (
+                <a
+                  href={fileHref}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] font-mono text-foreground/50 truncate hover:text-amber-400 hover:underline"
+                >
+                  {finding.file}{finding.line ? `:${finding.line}` : ""}
+                </a>
+              ) : (
+                <span className="text-[10px] font-mono text-foreground/50 truncate">{finding.file}{finding.line ? `:${finding.line}` : ""}</span>
+              )}
             </div>
           )}
           {finding.category && (
@@ -449,7 +463,7 @@ function FindingItem({ finding, fixDiffsAllowed = true, repo = "" }: { finding: 
                   title: `[GitScope] ${finding.description.slice(0, 120)}`,
                   body: [
                     `**Category:** ${finding.category}`,
-                    finding.file ? `**File:** \`${finding.file}\`` : "",
+                    finding.file ? `**File:** \`${finding.file}${finding.line ? `:${finding.line}` : ""}\`` : "",
                     `**Severity:** ${finding.severity}`,
                     "",
                     "**Description:**",
